@@ -463,6 +463,13 @@ button {
   color: #1f4ecb;
 }
 
+.note-pin {
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: #2456b5;
+  background: #dde9ff;
+}
+
 .note-card-actions {
   position: absolute;
   top: 8px;

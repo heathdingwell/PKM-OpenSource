@@ -77,6 +77,8 @@ interface AppPrefs {
   tagFilters?: string[];
   recentNoteIds?: string[];
   shortcutNoteIds?: string[];
+  homePinnedNoteIds?: string[];
+  notebookPinnedNoteIds?: string[];
   notebookStacks?: Record<string, string>;
   collapsedStacks?: string[];
 }
@@ -438,6 +440,8 @@ function loadPrefs(): AppPrefs {
       tagFilters: [],
       recentNoteIds: [],
       shortcutNoteIds: [],
+      homePinnedNoteIds: [],
+      notebookPinnedNoteIds: [],
       notebookStacks: {},
       collapsedStacks: []
     };
@@ -454,6 +458,8 @@ function loadPrefs(): AppPrefs {
         tagFilters: [],
         recentNoteIds: [],
         shortcutNoteIds: [],
+        homePinnedNoteIds: [],
+        notebookPinnedNoteIds: [],
         notebookStacks: {},
         collapsedStacks: []
       };
@@ -473,6 +479,12 @@ function loadPrefs(): AppPrefs {
         : [],
       shortcutNoteIds: Array.isArray(parsed.shortcutNoteIds)
         ? parsed.shortcutNoteIds.filter((noteId): noteId is string => typeof noteId === "string")
+        : [],
+      homePinnedNoteIds: Array.isArray(parsed.homePinnedNoteIds)
+        ? parsed.homePinnedNoteIds.filter((noteId): noteId is string => typeof noteId === "string")
+        : [],
+      notebookPinnedNoteIds: Array.isArray(parsed.notebookPinnedNoteIds)
+        ? parsed.notebookPinnedNoteIds.filter((noteId): noteId is string => typeof noteId === "string")
         : [],
       notebookStacks:
         parsed.notebookStacks && typeof parsed.notebookStacks === "object"
@@ -495,6 +507,8 @@ function loadPrefs(): AppPrefs {
       tagFilters: [],
       recentNoteIds: [],
       shortcutNoteIds: [],
+      homePinnedNoteIds: [],
+      notebookPinnedNoteIds: [],
       notebookStacks: {},
       collapsedStacks: []
     };
@@ -598,6 +612,10 @@ export default function App() {
   const [tagFilters, setTagFilters] = useState<string[]>(initialPrefs.tagFilters ?? []);
   const [recentNoteIds, setRecentNoteIds] = useState<string[]>(initialPrefs.recentNoteIds ?? []);
   const [shortcutNoteIds, setShortcutNoteIds] = useState<string[]>(initialPrefs.shortcutNoteIds ?? []);
+  const [homePinnedNoteIds, setHomePinnedNoteIds] = useState<string[]>(initialPrefs.homePinnedNoteIds ?? []);
+  const [notebookPinnedNoteIds, setNotebookPinnedNoteIds] = useState<string[]>(
+    initialPrefs.notebookPinnedNoteIds ?? []
+  );
   const [notebookStacks, setNotebookStacks] = useState<Record<string, string>>(initialPrefs.notebookStacks ?? {});
   const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(
     () => new Set(initialPrefs.collapsedStacks ?? [])
@@ -706,6 +724,31 @@ export default function App() {
       .map((noteId) => notes.find((note) => note.id === noteId))
       .filter((note): note is AppNote => Boolean(note));
   }, [shortcutNoteIds, notes]);
+
+  const homePinnedNotes = useMemo(() => {
+    return homePinnedNoteIds
+      .map((noteId) => notes.find((note) => note.id === noteId))
+      .filter((note): note is AppNote => Boolean(note))
+      .slice(0, 16);
+  }, [homePinnedNoteIds, notes]);
+
+  const notebookPinnedNotes = useMemo(() => {
+    if (selectedNotebook === "All Notes") {
+      return [];
+    }
+    return notebookPinnedNoteIds
+      .map((noteId) => notes.find((note) => note.id === noteId))
+      .filter((note): note is AppNote => {
+        if (!note) {
+          return false;
+        }
+        return note.notebook === selectedNotebook;
+      })
+      .slice(0, 16);
+  }, [notebookPinnedNoteIds, notes, selectedNotebook]);
+
+  const homePinnedSet = useMemo(() => new Set(homePinnedNoteIds), [homePinnedNoteIds]);
+  const notebookPinnedSet = useMemo(() => new Set(notebookPinnedNoteIds), [notebookPinnedNoteIds]);
 
   const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
 
@@ -937,6 +980,14 @@ export default function App() {
       const next = previous.filter((noteId) => validIds.has(noteId));
       return next.length === previous.length ? previous : next;
     });
+    setHomePinnedNoteIds((previous) => {
+      const next = previous.filter((noteId) => validIds.has(noteId));
+      return next.length === previous.length ? previous : next;
+    });
+    setNotebookPinnedNoteIds((previous) => {
+      const next = previous.filter((noteId) => validIds.has(noteId));
+      return next.length === previous.length ? previous : next;
+    });
   }, [notes]);
 
   useEffect(() => {
@@ -1130,6 +1181,8 @@ export default function App() {
       tagFilters,
       recentNoteIds,
       shortcutNoteIds,
+      homePinnedNoteIds,
+      notebookPinnedNoteIds,
       notebookStacks,
       collapsedStacks: Array.from(collapsedStacks)
     };
@@ -1142,6 +1195,8 @@ export default function App() {
     tagFilters,
     recentNoteIds,
     shortcutNoteIds,
+    homePinnedNoteIds,
+    notebookPinnedNoteIds,
     notebookStacks,
     collapsedStacksKey
   ]);
@@ -1650,6 +1705,45 @@ export default function App() {
     setShortcutNoteIds((previous) => previous.filter((entry) => entry !== noteId));
   }
 
+  function removePinnedNote(noteId: string, scope: "home" | "notebook"): void {
+    if (scope === "home") {
+      setHomePinnedNoteIds((previous) => previous.filter((entry) => entry !== noteId));
+      return;
+    }
+    setNotebookPinnedNoteIds((previous) => previous.filter((entry) => entry !== noteId));
+  }
+
+  function togglePinnedNotes(noteIds: string[], scope: "home" | "notebook"): { pinned: number; unpinned: number } {
+    const validIds = new Set(notes.map((note) => note.id));
+    let pinned = 0;
+    let unpinned = 0;
+    const apply = (previous: string[]): string[] => {
+      const next = [...previous];
+      for (const noteId of noteIds) {
+        if (!validIds.has(noteId)) {
+          continue;
+        }
+        const index = next.indexOf(noteId);
+        if (index >= 0) {
+          next.splice(index, 1);
+          unpinned += 1;
+        } else {
+          next.push(noteId);
+          pinned += 1;
+        }
+      }
+      return next;
+    };
+
+    if (scope === "home") {
+      setHomePinnedNoteIds(apply);
+    } else {
+      setNotebookPinnedNoteIds(apply);
+    }
+
+    return { pinned, unpinned };
+  }
+
   function restoreNoteSnapshot(noteId: string, index: number): void {
     const snapshot = noteHistory[noteId]?.[index];
     if (!snapshot) {
@@ -2053,6 +2147,36 @@ export default function App() {
       return;
     }
 
+    if (action === "pin-home") {
+      const { pinned, unpinned } = togglePinnedNotes(contextMenu.noteIds, "home");
+      if (pinned && unpinned) {
+        setToastMessage(`Home pins updated (+${pinned}/-${unpinned})`);
+      } else if (pinned) {
+        setToastMessage(`${pinned} pinned to Home`);
+      } else if (unpinned) {
+        setToastMessage(`${unpinned} unpinned from Home`);
+      } else {
+        setToastMessage("No pin changes");
+      }
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "pin-notebook") {
+      const { pinned, unpinned } = togglePinnedNotes(contextMenu.noteIds, "notebook");
+      if (pinned && unpinned) {
+        setToastMessage(`Notebook pins updated (+${pinned}/-${unpinned})`);
+      } else if (pinned) {
+        setToastMessage(`${pinned} pinned to notebook`);
+      } else if (unpinned) {
+        setToastMessage(`${unpinned} unpinned from notebook`);
+      } else {
+        setToastMessage("No pin changes");
+      }
+      setContextMenu(null);
+      return;
+    }
+
     if (action === "export") {
       exportNote(targetId);
       setContextMenu(null);
@@ -2067,15 +2191,6 @@ export default function App() {
 
     if (action === "print") {
       window.print();
-      setContextMenu(null);
-      return;
-    }
-
-    if (
-      action === "pin-notebook" ||
-      action === "pin-home"
-    ) {
-      setToastMessage(`"${action.replace(/-/g, " ")}" is planned`);
       setContextMenu(null);
       return;
     }
@@ -2792,6 +2907,74 @@ export default function App() {
         </section>
 
         <section className="sidebar-section">
+          <h2>Pinned to Home</h2>
+          {homePinnedNotes.length ? (
+            <ul className="shortcut-list">
+              {homePinnedNotes.map((note) => (
+                <li key={note.id} className="shortcut-row">
+                  <button
+                    type="button"
+                    className="shortcut-item"
+                    onClick={() => {
+                      setSelectedNotebook(note.notebook);
+                      focusNote(note.id);
+                    }}
+                  >
+                    <span>{note.title}</span>
+                    <small>{note.notebook}</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="shortcut-remove"
+                    aria-label={`Unpin from home ${note.title}`}
+                    onClick={() => removePinnedNote(note.id, "home")}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="shortcut-empty">No Home pins yet</p>
+          )}
+        </section>
+
+        <section className="sidebar-section">
+          <h2>{selectedNotebook === "All Notes" ? "Pinned to Notebook" : `Pinned in ${selectedNotebook}`}</h2>
+          {selectedNotebook === "All Notes" ? (
+            <p className="shortcut-empty">Select a notebook to view notebook pins</p>
+          ) : notebookPinnedNotes.length ? (
+            <ul className="shortcut-list">
+              {notebookPinnedNotes.map((note) => (
+                <li key={note.id} className="shortcut-row">
+                  <button
+                    type="button"
+                    className="shortcut-item"
+                    onClick={() => {
+                      setSelectedNotebook(note.notebook);
+                      focusNote(note.id);
+                    }}
+                  >
+                    <span>{note.title}</span>
+                    <small>{formatRelativeTime(note.updatedAt)}</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="shortcut-remove"
+                    aria-label={`Unpin from notebook ${note.title}`}
+                    onClick={() => removePinnedNote(note.id, "notebook")}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="shortcut-empty">No notebook pins yet</p>
+          )}
+        </section>
+
+        <section className="sidebar-section">
           <h2>Notebooks</h2>
           <ul>
             {stackedNotebookGroups.stacks.map((group) => {
@@ -2873,6 +3056,8 @@ export default function App() {
           {visibleNotes.map((note) => {
             const isSelected = selectedIds.has(note.id);
             const showQuickAction = hoveredCardId === note.id || isSelected;
+            const homePinned = homePinnedSet.has(note.id);
+            const notebookPinned = notebookPinnedSet.has(note.id);
             return (
               <button
                 key={note.id}
@@ -2919,6 +3104,8 @@ export default function App() {
                 <p>{note.snippet || "Untitled"}</p>
                 <footer>
                   <span>{formatRelativeTime(note.updatedAt)}</span>
+                  {homePinned ? <span className="note-pin">Home pin</span> : null}
+                  {notebookPinned ? <span className="note-pin">Notebook pin</span> : null}
                   {viewMode === "list" ? <span>{note.notebook}</span> : null}
                   {isSelected ? <em>{selectedIds.size > 1 ? "Multi" : "Selected"}</em> : null}
                 </footer>

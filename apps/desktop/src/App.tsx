@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { SearchIndex } from "@pkm-os/indexer";
 import { type NoteRecord, VaultService } from "@pkm-os/vault-core";
 import RichMarkdownEditor, { type RichMarkdownEditorHandle } from "./RichMarkdownEditor";
@@ -4871,6 +4871,10 @@ export default function App() {
     applyMarkdownSlashCommand(command);
   }
 
+  const editorMainStyle = {
+    "--tag-pane-height": `${tagPaneHeight}px`
+  } as CSSProperties;
+
   return (
     <div
       className="app-shell"
@@ -5479,7 +5483,8 @@ export default function App() {
               </div>
             ) : null}
 
-            <article className={metadataOpen || aiPanelOpen ? "editor-content with-metadata" : "editor-content"}>
+            <div className="editor-main" style={editorMainStyle}>
+              <article className={metadataOpen || aiPanelOpen ? "editor-content with-metadata" : "editor-content"}>
               <div className="editor-workbench">
                 {editorMode === "markdown" ? (
                   <section
@@ -6151,16 +6156,9 @@ export default function App() {
                   </dl>
                 </aside>
               ) : null}
-            </article>
+              </article>
 
-            <footer
-              className="editor-footer"
-              style={{
-                height: `${tagPaneHeight}px`,
-                minHeight: `${tagPaneHeight}px`,
-                maxHeight: `${tagPaneHeight}px`
-              }}
-            >
+              <footer className="editor-footer">
               <button
                 type="button"
                 className="tag-pane-resizer"
@@ -6230,7 +6228,8 @@ export default function App() {
                   <button type="submit">Save</button>
                 </form>
               ) : null}
-            </footer>
+              </footer>
+            </div>
           </>
         ) : (
           <p className="empty-editor">Select a note.</p>

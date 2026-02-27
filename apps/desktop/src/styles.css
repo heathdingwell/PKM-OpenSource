@@ -637,12 +637,18 @@ body.is-resizing {
 
 .editor-shell {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   overflow: hidden;
   background: var(--bg-editor);
   min-width: 0;
+}
+
+.editor-main {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) var(--tag-pane-height, 52px);
+  min-height: 0;
 }
 
 .editor-topbar {
@@ -783,6 +789,7 @@ body.is-resizing {
 .editor-content {
   position: relative;
   width: 100%;
+  height: 100%;
   margin: 0;
   padding: 16px 18px 24px;
   min-height: 0;
@@ -1447,7 +1454,7 @@ body.is-resizing {
 }
 
 .editor-footer {
-  min-height: 44px;
+  min-height: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;

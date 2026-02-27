@@ -127,6 +127,7 @@ interface AppPrefs {
   activeId: string;
   sidebarWidth?: number;
   listWidth?: number;
+  themeId?: ThemeId;
   browseMode?: NoteBrowseMode;
   viewMode?: NoteViewMode;
   sortMode?: NoteSortMode;
@@ -158,6 +159,7 @@ type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
 type SidebarView = "notes" | "tasks" | "calendar";
 type NoteBrowseMode = "all" | "templates";
+type ThemeId = "cobalt" | "sky" | "slate";
 type NoteSortMode =
   | "updated-desc"
   | "updated-asc"
@@ -232,6 +234,7 @@ const MIN_SIDEBAR_WIDTH = 210;
 const MAX_SIDEBAR_WIDTH = 420;
 const MIN_LIST_WIDTH = 320;
 const MAX_LIST_WIDTH = 960;
+const themeIds: ThemeId[] = ["cobalt", "sky", "slate"];
 
 const seedNotes: SeedNote[] = [
   {
@@ -297,6 +300,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
+  { id: "cycle-theme", label: "Cycle theme", keywords: ["theme", "color", "palette"] },
   { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
 ];
 
@@ -834,6 +838,7 @@ function defaultPrefs(): AppPrefs {
     activeId: "",
     sidebarWidth: 240,
     listWidth: 520,
+    themeId: "cobalt",
     browseMode: "all",
     viewMode: "cards",
     sortMode: "updated-desc",
@@ -869,6 +874,7 @@ function loadPrefs(): AppPrefs {
           : 240,
       listWidth:
         typeof parsed.listWidth === "number" ? clampPaneWidth(parsed.listWidth, MIN_LIST_WIDTH, MAX_LIST_WIDTH) : 520,
+      themeId: themeIds.includes(parsed.themeId as ThemeId) ? (parsed.themeId as ThemeId) : "cobalt",
       browseMode: parsed.browseMode === "templates" ? "templates" : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
@@ -1078,6 +1084,7 @@ export default function App() {
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">("saved");
   const [sidebarView, setSidebarView] = useState<SidebarView>("notes");
   const [editorMode, setEditorMode] = useState<EditorMode>("markdown");
+  const [themeId, setThemeId] = useState<ThemeId>(initialPrefs.themeId ?? "cobalt");
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [sortMode, setSortMode] = useState<NoteSortMode>(initialPrefs.sortMode ?? "updated-desc");
   const [tagFilters, setTagFilters] = useState<string[]>(initialPrefs.tagFilters ?? []);
@@ -1780,6 +1787,13 @@ export default function App() {
   }, [calendarEvents]);
 
   useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    document.documentElement.dataset.theme = themeId;
+  }, [themeId]);
+
+  useEffect(() => {
     const validNoteIds = new Set(notes.map((note) => note.id));
     setCalendarEvents((previous) => {
       let changed = false;
@@ -1807,6 +1821,7 @@ export default function App() {
       activeId,
       sidebarWidth,
       listWidth,
+      themeId,
       browseMode,
       viewMode,
       sortMode,
@@ -1825,6 +1840,7 @@ export default function App() {
     activeId,
     sidebarWidth,
     listWidth,
+    themeId,
     browseMode,
     viewMode,
     sortMode,
@@ -2064,6 +2080,15 @@ export default function App() {
       return;
     }
     setListWidth((previous) => clampPaneWidth(previous + delta, MIN_LIST_WIDTH, MAX_LIST_WIDTH));
+  }
+
+  function cycleTheme(): void {
+    setThemeId((previous) => {
+      const index = themeIds.indexOf(previous);
+      const next = themeIds[(index + 1) % themeIds.length];
+      setToastMessage(`Theme switched to ${next}`);
+      return next;
+    });
   }
 
   function flushActiveDraft(): void {
@@ -2701,6 +2726,12 @@ export default function App() {
 
     if (actionId === "toggle-editor") {
       setEditorMode((previous) => (previous === "markdown" ? "rich" : "markdown"));
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "cycle-theme") {
+      cycleTheme();
       setSearchOpen(false);
       return;
     }
@@ -4824,6 +4855,9 @@ export default function App() {
                 </button>
                 <button type="button" className="link-btn">
                   Link
+                </button>
+                <button type="button" className="link-btn" onClick={cycleTheme}>
+                  Theme
                 </button>
                 <button
                   ref={editorMenuButtonRef}

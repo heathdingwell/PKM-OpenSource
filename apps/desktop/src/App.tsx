@@ -60,6 +60,10 @@ interface LastMoveState {
   previousById: Record<string, { notebook: string; path: string }>;
 }
 
+interface LastTrashState {
+  notes: AppNote[];
+}
+
 interface NoteHistoryEntry {
   at: string;
   title: string;
@@ -1278,6 +1282,7 @@ export default function App() {
   const [dropNotebook, setDropNotebook] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<LastMoveState | null>(null);
+  const [lastTrash, setLastTrash] = useState<LastTrashState | null>(null);
   const [draftMarkdown, setDraftMarkdown] = useState<string>("");
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">("saved");
   const [sidebarView, setSidebarView] = useState<SidebarView>("notes");
@@ -3730,6 +3735,7 @@ export default function App() {
     );
 
     setLastMove({ previousById });
+    setLastTrash(null);
     setToastMessage(
       `${changed.length === 1 ? `\"${changed[0].title}\"` : `${changed.length} notes`} moved to ${destination}`
     );
@@ -3820,7 +3826,18 @@ export default function App() {
     );
   }
 
-  function undoLastMove(): void {
+  function undoLastAction(): void {
+    if (lastTrash) {
+      setNotes((previous) => {
+        const existingIds = new Set(previous.map((note) => note.id));
+        const restored = lastTrash.notes.filter((note) => !existingIds.has(note.id));
+        return [...restored, ...previous];
+      });
+      setLastTrash(null);
+      setToastMessage("Restored from Trash");
+      return;
+    }
+
     if (!lastMove) {
       return;
     }
@@ -4052,7 +4069,15 @@ export default function App() {
     }
 
     if (action === "move-trash") {
+      const trashed = notes.filter((note) => contextMenu.noteIds.includes(note.id));
+      if (trashed.length) {
+        setLastTrash({ notes: trashed });
+        setLastMove(null);
+      }
       setNotes((previous) => previous.filter((note) => !contextMenu.noteIds.includes(note.id)));
+      setToastMessage(
+        `${contextMenu.noteIds.length === 1 ? "1 note" : `${contextMenu.noteIds.length} notes`} moved to Trash`
+      );
       setContextMenu(null);
       return;
     }
@@ -7468,8 +7493,8 @@ export default function App() {
       {toastMessage ? (
         <div className="toast">
           <span>{toastMessage}</span>
-          {lastMove ? (
-            <button type="button" onClick={undoLastMove}>
+          {lastMove || lastTrash ? (
+            <button type="button" onClick={undoLastAction}>
               Undo
             </button>
           ) : null}

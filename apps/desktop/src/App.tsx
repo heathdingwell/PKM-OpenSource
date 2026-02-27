@@ -344,6 +344,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
   { id: "open-trash", label: "Open trash", keywords: ["trash", "deleted"] },
+  { id: "empty-trash", label: "Empty trash", keywords: ["trash", "delete"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
@@ -3302,6 +3303,24 @@ export default function App() {
     setToastMessage(`Task "${taskText}" added`);
   }
 
+  function emptyTrash(): void {
+    if (!trashedNotes.length) {
+      setToastMessage("Trash is already empty");
+      return;
+    }
+
+    const approved = window.confirm(`Delete ${trashedNotes.length} trashed notes permanently?`);
+    if (!approved) {
+      return;
+    }
+
+    const noteIds = trashedNotes.map((note) => note.id);
+    const removed = deleteNotesPermanently(noteIds);
+    if (removed > 0) {
+      setToastMessage(`${removed === 1 ? "1 note" : `${removed} notes`} deleted permanently`);
+    }
+  }
+
   function runPaletteAction(actionId: string): void {
     if (actionId === "new-note") {
       setSearchOpen(false);
@@ -3385,6 +3404,14 @@ export default function App() {
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "empty-trash") {
+      setSearchOpen(false);
+      setBrowseMode("trash");
+      setSelectedNotebook("All Notes");
+      emptyTrash();
       return;
     }
 
@@ -3872,6 +3899,64 @@ export default function App() {
     );
   }
 
+  function moveNotesToTrash(noteIds: string[]): number {
+    const selected = notes.filter((note) => noteIds.includes(note.id) && !note.trashedAt);
+    if (!selected.length) {
+      return 0;
+    }
+
+    const trashedAt = new Date().toISOString();
+    setLastTrash({ mode: "trash", notes: selected });
+    setLastMove(null);
+    setNotes((previous) =>
+      previous.map((note) =>
+        noteIds.includes(note.id)
+          ? {
+              ...note,
+              trashedAt,
+              updatedAt: trashedAt
+            }
+          : note
+      )
+    );
+    return selected.length;
+  }
+
+  function restoreNotesFromTrash(noteIds: string[]): number {
+    const selected = notes.filter((note) => noteIds.includes(note.id) && Boolean(note.trashedAt));
+    if (!selected.length) {
+      return 0;
+    }
+
+    const restoredAt = new Date().toISOString();
+    setLastTrash({ mode: "trash", notes: selected });
+    setLastMove(null);
+    setNotes((previous) =>
+      previous.map((note) =>
+        noteIds.includes(note.id)
+          ? {
+              ...note,
+              trashedAt: undefined,
+              updatedAt: restoredAt
+            }
+          : note
+      )
+    );
+    return selected.length;
+  }
+
+  function deleteNotesPermanently(noteIds: string[]): number {
+    const selected = notes.filter((note) => noteIds.includes(note.id));
+    if (!selected.length) {
+      return 0;
+    }
+
+    setLastTrash({ mode: "delete", notes: selected });
+    setLastMove(null);
+    setNotes((previous) => previous.filter((note) => !noteIds.includes(note.id)));
+    return selected.length;
+  }
+
   function undoLastAction(): void {
     if (lastTrash) {
       if (lastTrash.mode === "trash") {
@@ -4161,60 +4246,28 @@ export default function App() {
         setContextMenu(null);
         return;
       }
-      if (selectedMenuNotes.length) {
-        const restoredAt = new Date().toISOString();
-        setLastTrash({ mode: "trash", notes: selectedMenuNotes });
-        setLastMove(null);
-        setNotes((previous) =>
-          previous.map((note) =>
-            contextMenu.noteIds.includes(note.id)
-              ? {
-                  ...note,
-                  trashedAt: undefined,
-                  updatedAt: restoredAt
-                }
-              : note
-          )
-        );
+      const restored = restoreNotesFromTrash(contextMenu.noteIds);
+      if (restored > 0) {
+        setToastMessage(`${restored === 1 ? "1 note" : `${restored} notes`} restored from Trash`);
       }
-      setToastMessage(
-        `${contextMenu.noteIds.length === 1 ? "1 note" : `${contextMenu.noteIds.length} notes`} restored from Trash`
-      );
       setContextMenu(null);
       return;
     }
 
     if (action === "move-trash") {
       if (allSelectedTrashed) {
-        if (selectedMenuNotes.length) {
-          setLastTrash({ mode: "delete", notes: selectedMenuNotes });
-          setLastMove(null);
+        const removed = deleteNotesPermanently(contextMenu.noteIds);
+        if (removed > 0) {
+          setToastMessage(`${removed === 1 ? "1 note" : `${removed} notes`} deleted permanently`);
         }
-        setNotes((previous) => previous.filter((note) => !contextMenu.noteIds.includes(note.id)));
-        setToastMessage(
-          `${contextMenu.noteIds.length === 1 ? "1 note" : `${contextMenu.noteIds.length} notes`} deleted permanently`
-        );
         setContextMenu(null);
         return;
       }
 
-      if (selectedMenuNotes.length) {
-        const trashedAt = new Date().toISOString();
-        setLastTrash({ mode: "trash", notes: selectedMenuNotes });
-        setLastMove(null);
-        setNotes((previous) =>
-          previous.map((note) =>
-            contextMenu.noteIds.includes(note.id)
-              ? {
-                  ...note,
-                  trashedAt,
-                  updatedAt: trashedAt
-                }
-              : note
-          )
-        );
+      const moved = moveNotesToTrash(contextMenu.noteIds);
+      if (moved > 0) {
+        setToastMessage(`${moved === 1 ? "1 note" : `${moved} notes`} moved to Trash`);
       }
-      setToastMessage(`${contextMenu.noteIds.length === 1 ? "1 note" : `${contextMenu.noteIds.length} notes`} moved to Trash`);
       setContextMenu(null);
       return;
     }
@@ -5682,6 +5735,11 @@ export default function App() {
               >
                 Filter
               </button>
+              {browseMode === "trash" ? (
+                <button type="button" className="danger" onClick={emptyTrash} disabled={!trashedNotes.length}>
+                  Empty Trash
+                </button>
+              ) : null}
             </div>
           ) : null}
         </header>
@@ -5953,6 +6011,9 @@ export default function App() {
                       <p>{note.snippet || "Untitled"}</p>
                       <footer>
                         <span>{formatRelativeTime(note.updatedAt)}</span>
+                        {browseMode === "trash" && note.trashedAt ? (
+                          <span>Trashed {formatRelativeTime(note.trashedAt)}</span>
+                        ) : null}
                         {note.isTemplate ? <span className="note-pin">Template</span> : null}
                         {homePinned ? <span className="note-pin">Home pin</span> : null}
                         {notebookPinned ? <span className="note-pin">Notebook pin</span> : null}
@@ -6762,6 +6823,10 @@ export default function App() {
                   </header>
                   <dl>
                     <div>
+                      <dt>Status</dt>
+                      <dd>{activeNote.trashedAt ? "In Trash" : "Active"}</dd>
+                    </div>
+                    <div>
                       <dt>Title</dt>
                       <dd>{draftPreview.title}</dd>
                     </div>
@@ -6781,6 +6846,12 @@ export default function App() {
                       <dt>Updated</dt>
                       <dd>{new Date(activeNote.updatedAt).toLocaleString()}</dd>
                     </div>
+                    {activeNote.trashedAt ? (
+                      <div>
+                        <dt>Trashed</dt>
+                        <dd>{new Date(activeNote.trashedAt).toLocaleString()}</dd>
+                      </div>
+                    ) : null}
                     <div>
                       <dt>Words</dt>
                       <dd>{draftWordCount}</dd>
@@ -6806,6 +6877,51 @@ export default function App() {
                       <dd>{activeNote.tags.length ? activeNote.tags.join(", ") : "No tags"}</dd>
                     </div>
                   </dl>
+                  <div className="metadata-actions">
+                    {activeNote.trashedAt ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const restored = restoreNotesFromTrash([activeNote.id]);
+                            if (restored > 0) {
+                              setToastMessage("Restored from Trash");
+                            }
+                          }}
+                        >
+                          Restore
+                        </button>
+                        <button
+                          type="button"
+                          className="danger"
+                          onClick={() => {
+                            const approved = window.confirm(`Delete "${activeNote.title}" permanently?`);
+                            if (!approved) {
+                              return;
+                            }
+                            const removed = deleteNotesPermanently([activeNote.id]);
+                            if (removed > 0) {
+                              setToastMessage(`"${activeNote.title}" deleted permanently`);
+                            }
+                          }}
+                        >
+                          Delete permanently
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const moved = moveNotesToTrash([activeNote.id]);
+                          if (moved > 0) {
+                            setToastMessage(`"${activeNote.title}" moved to Trash`);
+                          }
+                        }}
+                      >
+                        Move to Trash
+                      </button>
+                    )}
+                  </div>
                 </aside>
               ) : null}
               </article>

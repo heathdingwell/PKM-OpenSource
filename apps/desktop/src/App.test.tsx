@@ -57,4 +57,21 @@ describe("App", () => {
 
     expect(screen.getByText("Trash is empty.")).toBeInTheDocument();
   });
+
+  it("empties trash from trash header action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Move to Trash/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Empty Trash" }));
+    confirmSpy.mockRestore();
+
+    expect(screen.getByText("Trash is empty.")).toBeInTheDocument();
+  });
 });

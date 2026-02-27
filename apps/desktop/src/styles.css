@@ -463,6 +463,18 @@ body.is-resizing {
   background: #eaf1ff;
 }
 
+.header-actions button.danger {
+  color: #9f1239;
+  border-color: #f4c2cf;
+  background: #fff2f6;
+}
+
+.header-actions button.danger:disabled {
+  color: #9ca3af;
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
 .active-filters {
   display: flex;
   flex-wrap: wrap;
@@ -1317,6 +1329,28 @@ body.is-resizing {
   color: #1f2937;
   font-size: 12px;
   word-break: break-word;
+}
+
+.metadata-actions {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+
+.metadata-actions button {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #c9d8ef;
+  border-radius: 8px;
+  color: #395478;
+  background: #f4f8ff;
+  font-size: 12px;
+}
+
+.metadata-actions button.danger {
+  color: #9f1239;
+  border-color: #f4c2cf;
+  background: #fff2f6;
 }
 
 .ai-panel {

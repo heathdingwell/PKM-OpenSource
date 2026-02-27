@@ -213,11 +213,64 @@ button {
   font-size: 12px;
 }
 
+.header-actions button.active {
+  color: #1e4fa6;
+  border-color: #9db8ec;
+  background: #eaf1ff;
+}
+
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+
+.active-filters span {
+  color: #786750;
+  font-size: 12px;
+}
+
+.active-filters button {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid #d2c2ac;
+  border-radius: 999px;
+  color: #5f503c;
+  font-size: 12px;
+  background: #f7ecdc;
+}
+
+.active-filters button.clear {
+  border-style: dashed;
+}
+
 .note-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 10px;
+}
+
+.note-grid.list-mode {
+  grid-template-columns: 1fr;
+}
+
+.note-grid.list-mode .note-card {
+  min-height: auto;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.note-grid.list-mode .note-card strong {
+  font-size: 18px;
+}
+
+.note-grid.list-mode .note-card footer {
+  margin-top: 2px;
+  justify-content: flex-start;
+  gap: 10px;
 }
 
 .note-card {
@@ -885,9 +938,20 @@ button {
   background: #f4e9d8;
 }
 
+.context-menu button.active {
+  color: #1e4fa6;
+  background: #eaf1ff;
+}
+
 .context-menu small {
   color: #8a8a8a;
   font-size: 11px;
+}
+
+.context-empty {
+  padding: 6px 6px;
+  color: #897860;
+  font-size: 12px;
 }
 
 .context-divider {
@@ -902,6 +966,10 @@ button {
 
 .editor-context-menu {
   width: 210px;
+}
+
+.note-list-menu {
+  width: 238px;
 }
 
 .overlay {

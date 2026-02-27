@@ -88,6 +88,12 @@ interface SlashCommand {
   keywords: string[];
 }
 
+interface NoteListMenuState {
+  x: number;
+  y: number;
+  kind: "sort" | "filter";
+}
+
 interface ShellNotesPayload {
   [index: number]: unknown;
   length: number;
@@ -222,6 +228,15 @@ const editorContextRows: Array<{ id: string; label: string; divider?: boolean }>
   { id: "copy-note-link", label: "Copy note link" }
 ];
 
+const sortModes: Array<{ id: NoteSortMode; label: string }> = [
+  { id: "updated-desc", label: "Updated (newest first)" },
+  { id: "updated-asc", label: "Updated (oldest first)" },
+  { id: "created-desc", label: "Created (newest first)" },
+  { id: "created-asc", label: "Created (oldest first)" },
+  { id: "title-asc", label: "Title (A-Z)" },
+  { id: "title-desc", label: "Title (Z-A)" }
+];
+
 function toFileName(title: string): string {
   const base = title
     .trim()
@@ -346,22 +361,45 @@ function loadInitialNotes(): AppNote[] {
 
 function loadPrefs(): AppPrefs {
   if (typeof window === "undefined") {
-    return { selectedNotebook: "Daily Notes", activeId: "" };
+    return {
+      selectedNotebook: "Daily Notes",
+      activeId: "",
+      viewMode: "cards",
+      sortMode: "updated-desc",
+      tagFilters: []
+    };
   }
 
   try {
     const raw = window.localStorage.getItem(PREFS_STORAGE_KEY);
     if (!raw) {
-      return { selectedNotebook: "Daily Notes", activeId: "" };
+      return {
+        selectedNotebook: "Daily Notes",
+        activeId: "",
+        viewMode: "cards",
+        sortMode: "updated-desc",
+        tagFilters: []
+      };
     }
 
     const parsed = JSON.parse(raw) as Partial<AppPrefs>;
     return {
       selectedNotebook: parsed.selectedNotebook || "Daily Notes",
-      activeId: parsed.activeId || ""
+      activeId: parsed.activeId || "",
+      viewMode: parsed.viewMode === "list" ? "list" : "cards",
+      sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
+      tagFilters: Array.isArray(parsed.tagFilters)
+        ? parsed.tagFilters.filter((tag): tag is string => typeof tag === "string")
+        : []
     };
   } catch {
-    return { selectedNotebook: "Daily Notes", activeId: "" };
+    return {
+      selectedNotebook: "Daily Notes",
+      activeId: "",
+      viewMode: "cards",
+      sortMode: "updated-desc",
+      tagFilters: []
+    };
   }
 }
 
@@ -375,6 +413,7 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [noteListMenu, setNoteListMenu] = useState<NoteListMenuState | null>(null);
   const [notebookMenu, setNotebookMenu] = useState<NotebookMenuState | null>(null);
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState | null>(null);
@@ -389,6 +428,9 @@ export default function App() {
   const [draftMarkdown, setDraftMarkdown] = useState<string>("");
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">("saved");
   const [editorMode, setEditorMode] = useState<EditorMode>("markdown");
+  const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
+  const [sortMode, setSortMode] = useState<NoteSortMode>(initialPrefs.sortMode ?? "updated-desc");
+  const [tagFilters, setTagFilters] = useState<string[]>(initialPrefs.tagFilters ?? []);
   const [metadataOpen, setMetadataOpen] = useState(false);
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
@@ -416,7 +458,37 @@ export default function App() {
       selectedNotebook === "All Notes"
         ? notes
         : notes.filter((note) => note.notebook === selectedNotebook);
-    return [...scoped].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+
+    const filtered = tagFilters.length
+      ? scoped.filter((note) => tagFilters.every((tag) => note.tags.includes(tag)))
+      : scoped;
+
+    const sorted = [...filtered];
+    sorted.sort((left, right) => {
+      if (sortMode === "updated-desc") {
+        return right.updatedAt.localeCompare(left.updatedAt);
+      }
+      if (sortMode === "updated-asc") {
+        return left.updatedAt.localeCompare(right.updatedAt);
+      }
+      if (sortMode === "created-desc") {
+        return right.createdAt.localeCompare(left.createdAt);
+      }
+      if (sortMode === "created-asc") {
+        return left.createdAt.localeCompare(right.createdAt);
+      }
+      if (sortMode === "title-asc") {
+        return left.title.localeCompare(right.title);
+      }
+      return right.title.localeCompare(left.title);
+    });
+
+    return sorted;
+  }, [notes, selectedNotebook, tagFilters, sortMode]);
+
+  const availableTags = useMemo(() => {
+    const source = selectedNotebook === "All Notes" ? notes : notes.filter((note) => note.notebook === selectedNotebook);
+    return Array.from(new Set(source.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
   }, [notes, selectedNotebook]);
 
   const activeNote = notes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
@@ -569,6 +641,12 @@ export default function App() {
     if (activeId && !notes.some((note) => note.id === activeId)) {
       setActiveId(visibleNotes[0]?.id ?? "");
       setSelectedIds(visibleNotes[0] ? new Set([visibleNotes[0].id]) : new Set());
+      return;
+    }
+
+    if (activeId && visibleNotes.length > 0 && !visibleNotes.some((note) => note.id === activeId)) {
+      setActiveId(visibleNotes[0].id);
+      setSelectedIds(new Set([visibleNotes[0].id]));
     }
   }, [activeId, notes, visibleNotes]);
 
@@ -651,9 +729,9 @@ export default function App() {
     if (typeof window === "undefined") {
       return;
     }
-    const prefs: AppPrefs = { selectedNotebook, activeId };
+    const prefs: AppPrefs = { selectedNotebook, activeId, viewMode, sortMode, tagFilters };
     window.localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
-  }, [selectedNotebook, activeId]);
+  }, [selectedNotebook, activeId, viewMode, sortMode, tagFilters]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -705,6 +783,7 @@ export default function App() {
 
       if (event.key === "Escape") {
         setContextMenu(null);
+        setNoteListMenu(null);
         setNotebookMenu(null);
         setEditorContextMenu(null);
         setSearchOpen(false);
@@ -985,6 +1064,23 @@ export default function App() {
     const position = clampMenuPosition(rect.left - 210, rect.bottom + 8);
     setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id] });
     setEditorContextMenu(null);
+  }
+
+  function openNoteListMenu(kind: "sort" | "filter", clientX: number, clientY: number): void {
+    const position = clampMenuPosition(clientX, clientY);
+    setNoteListMenu({ kind, x: position.x, y: position.y });
+    setContextMenu(null);
+    setNotebookMenu(null);
+    setEditorContextMenu(null);
+  }
+
+  function toggleTagFilter(tag: string): void {
+    setTagFilters((previous) => {
+      if (previous.includes(tag)) {
+        return previous.filter((entry) => entry !== tag);
+      }
+      return [...previous, tag].sort((left, right) => left.localeCompare(right));
+    });
   }
 
   function moveNotes(noteIds: string[], destination: string): void {
@@ -1743,6 +1839,7 @@ export default function App() {
       aria-label="PKM OpenSource Shell"
       onClick={() => {
         setContextMenu(null);
+        setNoteListMenu(null);
         setNotebookMenu(null);
         setEditorContextMenu(null);
         setSlashMenu(null);
@@ -1835,13 +1932,50 @@ export default function App() {
             <small>{visibleNotes.length}</small>
           </div>
           <div className="header-actions">
-            <button type="button">List</button>
-            <button type="button">Sort</button>
-            <button type="button">Filter</button>
+            <button
+              type="button"
+              className={viewMode === "list" ? "active" : ""}
+              onClick={() => setViewMode((previous) => (previous === "cards" ? "list" : "cards"))}
+            >
+              {viewMode === "cards" ? "Cards" : "List"}
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                openNoteListMenu("sort", rect.left, rect.bottom + 8);
+              }}
+            >
+              Sort
+            </button>
+            <button
+              type="button"
+              className={tagFilters.length ? "active" : ""}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                openNoteListMenu("filter", rect.left, rect.bottom + 8);
+              }}
+            >
+              Filter
+            </button>
           </div>
         </header>
 
-        <div className="note-grid" aria-label="Notes list">
+        {tagFilters.length ? (
+          <div className="active-filters">
+            <span>Filters:</span>
+            {tagFilters.map((tag) => (
+              <button key={tag} type="button" onClick={() => toggleTagFilter(tag)}>
+                #{tag} ×
+              </button>
+            ))}
+            <button type="button" className="clear" onClick={() => setTagFilters([])}>
+              Clear
+            </button>
+          </div>
+        ) : null}
+
+        <div className={viewMode === "list" ? "note-grid list-mode" : "note-grid"} aria-label="Notes list">
           {visibleNotes.map((note) => {
             const isSelected = selectedIds.has(note.id);
             return (
@@ -1866,6 +2000,7 @@ export default function App() {
                 <p>{note.snippet || "Untitled"}</p>
                 <footer>
                   <span>{formatRelativeTime(note.updatedAt)}</span>
+                  {viewMode === "list" ? <span>{note.notebook}</span> : null}
                   {isSelected ? <em>{selectedIds.size > 1 ? "Multi" : "Selected"}</em> : null}
                 </footer>
               </button>
@@ -2363,6 +2498,54 @@ export default function App() {
                 {row.shortcut ? <small>{row.shortcut}</small> : null}
               </button>
             )
+          )}
+        </div>
+      ) : null}
+
+      {noteListMenu ? (
+        <div
+          className="context-menu note-list-menu"
+          style={{ left: noteListMenu.x, top: noteListMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {noteListMenu.kind === "sort" ? (
+            <>
+              {sortModes.map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  className={sortMode === mode.id ? "active" : ""}
+                  onClick={() => {
+                    setSortMode(mode.id);
+                    setNoteListMenu(null);
+                  }}
+                >
+                  <span>{mode.label}</span>
+                </button>
+              ))}
+            </>
+          ) : (
+            <>
+              {availableTags.length ? (
+                availableTags.map((tag) => (
+                  <button key={tag} type="button" onClick={() => toggleTagFilter(tag)}>
+                    <span>{tagFilters.includes(tag) ? `#${tag} ✓` : `#${tag}`}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="context-empty">No tags found</div>
+              )}
+              <div className="context-divider" />
+              <button
+                type="button"
+                onClick={() => {
+                  setTagFilters([]);
+                  setNoteListMenu(null);
+                }}
+              >
+                <span>Clear filters</span>
+              </button>
+            </>
           )}
         </div>
       ) : null}

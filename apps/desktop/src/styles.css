@@ -133,6 +133,65 @@ button {
   list-style: none;
 }
 
+.shortcut-empty {
+  margin: 0;
+  padding: 6px 8px;
+  color: #5f78a6;
+  font-size: 12px;
+}
+
+.shortcut-list {
+  display: grid;
+  gap: 2px;
+}
+
+.shortcut-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.shortcut-item {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px 0 0 8px;
+  color: #2f4b78;
+  text-align: left;
+  background: transparent;
+}
+
+.shortcut-item:hover {
+  background: #d0def9;
+}
+
+.shortcut-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.shortcut-item small {
+  color: #5570a2;
+  font-size: 11px;
+}
+
+.shortcut-remove {
+  width: 24px;
+  border: 0;
+  border-radius: 0 8px 8px 0;
+  color: #6480b0;
+  background: transparent;
+}
+
+.shortcut-remove:hover {
+  color: #1f4ecb;
+  background: #d0def9;
+}
+
 .stack-group {
   margin-bottom: 4px;
 }

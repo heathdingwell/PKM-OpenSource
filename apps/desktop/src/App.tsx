@@ -44,6 +44,11 @@ interface RenameDialogState {
   newName: string;
 }
 
+interface NoteRenameDialogState {
+  noteId: string;
+  newTitle: string;
+}
+
 interface StackDialogState {
   notebook: string;
   selectedStack: string;
@@ -60,6 +65,7 @@ interface AppPrefs {
   viewMode?: NoteViewMode;
   sortMode?: NoteSortMode;
   tagFilters?: string[];
+  shortcutNoteIds?: string[];
   notebookStacks?: Record<string, string>;
   collapsedStacks?: string[];
 }
@@ -109,6 +115,7 @@ interface ShellNotesPayload {
 
 const NOTES_STORAGE_KEY = "pkm-os.desktop.notes.v2";
 const PREFS_STORAGE_KEY = "pkm-os.desktop.prefs.v1";
+const SEARCH_RECENTS_KEY = "pkm-os.desktop.search-recents.v1";
 
 const seedNotes: SeedNote[] = [
   {
@@ -167,6 +174,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
   { id: "share", label: "Share", shortcut: "cmd+s" },
   { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
+  { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
   { id: "divider-1", label: "", divider: true },
   { id: "move", label: "Move", shortcut: "cmd+shift+m" },
   { id: "copy-to", label: "Copy to" },
@@ -293,6 +301,30 @@ function formatRelativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
+function rewriteHeading(markdown: string, title: string): string {
+  if (/^#\s+.*$/m.test(markdown)) {
+    return markdown.replace(/^#\s+.*$/m, `# ${title}`);
+  }
+
+  const body = markdown.trim() ? `${markdown}\n` : "";
+  return `# ${title}\n\n${body}`;
+}
+
+function rewriteWikilinks(markdown: string, titleMap: ReadonlyMap<string, string>): string {
+  if (!titleMap.size) {
+    return markdown;
+  }
+
+  return markdown.replace(/\[\[([^\]|]+)(\|[^\]]+)?\]\]/g, (match, rawTarget: string, suffix?: string) => {
+    const target = rawTarget.trim().toLowerCase();
+    const renamed = titleMap.get(target);
+    if (!renamed) {
+      return match;
+    }
+    return `[[${renamed}${suffix ?? ""}]]`;
+  });
+}
+
 function noteFromMarkdown(base: AppNote, markdown: string, nowIso?: string): AppNote {
   const parser = new VaultService();
   const parsed = parser.upsertNoteFromMarkdown(base.path, markdown);
@@ -375,6 +407,7 @@ function loadPrefs(): AppPrefs {
       viewMode: "cards",
       sortMode: "updated-desc",
       tagFilters: [],
+      shortcutNoteIds: [],
       notebookStacks: {},
       collapsedStacks: []
     };
@@ -389,6 +422,7 @@ function loadPrefs(): AppPrefs {
         viewMode: "cards",
         sortMode: "updated-desc",
         tagFilters: [],
+        shortcutNoteIds: [],
         notebookStacks: {},
         collapsedStacks: []
       };
@@ -402,6 +436,9 @@ function loadPrefs(): AppPrefs {
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
       tagFilters: Array.isArray(parsed.tagFilters)
         ? parsed.tagFilters.filter((tag): tag is string => typeof tag === "string")
+        : [],
+      shortcutNoteIds: Array.isArray(parsed.shortcutNoteIds)
+        ? parsed.shortcutNoteIds.filter((noteId): noteId is string => typeof noteId === "string")
         : [],
       notebookStacks:
         parsed.notebookStacks && typeof parsed.notebookStacks === "object"
@@ -422,9 +459,30 @@ function loadPrefs(): AppPrefs {
       viewMode: "cards",
       sortMode: "updated-desc",
       tagFilters: [],
+      shortcutNoteIds: [],
       notebookStacks: {},
       collapsedStacks: []
     };
+  }
+}
+
+function loadRecentSearches(): string[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SEARCH_RECENTS_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter((entry): entry is string => typeof entry === "string").slice(0, 8);
+  } catch {
+    return [];
   }
 }
 
@@ -443,10 +501,12 @@ export default function App() {
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState | null>(null);
   const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
+  const [noteRenameDialog, setNoteRenameDialog] = useState<NoteRenameDialogState | null>(null);
   const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<"everywhere" | "current">("everywhere");
   const [quickQuery, setQuickQuery] = useState("");
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => loadRecentSearches());
   const [searchSelected, setSearchSelected] = useState(0);
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
@@ -459,6 +519,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [sortMode, setSortMode] = useState<NoteSortMode>(initialPrefs.sortMode ?? "updated-desc");
   const [tagFilters, setTagFilters] = useState<string[]>(initialPrefs.tagFilters ?? []);
+  const [shortcutNoteIds, setShortcutNoteIds] = useState<string[]>(initialPrefs.shortcutNoteIds ?? []);
   const [notebookStacks, setNotebookStacks] = useState<Record<string, string>>(initialPrefs.notebookStacks ?? {});
   const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(
     () => new Set(initialPrefs.collapsedStacks ?? [])
@@ -551,6 +612,12 @@ export default function App() {
     const source = selectedNotebook === "All Notes" ? notes : notes.filter((note) => note.notebook === selectedNotebook);
     return Array.from(new Set(source.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
   }, [notes, selectedNotebook]);
+
+  const shortcutNotes = useMemo(() => {
+    return shortcutNoteIds
+      .map((noteId) => notes.find((note) => note.id === noteId))
+      .filter((note): note is AppNote => Boolean(note));
+  }, [shortcutNoteIds, notes]);
 
   const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
 
@@ -730,6 +797,14 @@ export default function App() {
   }, [notebookList]);
 
   useEffect(() => {
+    const validIds = new Set(notes.map((note) => note.id));
+    setShortcutNoteIds((previous) => {
+      const next = previous.filter((noteId) => validIds.has(noteId));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [notes]);
+
+  useEffect(() => {
     const knownStacks = new Set(stackNames);
     setCollapsedStacks((previous) => {
       let changed = false;
@@ -849,11 +924,12 @@ export default function App() {
       viewMode,
       sortMode,
       tagFilters,
+      shortcutNoteIds,
       notebookStacks,
       collapsedStacks: Array.from(collapsedStacks)
     };
     window.localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
-  }, [selectedNotebook, activeId, viewMode, sortMode, tagFilters, notebookStacks, collapsedStacksKey]);
+  }, [selectedNotebook, activeId, viewMode, sortMode, tagFilters, shortcutNoteIds, notebookStacks, collapsedStacksKey]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -962,6 +1038,13 @@ export default function App() {
 
     return () => window.clearTimeout(timeout);
   }, [toastMessage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(SEARCH_RECENTS_KEY, JSON.stringify(recentSearches));
+  }, [recentSearches]);
 
   useEffect(() => {
     if (!searchOpen) {
@@ -1218,7 +1301,17 @@ export default function App() {
     focusNote(noteId);
   }
 
+  function rememberSearchQuery(query: string): void {
+    const value = query.trim();
+    if (!value) {
+      return;
+    }
+    setRecentSearches((previous) => [value, ...previous.filter((entry) => entry !== value)].slice(0, 8));
+  }
+
   function openSearchResult(note: AppNote, mode: "open" | "copy-link" | "open-window" = "open"): void {
+    rememberSearchQuery(quickQuery);
+
     if (mode === "copy-link") {
       void copyNoteLink(note.id);
       return;
@@ -1312,6 +1405,27 @@ export default function App() {
     setSelectedNotebook(notebook);
     focusNote(created.id);
     setToastMessage(`Notebook "${notebook}" created`);
+  }
+
+  function addNotesToShortcuts(noteIds: string[]): number {
+    const validIds = new Set(notes.map((note) => note.id));
+    let added = 0;
+    setShortcutNoteIds((previous) => {
+      const next = [...previous];
+      for (const noteId of noteIds) {
+        if (!validIds.has(noteId) || next.includes(noteId)) {
+          continue;
+        }
+        next.push(noteId);
+        added += 1;
+      }
+      return next;
+    });
+    return added;
+  }
+
+  function removeShortcut(noteId: string): void {
+    setShortcutNoteIds((previous) => previous.filter((entry) => entry !== noteId));
   }
 
   function confirmStackAssignment(): void {
@@ -1474,6 +1588,60 @@ export default function App() {
     focusNote(duplicates[0].id);
   }
 
+  function renameNote(noteId: string, nextTitle: string): void {
+    const note = notes.find((entry) => entry.id === noteId);
+    const trimmedTitle = nextTitle.trim();
+    if (!note || !trimmedTitle || note.title === trimmedTitle) {
+      setNoteRenameDialog(null);
+      return;
+    }
+
+    flushActiveDraft();
+
+    const titleMap = new Map<string, string>([[note.title.toLowerCase(), trimmedTitle]]);
+    const now = new Date().toISOString();
+    let nextDraft: string | null = null;
+
+    setNotes((previous) =>
+      previous.map((entry) => {
+        if (entry.id === note.id) {
+          const renamedMarkdown = rewriteHeading(entry.markdown, trimmedTitle);
+          const renamed = noteFromMarkdown(
+            {
+              ...entry,
+              title: trimmedTitle,
+              path: `${entry.notebook}/${toFileName(trimmedTitle)}`
+            },
+            renamedMarkdown,
+            now
+          );
+          if (entry.id === activeId) {
+            nextDraft = renamed.markdown;
+          }
+          return renamed;
+        }
+
+        const rewrittenMarkdown = rewriteWikilinks(entry.markdown, titleMap);
+        if (rewrittenMarkdown === entry.markdown) {
+          return entry;
+        }
+
+        const rewritten = noteFromMarkdown(entry, rewrittenMarkdown, now);
+        if (entry.id === activeId) {
+          nextDraft = rewritten.markdown;
+        }
+        return rewritten;
+      })
+    );
+
+    if (nextDraft !== null) {
+      setDraftMarkdown(nextDraft);
+    }
+
+    setNoteRenameDialog(null);
+    setToastMessage(`Renamed to "${trimmedTitle}"`);
+  }
+
   async function copyNoteLink(noteId: string): Promise<void> {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note) {
@@ -1531,6 +1699,18 @@ export default function App() {
       return;
     }
 
+    if (action === "rename") {
+      const target = notes.find((note) => note.id === targetId);
+      if (target) {
+        setNoteRenameDialog({
+          noteId: target.id,
+          newTitle: target.title
+        });
+      }
+      setContextMenu(null);
+      return;
+    }
+
     if (action === "share") {
       void copyNoteLink(targetId);
       setToastMessage("Share link copied");
@@ -1582,6 +1762,13 @@ export default function App() {
       return;
     }
 
+    if (action === "add-shortcuts") {
+      const added = addNotesToShortcuts(contextMenu.noteIds);
+      setToastMessage(added ? `${added} added to shortcuts` : "Already in shortcuts");
+      setContextMenu(null);
+      return;
+    }
+
     if (action === "export") {
       const target = notes.find((note) => note.id === targetId);
       if (target) {
@@ -1598,7 +1785,6 @@ export default function App() {
     }
 
     if (
-      action === "add-shortcuts" ||
       action === "pin-notebook" ||
       action === "pin-home" ||
       action === "note-history"
@@ -2259,6 +2445,40 @@ export default function App() {
             </button>
           ))}
         </nav>
+
+        <section className="sidebar-section">
+          <h2>Shortcuts</h2>
+          {shortcutNotes.length ? (
+            <ul className="shortcut-list">
+              {shortcutNotes.map((note) => (
+                <li key={note.id} className="shortcut-row">
+                  <button
+                    type="button"
+                    className="shortcut-item"
+                    onClick={() => {
+                      flushActiveDraft();
+                      setSelectedNotebook(note.notebook);
+                      focusNote(note.id);
+                    }}
+                  >
+                    <span>{note.title}</span>
+                    <small>{note.notebook}</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="shortcut-remove"
+                    aria-label={`Remove shortcut ${note.title}`}
+                    onClick={() => removeShortcut(note.id)}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="shortcut-empty">No shortcuts yet</p>
+          )}
+        </section>
 
         <section className="sidebar-section">
           <h2>Notebooks</h2>
@@ -3062,9 +3282,15 @@ export default function App() {
             <div className="search-results">
               <h4>Recent searches</h4>
               <ul>
-                <li>Troy, NY</li>
-                <li>Alfred, NY</li>
-                <li>post university</li>
+                {recentSearches.length ? (
+                  recentSearches.map((query) => (
+                    <li key={query} onClick={() => setQuickQuery(query)}>
+                      <strong>{query}</strong>
+                    </li>
+                  ))
+                ) : (
+                  <li className="empty-recent">No recent searches</li>
+                )}
               </ul>
               <h4>Results</h4>
               <ul>
@@ -3125,6 +3351,36 @@ export default function App() {
                 }}
               >
                 Open in New Window
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {noteRenameDialog ? (
+        <div className="overlay" onClick={() => setNoteRenameDialog(null)}>
+          <section className="rename-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>Rename note</h3>
+            <input
+              value={noteRenameDialog.newTitle}
+              onChange={(event) => setNoteRenameDialog({ ...noteRenameDialog, newTitle: event.target.value })}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  renameNote(noteRenameDialog.noteId, noteRenameDialog.newTitle);
+                }
+              }}
+            />
+            <footer>
+              <button type="button" onClick={() => setNoteRenameDialog(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => renameNote(noteRenameDialog.noteId, noteRenameDialog.newTitle)}
+              >
+                Save
               </button>
             </footer>
           </section>

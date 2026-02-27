@@ -127,6 +127,7 @@ interface AppPrefs {
   activeId: string;
   sidebarWidth?: number;
   listWidth?: number;
+  tagPaneHeight?: number;
   themeId?: ThemeId;
   browseMode?: NoteBrowseMode;
   viewMode?: NoteViewMode;
@@ -252,6 +253,11 @@ interface ResizeState {
   startListWidth: number;
 }
 
+interface TagPaneResizeState {
+  startY: number;
+  startHeight: number;
+}
+
 const NOTES_STORAGE_KEY = "pkm-os.desktop.notes.v2";
 const PREFS_STORAGE_KEY = "pkm-os.desktop.prefs.v1";
 const SEARCH_RECENTS_KEY = "pkm-os.desktop.search-recents.v1";
@@ -262,6 +268,9 @@ const MIN_SIDEBAR_WIDTH = 210;
 const MAX_SIDEBAR_WIDTH = 420;
 const MIN_LIST_WIDTH = 320;
 const MAX_LIST_WIDTH = 960;
+const MIN_TAG_PANE_HEIGHT = 42;
+const MAX_TAG_PANE_HEIGHT = 240;
+const DEFAULT_TAG_PANE_HEIGHT = 52;
 const themeIds: ThemeId[] = ["cobalt", "sky", "slate"];
 const aiProviders: AiProvider[] = ["openai", "anthropic", "gemini", "perplexity", "openai-compatible", "ollama"];
 
@@ -869,6 +878,7 @@ function defaultPrefs(): AppPrefs {
     activeId: "",
     sidebarWidth: 240,
     listWidth: 520,
+    tagPaneHeight: DEFAULT_TAG_PANE_HEIGHT,
     themeId: "cobalt",
     browseMode: "all",
     viewMode: "cards",
@@ -906,6 +916,10 @@ function loadPrefs(): AppPrefs {
           : 240,
       listWidth:
         typeof parsed.listWidth === "number" ? clampPaneWidth(parsed.listWidth, MIN_LIST_WIDTH, MAX_LIST_WIDTH) : 520,
+      tagPaneHeight:
+        typeof parsed.tagPaneHeight === "number"
+          ? Math.max(MIN_TAG_PANE_HEIGHT, Math.min(parsed.tagPaneHeight, MAX_TAG_PANE_HEIGHT))
+          : DEFAULT_TAG_PANE_HEIGHT,
       themeId: themeIds.includes(parsed.themeId as ThemeId) ? (parsed.themeId as ThemeId) : "cobalt",
       browseMode: parsed.browseMode === "templates" ? "templates" : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
@@ -1240,6 +1254,7 @@ export default function App() {
   const [recentSearches, setRecentSearches] = useState<string[]>(() => loadRecentSearches());
   const [searchSelected, setSearchSelected] = useState(0);
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const [tagPaneHeight, setTagPaneHeight] = useState<number>(initialPrefs.tagPaneHeight ?? DEFAULT_TAG_PANE_HEIGHT);
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
   const [draggingNotebook, setDraggingNotebook] = useState<string | null>(null);
   const [stackDropTarget, setStackDropTarget] = useState<string | null>(null);
@@ -1298,6 +1313,7 @@ export default function App() {
   const markdownEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
   const activeResizeRef = useRef<ResizeState | null>(null);
+  const activeTagPaneResizeRef = useRef<TagPaneResizeState | null>(null);
 
   const notebooks = useMemo(() => {
     const names = Array.from(new Set(notes.map((note) => note.notebook))).sort((left, right) =>
@@ -2009,6 +2025,7 @@ export default function App() {
       activeId,
       sidebarWidth,
       listWidth,
+      tagPaneHeight,
       themeId,
       browseMode,
       viewMode,
@@ -2029,6 +2046,7 @@ export default function App() {
     activeId,
     sidebarWidth,
     listWidth,
+    tagPaneHeight,
     themeId,
     browseMode,
     viewMode,
@@ -2127,6 +2145,7 @@ export default function App() {
 
       if (event.key === "Escape") {
         activeResizeRef.current = null;
+        activeTagPaneResizeRef.current = null;
         document.body.classList.remove("is-resizing");
         setContextMenu(null);
         setNoteListMenu(null);
@@ -2208,30 +2227,40 @@ export default function App() {
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
       const activeResize = activeResizeRef.current;
-      if (!activeResize) {
+      if (activeResize) {
+        const delta = event.clientX - activeResize.startX;
+        if (activeResize.kind === "sidebar") {
+          const nextSidebar = clampPaneWidth(
+            activeResize.startSidebarWidth + delta,
+            MIN_SIDEBAR_WIDTH,
+            MAX_SIDEBAR_WIDTH
+          );
+          setSidebarWidth(nextSidebar);
+        } else {
+          const nextList = clampPaneWidth(activeResize.startListWidth + delta, MIN_LIST_WIDTH, MAX_LIST_WIDTH);
+          setListWidth(nextList);
+        }
+      }
+
+      const activeTagResize = activeTagPaneResizeRef.current;
+      if (!activeTagResize) {
         return;
       }
 
-      const delta = event.clientX - activeResize.startX;
-      if (activeResize.kind === "sidebar") {
-        const nextSidebar = clampPaneWidth(
-          activeResize.startSidebarWidth + delta,
-          MIN_SIDEBAR_WIDTH,
-          MAX_SIDEBAR_WIDTH
-        );
-        setSidebarWidth(nextSidebar);
-        return;
-      }
-
-      const nextList = clampPaneWidth(activeResize.startListWidth + delta, MIN_LIST_WIDTH, MAX_LIST_WIDTH);
-      setListWidth(nextList);
+      const deltaY = event.clientY - activeTagResize.startY;
+      const nextHeight = Math.max(
+        MIN_TAG_PANE_HEIGHT,
+        Math.min(activeTagResize.startHeight - deltaY, MAX_TAG_PANE_HEIGHT)
+      );
+      setTagPaneHeight(nextHeight);
     };
 
     const handleMouseUp = () => {
-      if (!activeResizeRef.current) {
+      if (!activeResizeRef.current && !activeTagPaneResizeRef.current) {
         return;
       }
       activeResizeRef.current = null;
+      activeTagPaneResizeRef.current = null;
       document.body.classList.remove("is-resizing");
     };
 
@@ -2247,6 +2276,7 @@ export default function App() {
     const handleWindowResize = () => {
       setSidebarWidth((previous) => clampPaneWidth(previous, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH));
       setListWidth((previous) => clampPaneWidth(previous, MIN_LIST_WIDTH, MAX_LIST_WIDTH));
+      setTagPaneHeight((previous) => Math.max(MIN_TAG_PANE_HEIGHT, Math.min(previous, MAX_TAG_PANE_HEIGHT)));
     };
 
     window.addEventListener("resize", handleWindowResize);
@@ -2259,6 +2289,14 @@ export default function App() {
       startX,
       startSidebarWidth: sidebarWidth,
       startListWidth: listWidth
+    };
+    document.body.classList.add("is-resizing");
+  }
+
+  function startTagPaneResize(startY: number): void {
+    activeTagPaneResizeRef.current = {
+      startY,
+      startHeight: tagPaneHeight
     };
     document.body.classList.add("is-resizing");
   }
@@ -6111,7 +6149,18 @@ export default function App() {
               ) : null}
             </article>
 
-            <footer className="editor-footer">
+            <footer className="editor-footer" style={{ height: `${tagPaneHeight}px` }}>
+              <button
+                type="button"
+                className="tag-pane-resizer"
+                aria-label="Resize tag pane"
+                title="Drag to resize tags area"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  startTagPaneResize(event.clientY);
+                }}
+                onDoubleClick={() => setTagPaneHeight(DEFAULT_TAG_PANE_HEIGHT)}
+              />
               <button
                 type="button"
                 onClick={() => {

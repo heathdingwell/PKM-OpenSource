@@ -1438,9 +1438,12 @@ body.is-resizing {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  padding: 6px 12px;
+  align-content: flex-start;
+  padding: 10px 12px 6px;
   border-top: 1px solid var(--border);
   background: #ffffff;
+  overflow: auto;
+  position: relative;
 }
 
 .editor-footer button {
@@ -1451,6 +1454,22 @@ body.is-resizing {
 
 .editor-footer button:hover {
   background: #eaf1ff;
+}
+
+.tag-pane-resizer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  border: 0;
+  border-radius: 0;
+  cursor: row-resize;
+  background: linear-gradient(180deg, #edf4ff 0%, transparent 100%);
+}
+
+.tag-pane-resizer:hover {
+  background: linear-gradient(180deg, #dbe9ff 0%, transparent 100%);
 }
 
 .tag-strip {

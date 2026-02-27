@@ -37,4 +37,24 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
     promptSpy.mockRestore();
   });
+
+  it("moves a note to trash and restores it from trash view", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Move to Trash/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    expect(screen.getByRole("heading", { name: "Trash", level: 1 })).toBeInTheDocument();
+
+    const trashedAgendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(trashedAgendaCard).toBeTruthy();
+    fireEvent.contextMenu(trashedAgendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Restore from Trash/i }));
+
+    expect(screen.getByText("Trash is empty.")).toBeInTheDocument();
+  });
 });

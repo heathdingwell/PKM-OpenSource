@@ -15,6 +15,7 @@ interface AppNote extends NoteRecord {
   notebook: string;
   markdown: string;
   isTemplate?: boolean;
+  trashedAt?: string;
 }
 
 interface ContextMenuState {
@@ -61,6 +62,7 @@ interface LastMoveState {
 }
 
 interface LastTrashState {
+  mode: "trash" | "delete";
   notes: AppNote[];
 }
 
@@ -165,7 +167,7 @@ type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
 type NoteDensityMode = "comfortable" | "compact";
 type SidebarView = "notes" | "tasks" | "calendar";
-type NoteBrowseMode = "all" | "templates" | "shortcuts" | "home";
+type NoteBrowseMode = "all" | "templates" | "shortcuts" | "home" | "trash";
 type ThemeId = "cobalt" | "sky" | "slate";
 type AiProvider = "openai" | "anthropic" | "gemini" | "perplexity" | "openai-compatible" | "ollama";
 type NoteSortMode =
@@ -331,7 +333,7 @@ const seedNotes: SeedNote[] = [
   }
 ];
 
-const sidePinned = ["Home", "Shortcuts", "Notes", "Tasks", "Files", "Calendar", "Templates"];
+const sidePinned = ["Home", "Shortcuts", "Notes", "Trash", "Tasks", "Files", "Calendar", "Templates"];
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
@@ -341,6 +343,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
+  { id: "open-trash", label: "Open trash", keywords: ["trash", "deleted"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
@@ -403,6 +406,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "export-pdf", label: "Export as PDF" },
   { id: "print", label: "Print", shortcut: "cmd+p" },
   { id: "divider-5", label: "", divider: true },
+  { id: "restore-trash", label: "Restore from Trash" },
   { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace" }
 ];
 
@@ -853,7 +857,8 @@ function isAppNote(value: unknown): value is AppNote {
     typeof note.updatedAt === "string" &&
     typeof note.notebook === "string" &&
     typeof note.markdown === "string" &&
-    (note.isTemplate === undefined || typeof note.isTemplate === "boolean")
+    (note.isTemplate === undefined || typeof note.isTemplate === "boolean") &&
+    (note.trashedAt === undefined || typeof note.trashedAt === "string")
   );
 }
 
@@ -927,7 +932,10 @@ function loadPrefs(): AppPrefs {
         typeof parsed.tagPaneHeight === "number" ? clampTagPaneHeight(parsed.tagPaneHeight) : DEFAULT_TAG_PANE_HEIGHT,
       themeId: themeIds.includes(parsed.themeId as ThemeId) ? (parsed.themeId as ThemeId) : "cobalt",
       browseMode:
-        parsed.browseMode === "templates" || parsed.browseMode === "shortcuts" || parsed.browseMode === "home"
+        parsed.browseMode === "templates" ||
+        parsed.browseMode === "shortcuts" ||
+        parsed.browseMode === "home" ||
+        parsed.browseMode === "trash"
           ? parsed.browseMode
           : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
@@ -1330,6 +1338,9 @@ export default function App() {
   const [mentionSuggestion, setMentionSuggestion] = useState<MentionSuggestionState | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
 
+  const activeNotes = useMemo(() => notes.filter((note) => !note.trashedAt), [notes]);
+  const trashedNotes = useMemo(() => notes.filter((note) => Boolean(note.trashedAt)), [notes]);
+
   const autosaveTimerRef = useRef<number | null>(null);
   const previousNotesRef = useRef<AppNote[] | null>(null);
   const editorMenuButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -1339,11 +1350,11 @@ export default function App() {
   const activeResizeRef = useRef<ResizeState | null>(null);
 
   const notebooks = useMemo(() => {
-    const names = Array.from(new Set(notes.map((note) => note.notebook))).sort((left, right) =>
+    const names = Array.from(new Set(activeNotes.map((note) => note.notebook))).sort((left, right) =>
       left.localeCompare(right)
     );
     return ["All Notes", ...names];
-  }, [notes]);
+  }, [activeNotes]);
 
   const notebookList = useMemo(() => notebooks.filter((item) => item !== "All Notes"), [notebooks]);
 
@@ -1375,20 +1386,25 @@ export default function App() {
   }, [notebookList, notebookStacks]);
 
   const visibleNotes = useMemo(() => {
+    const sourceNotes = browseMode === "trash" ? trashedNotes : activeNotes;
     const scoped =
-      selectedNotebook === "All Notes"
-        ? notes
-        : notes.filter((note) => note.notebook === selectedNotebook);
+      browseMode === "trash"
+        ? sourceNotes
+        : selectedNotebook === "All Notes"
+          ? sourceNotes
+          : sourceNotes.filter((note) => note.notebook === selectedNotebook);
 
     const modeScoped =
-      browseMode === "templates"
-        ? scoped.filter((note) => Boolean(note.isTemplate))
-        : browseMode === "shortcuts"
-          ? (() => {
-              const shortcutIds = new Set(shortcutNoteIds);
-              return scoped.filter((note) => shortcutIds.has(note.id));
-            })()
-          : scoped;
+      browseMode === "trash"
+        ? scoped
+        : browseMode === "templates"
+          ? scoped.filter((note) => Boolean(note.isTemplate))
+          : browseMode === "shortcuts"
+            ? (() => {
+                const shortcutIds = new Set(shortcutNoteIds);
+                return scoped.filter((note) => shortcutIds.has(note.id));
+              })()
+            : scoped;
 
     const filtered = tagFilters.length
       ? modeScoped.filter((note) => tagFilters.every((tag) => note.tags.includes(tag)))
@@ -1415,51 +1431,56 @@ export default function App() {
     });
 
     return sorted;
-  }, [notes, selectedNotebook, browseMode, tagFilters, sortMode, shortcutNoteIds]);
+  }, [activeNotes, trashedNotes, selectedNotebook, browseMode, tagFilters, sortMode, shortcutNoteIds]);
 
   const availableTags = useMemo(() => {
+    const sourceNotes = browseMode === "trash" ? trashedNotes : activeNotes;
     const scoped =
-      selectedNotebook === "All Notes"
-        ? notes
-        : notes.filter((note) => note.notebook === selectedNotebook);
+      browseMode === "trash"
+        ? sourceNotes
+        : selectedNotebook === "All Notes"
+          ? sourceNotes
+          : sourceNotes.filter((note) => note.notebook === selectedNotebook);
     const source =
-      browseMode === "templates"
-        ? scoped.filter((note) => Boolean(note.isTemplate))
-        : browseMode === "shortcuts"
-          ? (() => {
-              const shortcutIds = new Set(shortcutNoteIds);
-              return scoped.filter((note) => shortcutIds.has(note.id));
-            })()
-          : scoped;
+      browseMode === "trash"
+        ? scoped
+        : browseMode === "templates"
+          ? scoped.filter((note) => Boolean(note.isTemplate))
+          : browseMode === "shortcuts"
+            ? (() => {
+                const shortcutIds = new Set(shortcutNoteIds);
+                return scoped.filter((note) => shortcutIds.has(note.id));
+              })()
+            : scoped;
     return Array.from(new Set(source.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
-  }, [notes, selectedNotebook, browseMode, shortcutNoteIds]);
+  }, [activeNotes, trashedNotes, selectedNotebook, browseMode, shortcutNoteIds]);
 
   const recentNotes = useMemo(() => {
     return recentNoteIds
-      .map((noteId) => notes.find((note) => note.id === noteId))
+      .map((noteId) => activeNotes.find((note) => note.id === noteId))
       .filter((note): note is AppNote => Boolean(note))
       .slice(0, 8);
-  }, [recentNoteIds, notes]);
+  }, [recentNoteIds, activeNotes]);
 
   const shortcutNotes = useMemo(() => {
     return shortcutNoteIds
-      .map((noteId) => notes.find((note) => note.id === noteId))
+      .map((noteId) => activeNotes.find((note) => note.id === noteId))
       .filter((note): note is AppNote => Boolean(note));
-  }, [shortcutNoteIds, notes]);
+  }, [shortcutNoteIds, activeNotes]);
 
   const homePinnedNotes = useMemo(() => {
     return homePinnedNoteIds
-      .map((noteId) => notes.find((note) => note.id === noteId))
+      .map((noteId) => activeNotes.find((note) => note.id === noteId))
       .filter((note): note is AppNote => Boolean(note))
       .slice(0, 16);
-  }, [homePinnedNoteIds, notes]);
+  }, [homePinnedNoteIds, activeNotes]);
 
   const notebookPinnedNotes = useMemo(() => {
     if (selectedNotebook === "All Notes") {
       return [];
     }
     return notebookPinnedNoteIds
-      .map((noteId) => notes.find((note) => note.id === noteId))
+      .map((noteId) => activeNotes.find((note) => note.id === noteId))
       .filter((note): note is AppNote => {
         if (!note) {
           return false;
@@ -1467,7 +1488,7 @@ export default function App() {
         return note.notebook === selectedNotebook;
       })
       .slice(0, 16);
-  }, [notebookPinnedNoteIds, notes, selectedNotebook]);
+  }, [notebookPinnedNoteIds, activeNotes, selectedNotebook]);
 
   const homePinnedSet = useMemo(() => new Set(homePinnedNoteIds), [homePinnedNoteIds]);
   const notebookPinnedSet = useMemo(() => new Set(notebookPinnedNoteIds), [notebookPinnedNoteIds]);
@@ -1475,7 +1496,7 @@ export default function App() {
 
   const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
 
-  const activeNote = notes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
+  const activeNote = visibleNotes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
   const noteHistoryNote = noteHistoryDialog ? notes.find((note) => note.id === noteHistoryDialog.noteId) ?? null : null;
   const noteHistoryEntries = noteHistoryDialog ? noteHistory[noteHistoryDialog.noteId] ?? [] : [];
 
@@ -1486,11 +1507,11 @@ export default function App() {
 
   const searchIndex = useMemo(() => {
     const index = new SearchIndex();
-    for (const note of notes) {
+    for (const note of activeNotes) {
       index.upsert(note, note.markdown);
     }
     return index;
-  }, [notes]);
+  }, [activeNotes]);
 
   const commandMode = quickQuery.trim().startsWith(">");
   const commandQuery = commandMode ? quickQuery.trim().slice(1).trim().toLowerCase() : "";
@@ -1520,8 +1541,8 @@ export default function App() {
 
     const scopedNotes =
       searchScope === "current" && selectedNotebook !== "All Notes"
-        ? notes.filter((note) => note.notebook === selectedNotebook)
-        : notes;
+        ? activeNotes.filter((note) => note.notebook === selectedNotebook)
+        : activeNotes;
 
     const filterAfter = parsedQuickQuery.afterDate ? new Date(`${parsedQuickQuery.afterDate}T00:00:00`) : null;
     const filterBefore = parsedQuickQuery.beforeDate ? new Date(`${parsedQuickQuery.beforeDate}T23:59:59`) : null;
@@ -1566,7 +1587,7 @@ export default function App() {
 
     return searchIndex
       .search(queryText)
-      .map((result) => notes.find((note) => note.id === result.noteId))
+      .map((result) => activeNotes.find((note) => note.id === result.noteId))
       .filter((note): note is AppNote => {
         if (!note) {
           return false;
@@ -1574,7 +1595,7 @@ export default function App() {
         return scopedIds.has(note.id);
       })
       .slice(0, 8);
-  }, [notes, commandMode, parsedQuickQuery, searchIndex, searchScope, selectedNotebook, searchFilters]);
+  }, [activeNotes, commandMode, parsedQuickQuery, searchIndex, searchScope, selectedNotebook, searchFilters]);
 
   const selectedSearchResult = quickResults[searchSelected] ?? null;
   const selectedPaletteAction = paletteResults[searchSelected] ?? null;
@@ -1594,8 +1615,8 @@ export default function App() {
     return groups;
   }, [quickResults]);
 
-  const openTasks = useMemo(() => extractOpenTasks(notes), [notes]);
-  const attachmentItems = useMemo(() => extractAttachments(notes), [notes]);
+  const openTasks = useMemo(() => extractOpenTasks(activeNotes), [activeNotes]);
+  const attachmentItems = useMemo(() => extractAttachments(activeNotes), [activeNotes]);
   const calendarEventsById = useMemo(() => new Map(calendarEvents.map((event) => [event.id, event])), [calendarEvents]);
   const calendarGroups = useMemo(() => {
     const sorted = [...calendarEvents].sort((left, right) => left.startAt.localeCompare(right.startAt));
@@ -1617,8 +1638,8 @@ export default function App() {
     if (recentNotes.length) {
       return recentNotes.slice(0, 6);
     }
-    return [...notes].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, 6);
-  }, [recentNotes, notes]);
+    return [...activeNotes].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, 6);
+  }, [recentNotes, activeNotes]);
   const upcomingCalendarEvents = useMemo(() => {
     const now = Date.now();
     return [...calendarEvents]
@@ -1642,11 +1663,11 @@ export default function App() {
     }
 
     const lower = linkSuggestion.query.toLowerCase();
-    return notes
+    return activeNotes
       .filter((note) => note.id !== activeNote?.id)
       .filter((note) => (lower ? note.title.toLowerCase().includes(lower) : true))
       .slice(0, 8);
-  }, [notes, linkSuggestion, activeNote?.id]);
+  }, [activeNotes, linkSuggestion, activeNote?.id]);
 
   const mentionResults = useMemo(() => {
     if (!mentionSuggestion) {
@@ -1718,9 +1739,9 @@ export default function App() {
     const parsed = extractWikilinks(draftMarkdown);
     return parsed.map((title) => ({
       title,
-      target: notes.find((note) => note.title.toLowerCase() === title.toLowerCase()) ?? null
+      target: activeNotes.find((note) => note.title.toLowerCase() === title.toLowerCase()) ?? null
     }));
-  }, [activeNote, draftMarkdown, notes]);
+  }, [activeNote, draftMarkdown, activeNotes]);
 
   const backlinks = useMemo(() => {
     if (!activeNote) {
@@ -1728,10 +1749,10 @@ export default function App() {
     }
 
     const title = activeNote.title.toLowerCase();
-    return notes.filter(
+    return activeNotes.filter(
       (note) => note.id !== activeNote.id && note.linksOut.some((link) => link.toLowerCase() === title)
     );
-  }, [notes, activeNote]);
+  }, [activeNotes, activeNote]);
 
   const draftWordCount = useMemo(() => {
     const text = draftMarkdown.trim();
@@ -1795,7 +1816,13 @@ export default function App() {
       return;
     }
 
-    setSelectedNotebook(note.notebook);
+    if (note.trashedAt) {
+      setBrowseMode("trash");
+      setSelectedNotebook("All Notes");
+    } else {
+      setBrowseMode("all");
+      setSelectedNotebook(note.notebook);
+    }
     setActiveId(note.id);
     setSelectedIds(new Set([note.id]));
     setLastSelectedId(note.id);
@@ -2826,7 +2853,7 @@ export default function App() {
   }
 
   function ensureLinkedNote(title: string): AppNote {
-    const existing = notes.find((note) => note.title.toLowerCase() === title.toLowerCase());
+    const existing = activeNotes.find((note) => note.title.toLowerCase() === title.toLowerCase());
     if (existing) {
       return existing;
     }
@@ -2902,6 +2929,12 @@ export default function App() {
     }
     if (browseMode === "shortcuts" && target && !shortcutSet.has(target.id)) {
       setBrowseMode("all");
+    }
+    if (browseMode === "trash" && target && !target.trashedAt) {
+      setBrowseMode("all");
+    }
+    if (browseMode !== "trash" && target?.trashedAt) {
+      setBrowseMode("trash");
     }
     setActiveId(noteId);
     setSelectedIds(new Set([noteId]));
@@ -3338,6 +3371,18 @@ export default function App() {
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(true);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-trash") {
+      setSidebarView("notes");
+      setBrowseMode("trash");
+      setSelectedNotebook("All Notes");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
       setAiPanelOpen(false);
       setSearchOpen(false);
       return;
@@ -3829,13 +3874,23 @@ export default function App() {
 
   function undoLastAction(): void {
     if (lastTrash) {
-      setNotes((previous) => {
-        const existingIds = new Set(previous.map((note) => note.id));
-        const restored = lastTrash.notes.filter((note) => !existingIds.has(note.id));
-        return [...restored, ...previous];
-      });
+      if (lastTrash.mode === "trash") {
+        setNotes((previous) => {
+          const snapshotById = new Map(lastTrash.notes.map((note) => [note.id, note]));
+          const next = previous.map((note) => snapshotById.get(note.id) ?? note);
+          const existingIds = new Set(next.map((note) => note.id));
+          const missing = lastTrash.notes.filter((note) => !existingIds.has(note.id));
+          return missing.length ? [...missing, ...next] : next;
+        });
+      } else {
+        setNotes((previous) => {
+          const existingIds = new Set(previous.map((note) => note.id));
+          const restored = lastTrash.notes.filter((note) => !existingIds.has(note.id));
+          return [...restored, ...previous];
+        });
+      }
       setLastTrash(null);
-      setToastMessage("Restored from Trash");
+      setToastMessage("Trash action undone");
       return;
     }
 
@@ -4001,6 +4056,26 @@ export default function App() {
     }
 
     const targetId = contextMenu.noteIds[0];
+    const selectedMenuNotes = notes.filter((note) => contextMenu.noteIds.includes(note.id));
+    const allSelectedTrashed = selectedMenuNotes.length > 0 && selectedMenuNotes.every((note) => Boolean(note.trashedAt));
+
+    if (
+      allSelectedTrashed &&
+      [
+        "move",
+        "copy-to",
+        "duplicate",
+        "edit-tags",
+        "add-shortcuts",
+        "pin-notebook",
+        "pin-home",
+        "toggle-template"
+      ].includes(action)
+    ) {
+      setToastMessage("Restore notes from Trash to use this action");
+      setContextMenu(null);
+      return;
+    }
 
     if (action === "move") {
       setMoveDialog({
@@ -4080,16 +4155,66 @@ export default function App() {
       return;
     }
 
-    if (action === "move-trash") {
-      const trashed = notes.filter((note) => contextMenu.noteIds.includes(note.id));
-      if (trashed.length) {
-        setLastTrash({ notes: trashed });
-        setLastMove(null);
+    if (action === "restore-trash") {
+      if (!allSelectedTrashed) {
+        setToastMessage("Notes are not in Trash");
+        setContextMenu(null);
+        return;
       }
-      setNotes((previous) => previous.filter((note) => !contextMenu.noteIds.includes(note.id)));
+      if (selectedMenuNotes.length) {
+        const restoredAt = new Date().toISOString();
+        setLastTrash({ mode: "trash", notes: selectedMenuNotes });
+        setLastMove(null);
+        setNotes((previous) =>
+          previous.map((note) =>
+            contextMenu.noteIds.includes(note.id)
+              ? {
+                  ...note,
+                  trashedAt: undefined,
+                  updatedAt: restoredAt
+                }
+              : note
+          )
+        );
+      }
       setToastMessage(
-        `${contextMenu.noteIds.length === 1 ? "1 note" : `${contextMenu.noteIds.length} notes`} moved to Trash`
+        `${contextMenu.noteIds.length === 1 ? "1 note" : `${contextMenu.noteIds.length} notes`} restored from Trash`
       );
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "move-trash") {
+      if (allSelectedTrashed) {
+        if (selectedMenuNotes.length) {
+          setLastTrash({ mode: "delete", notes: selectedMenuNotes });
+          setLastMove(null);
+        }
+        setNotes((previous) => previous.filter((note) => !contextMenu.noteIds.includes(note.id)));
+        setToastMessage(
+          `${contextMenu.noteIds.length === 1 ? "1 note" : `${contextMenu.noteIds.length} notes`} deleted permanently`
+        );
+        setContextMenu(null);
+        return;
+      }
+
+      if (selectedMenuNotes.length) {
+        const trashedAt = new Date().toISOString();
+        setLastTrash({ mode: "trash", notes: selectedMenuNotes });
+        setLastMove(null);
+        setNotes((previous) =>
+          previous.map((note) =>
+            contextMenu.noteIds.includes(note.id)
+              ? {
+                  ...note,
+                  trashedAt,
+                  updatedAt: trashedAt
+                }
+              : note
+          )
+        );
+      }
+      setToastMessage(`${contextMenu.noteIds.length === 1 ? "1 note" : `${contextMenu.noteIds.length} notes`} moved to Trash`);
       setContextMenu(null);
       return;
     }
@@ -4213,6 +4338,10 @@ export default function App() {
       const note = notes.find((entry) => entry.id === noteId);
       return Boolean(note?.isTemplate);
     });
+    const allTrashed = contextMenu.noteIds.every((noteId) => {
+      const note = notes.find((entry) => entry.id === noteId);
+      return Boolean(note?.trashedAt);
+    });
 
     if (action === "add-shortcuts") {
       return allShortcut ? "Remove from Shortcuts" : "Add to Shortcuts";
@@ -4225,6 +4354,9 @@ export default function App() {
     }
     if (action === "toggle-template") {
       return allTemplates ? "Remove from Templates" : "Set as template";
+    }
+    if (action === "move-trash") {
+      return allTrashed ? "Delete permanently" : "Move to Trash";
     }
 
     return defaultLabel;
@@ -4383,7 +4515,7 @@ export default function App() {
       }
 
       const label = noteMatch[1].trim();
-      const target = notes.find((note) => note.title.toLowerCase() === label.toLowerCase());
+      const target = activeNotes.find((note) => note.title.toLowerCase() === label.toLowerCase());
 
       return (
         <button
@@ -4406,7 +4538,7 @@ export default function App() {
   }
 
   function renderNotebookRow(notebook: string, nested = false): ReactNode {
-    const count = notes.filter((note) => note.notebook === notebook).length;
+    const count = activeNotes.filter((note) => note.notebook === notebook).length;
     const isDropTarget = dropNotebook === notebook;
     return (
       <li key={notebook} className={nested ? "stack-notebook-row" : ""}>
@@ -5177,6 +5309,12 @@ export default function App() {
                   !tasksDialogOpen &&
                   !filesDialogOpen &&
                   !calendarDialogOpen) ||
+                (item === "Trash" &&
+                  sidebarView === "notes" &&
+                  browseMode === "trash" &&
+                  !tasksDialogOpen &&
+                  !filesDialogOpen &&
+                  !calendarDialogOpen) ||
                 (item === "Tasks" && sidebarView === "tasks") ||
                 (item === "Files" && filesDialogOpen) ||
                 (item === "Calendar" && calendarDialogOpen) ||
@@ -5209,6 +5347,15 @@ export default function App() {
                 if (item === "Tasks") {
                   setSidebarView("tasks");
                   setTasksDialogOpen(true);
+                  setFilesDialogOpen(false);
+                  setCalendarDialogOpen(false);
+                  return;
+                }
+                if (item === "Trash") {
+                  setSidebarView("notes");
+                  setBrowseMode("trash");
+                  setSelectedNotebook("All Notes");
+                  setTasksDialogOpen(false);
                   setFilesDialogOpen(false);
                   setCalendarDialogOpen(false);
                   return;
@@ -5494,6 +5641,8 @@ export default function App() {
                   ? "Templates"
                   : browseMode === "shortcuts"
                     ? "Shortcuts"
+                    : browseMode === "trash"
+                      ? "Trash"
                     : selectedNotebook}
             </h1>
             <small>{browseMode === "home" ? "Dashboard" : visibleNotes.length}</small>
@@ -5820,6 +5969,8 @@ export default function App() {
                       ? "No templates found."
                       : browseMode === "shortcuts"
                         ? "No shortcut notes yet."
+                        : browseMode === "trash"
+                          ? "Trash is empty."
                         : tagFilters.length
                           ? "No notes match the current filters."
                           : "No notes in this view yet."}
@@ -5827,7 +5978,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (browseMode === "templates" || browseMode === "shortcuts") {
+                      if (browseMode === "templates" || browseMode === "shortcuts" || browseMode === "trash") {
                         setBrowseMode("all");
                       }
                       setTagFilters([]);
@@ -6743,16 +6894,23 @@ export default function App() {
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(event) => event.stopPropagation()}
         >
-          {noteMenuRows.map((row) =>
-            row.divider ? (
+          {noteMenuRows.map((row) => {
+            const allContextTrashed = contextMenu.noteIds.every((noteId) => {
+              const note = notes.find((entry) => entry.id === noteId);
+              return Boolean(note?.trashedAt);
+            });
+            if (row.id === "restore-trash" && !allContextTrashed) {
+              return null;
+            }
+            return row.divider ? (
               <div key={row.id} className="context-divider" />
             ) : (
               <button key={row.id} type="button" onClick={() => handleMenuAction(row.id)}>
                 <span>{getContextMenuLabel(row.id, row.label)}</span>
                 {row.shortcut ? <small>{row.shortcut}</small> : null}
               </button>
-            )
-          )}
+            );
+          })}
         </div>
       ) : null}
 

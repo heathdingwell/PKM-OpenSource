@@ -971,7 +971,7 @@ button {
 
 .link-sections {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 16px;
   padding-top: 14px;
@@ -1422,6 +1422,124 @@ button {
   text-overflow: ellipsis;
 }
 
+.calendar-modal {
+  width: 560px;
+}
+
+.calendar-actions {
+  margin-bottom: 10px;
+}
+
+.calendar-new-btn {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #6e8fd6;
+  border-radius: 8px;
+  color: #1e4fa6;
+  background: #eaf1ff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.calendar-groups {
+  max-height: 420px;
+  overflow: auto;
+}
+
+.calendar-group {
+  margin-bottom: 10px;
+}
+
+.calendar-group h4 {
+  margin: 0 0 6px;
+  color: #6f5e49;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.calendar-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.calendar-row .task-open {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  color: #5d4a35;
+  text-align: left;
+  background: transparent;
+}
+
+.calendar-row .task-open:hover {
+  background: #f5e7d5;
+}
+
+.calendar-row .task-open strong {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-row .task-open small {
+  font-size: 11px;
+  color: #8f7f6a;
+}
+
+.event-modal {
+  width: 500px;
+}
+
+.event-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.event-grid label {
+  display: grid;
+  gap: 4px;
+}
+
+.event-grid span {
+  color: #7a654e;
+  font-size: 12px;
+}
+
+.event-modal input[type="date"],
+.event-modal input[type="time"] {
+  margin-bottom: 0;
+}
+
+.event-all-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #5f4d38;
+  font-size: 13px;
+}
+
+.event-linked-note {
+  margin: 0;
+  color: #6f5f4a;
+  font-size: 12px;
+}
+
 .task-complete {
   height: 30px;
   padding: 0 10px;
@@ -1502,6 +1620,13 @@ button {
   cursor: not-allowed;
 }
 
+.rename-modal footer button.danger {
+  margin-right: auto;
+  border-color: #be123c;
+  color: #fff;
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+}
+
 .info-modal dl {
   margin: 0;
 }
@@ -1580,6 +1705,10 @@ button {
   }
 
   .link-sections {
+    grid-template-columns: 1fr;
+  }
+
+  .event-grid {
     grid-template-columns: 1fr;
   }
 }

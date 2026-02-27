@@ -91,6 +91,38 @@ interface AttachmentItem {
   updatedAt: string;
 }
 
+interface CalendarEvent {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  allDay: boolean;
+  calendar: string;
+  noteId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface EventInsertOrigin {
+  editor: EditorMode;
+  markdownRange?: { start: number; end: number };
+  richRange?: { from: number; to: number };
+}
+
+interface EventDialogState {
+  mode: "create" | "edit";
+  eventId: string | null;
+  title: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  allDay: boolean;
+  calendar: string;
+  linkedNoteId: string | null;
+  origin: EventInsertOrigin | null;
+}
+
 interface AppPrefs {
   selectedNotebook: string;
   activeId: string;
@@ -115,7 +147,7 @@ interface LinkSuggestionState {
 
 type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
-type SidebarView = "notes" | "tasks";
+type SidebarView = "notes" | "tasks" | "calendar";
 type NoteBrowseMode = "all" | "templates";
 type NoteSortMode =
   | "updated-desc"
@@ -164,6 +196,7 @@ const NOTES_STORAGE_KEY = "pkm-os.desktop.notes.v2";
 const PREFS_STORAGE_KEY = "pkm-os.desktop.prefs.v1";
 const SEARCH_RECENTS_KEY = "pkm-os.desktop.search-recents.v1";
 const HISTORY_STORAGE_KEY = "pkm-os.desktop.history.v1";
+const CALENDAR_STORAGE_KEY = "pkm-os.desktop.calendar.v1";
 
 const seedNotes: SeedNote[] = [
   {
@@ -219,6 +252,34 @@ const seedNotes: SeedNote[] = [
 ];
 
 const sidePinned = ["Shortcuts", "Notes", "Tasks", "Files", "Calendar", "Templates"];
+
+const seedCalendarEvents: Array<Pick<CalendarEvent, "title" | "startAt" | "endAt" | "allDay" | "calendar" | "noteId">> =
+  [
+    {
+      title: "Weekly planning",
+      startAt: "2026-02-28T15:00:00.000Z",
+      endAt: "2026-02-28T16:00:00.000Z",
+      allDay: false,
+      calendar: "Events",
+      noteId: null
+    },
+    {
+      title: "Research block",
+      startAt: "2026-03-01T18:30:00.000Z",
+      endAt: "2026-03-01T20:00:00.000Z",
+      allDay: false,
+      calendar: "Deep Work",
+      noteId: null
+    },
+    {
+      title: "Template review",
+      startAt: "2026-03-02T00:00:00.000Z",
+      endAt: "2026-03-02T23:59:00.000Z",
+      allDay: true,
+      calendar: "Events",
+      noteId: null
+    }
+  ];
 
 const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
   { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
@@ -367,6 +428,96 @@ function toDateBucketLabel(iso: string): string {
     return "Yesterday";
   }
   return targetDate.toLocaleDateString();
+}
+
+function toDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toTimeInputValue(date: Date): string {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function parseDateTimeInput(dateValue: string, timeValue: string): Date | null {
+  const [year, month, day] = dateValue.split("-").map((value) => Number.parseInt(value, 10));
+  const [hours, minutes] = timeValue.split(":").map((value) => Number.parseInt(value, 10));
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes)
+  ) {
+    return null;
+  }
+
+  const parsed = new Date(year, month - 1, day, hours, minutes, 0, 0);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function roundToQuarterHour(date: Date): Date {
+  const rounded = new Date(date);
+  rounded.setSeconds(0, 0);
+  const minutes = rounded.getMinutes();
+  const offset = 15 - (minutes % 15 || 15);
+  rounded.setMinutes(minutes + offset);
+  return rounded;
+}
+
+function toCalendarDayLabel(iso: string): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(iso);
+  const target = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+  const dayOffset = Math.round((target.getTime() - today.getTime()) / 86400000);
+
+  if (dayOffset === 0) {
+    return "Today";
+  }
+  if (dayOffset === 1) {
+    return "Tomorrow";
+  }
+  if (dayOffset === -1) {
+    return "Yesterday";
+  }
+  return targetDate.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatCalendarTimeRange(event: CalendarEvent): string {
+  if (event.allDay) {
+    return "All day";
+  }
+
+  const start = new Date(event.startAt);
+  const end = new Date(event.endAt);
+  const startLabel = start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const endLabel = end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return `${startLabel} - ${endLabel}`;
+}
+
+function formatCalendarReference(event: CalendarEvent): string {
+  return `[[event:${event.id}|${event.title}]]`;
+}
+
+function extractEventReferences(markdown: string): Array<{ id: string; title: string }> {
+  const references: Array<{ id: string; title: string }> = [];
+
+  for (const match of markdown.matchAll(/\[\[event:([^\]|]+)\|([^\]]+)\]\]/gi)) {
+    const id = match[1]?.trim();
+    const title = match[2]?.trim() || "Event";
+    if (!id) {
+      continue;
+    }
+    references.push({ id, title });
+  }
+
+  return references;
 }
 
 function extractOpenTasks(notes: AppNote[]): OpenTaskItem[] {
@@ -712,6 +863,62 @@ function loadNoteHistory(): Record<string, NoteHistoryEntry[]> {
   }
 }
 
+function getSeededCalendarEvents(): CalendarEvent[] {
+  const now = new Date().toISOString();
+  return seedCalendarEvents.map((entry) => ({
+    id: crypto.randomUUID(),
+    title: entry.title,
+    startAt: entry.startAt,
+    endAt: entry.endAt,
+    allDay: entry.allDay,
+    calendar: entry.calendar,
+    noteId: entry.noteId,
+    createdAt: now,
+    updatedAt: now
+  }));
+}
+
+function isCalendarEvent(value: unknown): value is CalendarEvent {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const event = value as Partial<CalendarEvent>;
+  return (
+    typeof event.id === "string" &&
+    typeof event.title === "string" &&
+    typeof event.startAt === "string" &&
+    typeof event.endAt === "string" &&
+    typeof event.allDay === "boolean" &&
+    typeof event.calendar === "string" &&
+    (event.noteId === null || typeof event.noteId === "string") &&
+    typeof event.createdAt === "string" &&
+    typeof event.updatedAt === "string"
+  );
+}
+
+function loadCalendarEvents(): CalendarEvent[] {
+  if (typeof window === "undefined") {
+    return getSeededCalendarEvents();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(CALENDAR_STORAGE_KEY);
+    if (!raw) {
+      return getSeededCalendarEvents();
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return getSeededCalendarEvents();
+    }
+
+    const events = parsed.filter(isCalendarEvent);
+    return events.length ? events : getSeededCalendarEvents();
+  } catch {
+    return getSeededCalendarEvents();
+  }
+}
+
 export default function App() {
   const initialPrefs = useMemo(() => loadPrefs(), []);
 
@@ -732,6 +939,8 @@ export default function App() {
   const [noteHistoryDialog, setNoteHistoryDialog] = useState<NoteHistoryDialogState | null>(null);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
+  const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
+  const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
   const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<"everywhere" | "current">("everywhere");
@@ -771,6 +980,7 @@ export default function App() {
   const [vaultReady, setVaultReady] = useState(false);
   const [queryNoteHandled, setQueryNoteHandled] = useState(false);
   const [noteHistory, setNoteHistory] = useState<Record<string, NoteHistoryEntry[]>>(() => loadNoteHistory());
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => loadCalendarEvents());
   const [vaultMode] = useState<"local" | "desktop">(() =>
     typeof window !== "undefined" && window.pkmShell?.saveVaultState ? "desktop" : "local"
   );
@@ -972,6 +1182,29 @@ export default function App() {
 
   const openTasks = useMemo(() => extractOpenTasks(notes), [notes]);
   const attachmentItems = useMemo(() => extractAttachments(notes), [notes]);
+  const calendarEventsById = useMemo(() => new Map(calendarEvents.map((event) => [event.id, event])), [calendarEvents]);
+  const calendarGroups = useMemo(() => {
+    const sorted = [...calendarEvents].sort((left, right) => left.startAt.localeCompare(right.startAt));
+    const groups: Array<{ label: string; events: CalendarEvent[] }> = [];
+
+    for (const event of sorted) {
+      const label = toCalendarDayLabel(event.startAt);
+      const existing = groups.find((entry) => entry.label === label);
+      if (existing) {
+        existing.events.push(event);
+      } else {
+        groups.push({ label, events: [event] });
+      }
+    }
+
+    return groups;
+  }, [calendarEvents]);
+  const eventReferences = useMemo(() => {
+    return extractEventReferences(draftMarkdown).map((reference) => ({
+      ...reference,
+      event: calendarEventsById.get(reference.id) ?? null
+    }));
+  }, [draftMarkdown, calendarEventsById]);
 
   const suggestions = useMemo(() => {
     if (!linkSuggestion) {
@@ -1334,6 +1567,32 @@ export default function App() {
     if (typeof window === "undefined") {
       return;
     }
+    window.localStorage.setItem(CALENDAR_STORAGE_KEY, JSON.stringify(calendarEvents));
+  }, [calendarEvents]);
+
+  useEffect(() => {
+    const validNoteIds = new Set(notes.map((note) => note.id));
+    setCalendarEvents((previous) => {
+      let changed = false;
+      const next = previous.map((event) => {
+        if (event.noteId && !validNoteIds.has(event.noteId)) {
+          changed = true;
+          return {
+            ...event,
+            noteId: null,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return event;
+      });
+      return changed ? next : previous;
+    });
+  }, [notes]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
     const prefs: AppPrefs = {
       selectedNotebook,
       activeId,
@@ -1458,6 +1717,8 @@ export default function App() {
         setNoteHistoryDialog(null);
         setTasksDialogOpen(false);
         setFilesDialogOpen(false);
+        setCalendarDialogOpen(false);
+        setEventDialog(null);
         setAttachmentDropTarget(null);
         setSidebarView("notes");
         setSearchOpen(false);
@@ -1838,6 +2099,161 @@ export default function App() {
     }
 
     setToastMessage("Task completed");
+  }
+
+  function openCreateEventDialog(options?: { linkedNoteId?: string | null; origin?: EventInsertOrigin | null }): void {
+    const start = roundToQuarterHour(new Date());
+    const end = new Date(start.getTime() + 60 * 60000);
+
+    setEventDialog({
+      mode: "create",
+      eventId: null,
+      title: "",
+      startDate: toDateInputValue(start),
+      startTime: toTimeInputValue(start),
+      endDate: toDateInputValue(end),
+      endTime: toTimeInputValue(end),
+      allDay: false,
+      calendar: "Events",
+      linkedNoteId: options?.linkedNoteId ?? null,
+      origin: options?.origin ?? null
+    });
+  }
+
+  function openEditEventDialog(eventId: string): void {
+    const event = calendarEventsById.get(eventId);
+    if (!event) {
+      return;
+    }
+
+    const start = new Date(event.startAt);
+    const end = new Date(event.endAt);
+
+    setEventDialog({
+      mode: "edit",
+      eventId: event.id,
+      title: event.title,
+      startDate: toDateInputValue(start),
+      startTime: toTimeInputValue(start),
+      endDate: toDateInputValue(end),
+      endTime: toTimeInputValue(end),
+      allDay: event.allDay,
+      calendar: event.calendar,
+      linkedNoteId: event.noteId,
+      origin: null
+    });
+  }
+
+  function closeEventDialog(): void {
+    setEventDialog(null);
+  }
+
+  function insertEventReferenceFromDialog(event: CalendarEvent, origin: EventInsertOrigin | null): void {
+    if (!origin) {
+      return;
+    }
+
+    const content = `- [ ] Calendar event: ${formatCalendarReference(event)}\n`;
+
+    if (origin.editor === "rich") {
+      if (origin.richRange) {
+        richEditorRef.current?.replaceRange(origin.richRange.from, origin.richRange.to, "");
+      }
+      richEditorRef.current?.insertContent(content.trimEnd());
+      window.requestAnimationFrame(() => richEditorRef.current?.focus());
+      return;
+    }
+
+    const range = origin.markdownRange;
+    const start = range?.start ?? (markdownEditorRef.current?.selectionStart ?? draftMarkdown.length);
+    const end = range?.end ?? (markdownEditorRef.current?.selectionEnd ?? start);
+    const next = `${draftMarkdown.slice(0, start)}${content}${draftMarkdown.slice(end)}`;
+    setDraftMarkdown(next);
+
+    window.requestAnimationFrame(() => {
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        return;
+      }
+      const cursor = start + content.length;
+      editor.focus();
+      editor.setSelectionRange(cursor, cursor);
+    });
+  }
+
+  function saveEventDialog(): void {
+    if (!eventDialog) {
+      return;
+    }
+
+    const title = eventDialog.title.trim();
+    if (!title) {
+      setToastMessage("Event title is required");
+      return;
+    }
+
+    const startTime = eventDialog.allDay ? "00:00" : eventDialog.startTime;
+    const endTime = eventDialog.allDay ? "23:59" : eventDialog.endTime;
+    const start = parseDateTimeInput(eventDialog.startDate, startTime);
+    const parsedEnd = parseDateTimeInput(eventDialog.endDate, endTime);
+
+    if (!start || !parsedEnd) {
+      setToastMessage("Enter a valid start and end time");
+      return;
+    }
+
+    let end = parsedEnd;
+    if (end <= start) {
+      end = eventDialog.allDay
+        ? new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59, 0, 0)
+        : new Date(start.getTime() + 30 * 60000);
+    }
+
+    const now = new Date().toISOString();
+    const baseEvent: CalendarEvent = {
+      id: eventDialog.eventId ?? crypto.randomUUID(),
+      title,
+      startAt: start.toISOString(),
+      endAt: end.toISOString(),
+      allDay: eventDialog.allDay,
+      calendar: eventDialog.calendar.trim() || "Events",
+      noteId: eventDialog.linkedNoteId ?? null,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    if (eventDialog.mode === "edit" && eventDialog.eventId) {
+      setCalendarEvents((previous) =>
+        previous.map((event) =>
+          event.id === eventDialog.eventId
+            ? {
+                ...event,
+                ...baseEvent,
+                createdAt: event.createdAt,
+                updatedAt: now
+              }
+            : event
+        )
+      );
+      setToastMessage(`Event "${title}" updated`);
+      setEventDialog(null);
+      return;
+    }
+
+    setCalendarEvents((previous) => [baseEvent, ...previous]);
+    insertEventReferenceFromDialog(baseEvent, eventDialog.origin);
+    setToastMessage(`Event "${title}" created`);
+    setEventDialog(null);
+  }
+
+  function deleteCalendarEvent(eventId: string): void {
+    const existing = calendarEventsById.get(eventId);
+    if (!existing) {
+      return;
+    }
+    setCalendarEvents((previous) => previous.filter((event) => event.id !== eventId));
+    setEventDialog((previous) => (previous?.eventId === eventId ? null : previous));
+    setToastMessage(`Deleted "${existing.title}"`);
   }
 
   function openSearchResult(note: AppNote, mode: "open" | "copy-link" | "open-window" = "open"): void {
@@ -2740,15 +3156,40 @@ export default function App() {
   }
 
   function renderInlineWithLinks(text: string): ReactNode {
-    const parts = text.split(/(\[\[[^\]]+\]\])/g).filter(Boolean);
+    const parts = text.split(/(\[\[event:[^\]|]+\|[^\]]+\]\]|\[\[[^\]]+\]\])/gi).filter(Boolean);
 
     return parts.map((part, index) => {
-      const match = part.match(/^\[\[([^\]]+)\]\]$/);
-      if (!match) {
+      const eventMatch = part.match(/^\[\[event:([^\]|]+)\|([^\]]+)\]\]$/i);
+      if (eventMatch) {
+        const eventId = eventMatch[1].trim();
+        const fallbackTitle = eventMatch[2].trim() || "Event";
+        const linkedEvent = calendarEventsById.get(eventId) ?? null;
+        const label = linkedEvent?.title || fallbackTitle;
+
+        return (
+          <button
+            key={`event-${eventId}-${index}`}
+            type="button"
+            className="inline-link"
+            onClick={() => {
+              if (linkedEvent) {
+                openEditEventDialog(linkedEvent.id);
+              }
+              setSidebarView("calendar");
+              setCalendarDialogOpen(true);
+            }}
+          >
+            [{label}]
+          </button>
+        );
+      }
+
+      const noteMatch = part.match(/^\[\[([^\]]+)\]\]$/);
+      if (!noteMatch) {
         return <span key={`${part}-${index}`}>{part}</span>;
       }
 
-      const label = match[1].trim();
+      const label = noteMatch[1].trim();
       const target = notes.find((note) => note.title.toLowerCase() === label.toLowerCase());
 
       return (
@@ -3255,8 +3696,16 @@ export default function App() {
         insert("$$\n\n$$");
         break;
       case "event":
-        insert("- [ ] Calendar event: ");
-        break;
+        openCreateEventDialog({
+          linkedNoteId: activeNote?.id ?? null,
+          origin: {
+            editor: "markdown",
+            markdownRange: { start: replaceStart, end: replaceEnd }
+          }
+        });
+        setSlashMenu(null);
+        setLinkSuggestion(null);
+        return;
       case "current-date":
         insert(new Date().toLocaleDateString());
         break;
@@ -3413,8 +3862,15 @@ export default function App() {
         richEditorRef.current?.insertContent("$$\n\n$$");
         break;
       case "event":
-        richEditorRef.current?.insertContent("- [ ] Calendar event: ");
-        break;
+        openCreateEventDialog({
+          linkedNoteId: activeNote?.id ?? null,
+          origin: {
+            editor: "rich",
+            richRange: typedRange
+          }
+        });
+        setSlashMenu(null);
+        return;
       case "current-date":
         richEditorRef.current?.insertContent(new Date().toLocaleDateString());
         break;
@@ -3457,6 +3913,8 @@ export default function App() {
         setStackDropTarget(null);
         setNoteHistoryDialog(null);
         setFilesDialogOpen(false);
+        setCalendarDialogOpen(false);
+        setEventDialog(null);
         setAttachmentDropTarget(null);
         setSlashMenu(null);
       }}
@@ -3492,10 +3950,16 @@ export default function App() {
                   sidebarView === "notes" &&
                   browseMode === "all" &&
                   !tasksDialogOpen &&
-                  !filesDialogOpen) ||
+                  !filesDialogOpen &&
+                  !calendarDialogOpen) ||
                 (item === "Tasks" && sidebarView === "tasks") ||
                 (item === "Files" && filesDialogOpen) ||
-                (item === "Templates" && browseMode === "templates" && !filesDialogOpen && !tasksDialogOpen)
+                (item === "Calendar" && calendarDialogOpen) ||
+                (item === "Templates" &&
+                  browseMode === "templates" &&
+                  !filesDialogOpen &&
+                  !tasksDialogOpen &&
+                  !calendarDialogOpen)
                   ? "sidebar-link active"
                   : "sidebar-link"
               }
@@ -3505,18 +3969,28 @@ export default function App() {
                   setBrowseMode("all");
                   setTasksDialogOpen(false);
                   setFilesDialogOpen(false);
+                  setCalendarDialogOpen(false);
                   return;
                 }
                 if (item === "Tasks") {
                   setSidebarView("tasks");
                   setTasksDialogOpen(true);
                   setFilesDialogOpen(false);
+                  setCalendarDialogOpen(false);
                   return;
                 }
                 if (item === "Files") {
                   setSidebarView("notes");
                   setTasksDialogOpen(false);
                   setFilesDialogOpen(true);
+                  setCalendarDialogOpen(false);
+                  return;
+                }
+                if (item === "Calendar") {
+                  setSidebarView("calendar");
+                  setTasksDialogOpen(false);
+                  setFilesDialogOpen(false);
+                  setCalendarDialogOpen(true);
                   return;
                 }
                 if (item === "Templates") {
@@ -3525,6 +3999,7 @@ export default function App() {
                   setSelectedNotebook("All Notes");
                   setTasksDialogOpen(false);
                   setFilesDialogOpen(false);
+                  setCalendarDialogOpen(false);
                   return;
                 }
                 setToastMessage(`"${item}" is planned`);
@@ -4227,6 +4702,31 @@ export default function App() {
                           )}
                         </ul>
                       </section>
+                      <section>
+                        <h5>Linked events</h5>
+                        <ul>
+                          {eventReferences.length ? (
+                            eventReferences.map((entry, index) => (
+                              <li key={`${entry.id}-${index}`}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (entry.event) {
+                                      openEditEventDialog(entry.event.id);
+                                    }
+                                    setSidebarView("calendar");
+                                    setCalendarDialogOpen(true);
+                                  }}
+                                >
+                                  {entry.event?.title ?? entry.title}
+                                </button>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="muted">No linked events</li>
+                          )}
+                        </ul>
+                      </section>
                     </div>
                   </div>
                 </section>
@@ -4312,6 +4812,10 @@ export default function App() {
                     <div>
                       <dt>Backlinks</dt>
                       <dd>{backlinks.length}</dd>
+                    </div>
+                    <div>
+                      <dt>Events</dt>
+                      <dd>{eventReferences.length}</dd>
                     </div>
                     <div>
                       <dt>Tags</dt>
@@ -4763,6 +5267,178 @@ export default function App() {
             <footer>
               <button type="button" onClick={() => setFilesDialogOpen(false)}>
                 Close
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {calendarDialogOpen ? (
+        <div
+          className="overlay"
+          onClick={() => {
+            setCalendarDialogOpen(false);
+            setSidebarView("notes");
+          }}
+        >
+          <section className="move-modal calendar-modal" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <h3>Calendar</h3>
+              <small>{calendarEvents.length} events</small>
+            </header>
+            <div className="calendar-actions">
+              <button
+                type="button"
+                className="calendar-new-btn"
+                onClick={() => openCreateEventDialog({ linkedNoteId: activeNote?.id ?? null })}
+              >
+                + New event
+              </button>
+            </div>
+            {calendarGroups.length ? (
+              <div className="calendar-groups">
+                {calendarGroups.map((group) => (
+                  <section key={group.label} className="calendar-group">
+                    <h4>{group.label}</h4>
+                    <ul>
+                      {group.events.map((event) => {
+                        const linkedNote = event.noteId ? notes.find((note) => note.id === event.noteId) ?? null : null;
+                        return (
+                          <li key={event.id} className="calendar-row">
+                            <button
+                              type="button"
+                              className="task-open"
+                              onClick={() => openEditEventDialog(event.id)}
+                            >
+                              <strong>{event.title}</strong>
+                              <small>
+                                {formatCalendarTimeRange(event)} - {event.calendar}
+                              </small>
+                            </button>
+                            {linkedNote ? (
+                              <button
+                                type="button"
+                                className="task-complete"
+                                onClick={() => {
+                                  setSelectedNotebook(linkedNote.notebook);
+                                  focusNote(linkedNote.id);
+                                  setCalendarDialogOpen(false);
+                                  setSidebarView("notes");
+                                }}
+                              >
+                                Open note
+                              </button>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <p className="history-empty">No events yet</p>
+            )}
+            <footer>
+              <button
+                type="button"
+                onClick={() => {
+                  setCalendarDialogOpen(false);
+                  setSidebarView("notes");
+                }}
+              >
+                Close
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {eventDialog ? (
+        <div className="overlay" onClick={closeEventDialog}>
+          <section className="rename-modal event-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>{eventDialog.mode === "edit" ? "Edit event" : "Create event"}</h3>
+            <input
+              autoFocus
+              placeholder="Event title"
+              value={eventDialog.title}
+              onChange={(event) => setEventDialog({ ...eventDialog, title: event.target.value })}
+            />
+            <div className="event-grid">
+              <label>
+                <span>Start date</span>
+                <input
+                  type="date"
+                  value={eventDialog.startDate}
+                  onChange={(event) => setEventDialog({ ...eventDialog, startDate: event.target.value })}
+                />
+              </label>
+              {!eventDialog.allDay ? (
+                <label>
+                  <span>Start time</span>
+                  <input
+                    type="time"
+                    value={eventDialog.startTime}
+                    onChange={(event) => setEventDialog({ ...eventDialog, startTime: event.target.value })}
+                  />
+                </label>
+              ) : null}
+              <label>
+                <span>End date</span>
+                <input
+                  type="date"
+                  value={eventDialog.endDate}
+                  onChange={(event) => setEventDialog({ ...eventDialog, endDate: event.target.value })}
+                />
+              </label>
+              {!eventDialog.allDay ? (
+                <label>
+                  <span>End time</span>
+                  <input
+                    type="time"
+                    value={eventDialog.endTime}
+                    onChange={(event) => setEventDialog({ ...eventDialog, endTime: event.target.value })}
+                  />
+                </label>
+              ) : null}
+            </div>
+            <label className="event-all-day">
+              <input
+                type="checkbox"
+                checked={eventDialog.allDay}
+                onChange={(event) => setEventDialog({ ...eventDialog, allDay: event.target.checked })}
+              />
+              All day
+            </label>
+            <input
+              placeholder="Calendar"
+              value={eventDialog.calendar}
+              onChange={(event) => setEventDialog({ ...eventDialog, calendar: event.target.value })}
+            />
+            {eventDialog.linkedNoteId ? (
+              <p className="event-linked-note">
+                Linked note: {notes.find((note) => note.id === eventDialog.linkedNoteId)?.title ?? "Unknown note"}
+              </p>
+            ) : null}
+            <footer>
+              {eventDialog.mode === "edit" && eventDialog.eventId ? (
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => {
+                    if (eventDialog.eventId) {
+                      deleteCalendarEvent(eventDialog.eventId);
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              ) : null}
+              <button type="button" onClick={closeEventDialog}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={saveEventDialog}>
+                {eventDialog.mode === "edit" ? "Save" : "Create event"}
               </button>
             </footer>
           </section>

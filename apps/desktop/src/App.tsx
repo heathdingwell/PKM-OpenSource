@@ -5479,10 +5479,7 @@ export default function App() {
               </div>
             ) : null}
 
-            <article
-              className={metadataOpen || aiPanelOpen ? "editor-content with-metadata" : "editor-content"}
-              style={{ paddingBottom: `${tagPaneHeight + 28}px` }}
-            >
+            <article className={metadataOpen || aiPanelOpen ? "editor-content with-metadata" : "editor-content"}>
               <div className="editor-workbench">
                 {editorMode === "markdown" ? (
                   <section

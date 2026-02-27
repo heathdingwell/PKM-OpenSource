@@ -633,8 +633,8 @@ body.is-resizing {
 
 .editor-shell {
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
-  position: relative;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  height: 100%;
   overflow: hidden;
   background: var(--bg-editor);
   min-width: 0;
@@ -780,6 +780,7 @@ body.is-resizing {
   width: 100%;
   margin: 0;
   padding: 16px 18px 24px;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -1445,11 +1446,6 @@ body.is-resizing {
   border-top: 1px solid var(--border);
   background: #ffffff;
   overflow: auto;
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 6;
 }
 
 .editor-footer button {

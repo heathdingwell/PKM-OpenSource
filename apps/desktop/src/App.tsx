@@ -2806,13 +2806,26 @@ export default function App() {
     richEditorRef.current?.focus();
   }
 
+  function resolveDefaultNotebook(): string {
+    if (selectedNotebook !== "All Notes") {
+      return selectedNotebook;
+    }
+    if (notebooks.includes("Daily Notes")) {
+      return "Daily Notes";
+    }
+    if (notebooks.includes("Inbox")) {
+      return "Inbox";
+    }
+    return notebooks[1] || "Inbox";
+  }
+
   function ensureLinkedNote(title: string): AppNote {
     const existing = notes.find((note) => note.title.toLowerCase() === title.toLowerCase());
     if (existing) {
       return existing;
     }
 
-    const notebook = selectedNotebook === "All Notes" ? notebooks[1] || "Inbox" : selectedNotebook;
+    const notebook = resolveDefaultNotebook();
     const now = new Date().toISOString();
     const markdown = `# ${title}\n\n`;
     const created: AppNote = {
@@ -3477,7 +3490,7 @@ export default function App() {
       return;
     }
 
-    const notebook = selectedNotebook === "All Notes" ? notebooks[1] || "Inbox" : selectedNotebook;
+    const notebook = resolveDefaultNotebook();
     const now = new Date().toISOString();
     const markdown = `# ${title}\n\n${content}`;
     const created = noteFromMarkdown(
@@ -4183,7 +4196,7 @@ export default function App() {
   function createNewNote(): void {
     flushActiveDraft();
 
-    const notebook = selectedNotebook === "All Notes" ? notebooks[1] || "Inbox" : selectedNotebook;
+    const notebook = resolveDefaultNotebook();
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     const markdown = "# Untitled\n\n";

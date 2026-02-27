@@ -253,6 +253,12 @@ button {
   background: #d2e0fb;
 }
 
+.stack-header.drop-active {
+  color: #1e4fa6;
+  background: #c8dafc;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.3);
+}
+
 .stack-header small {
   color: #6780aa;
 }

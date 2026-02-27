@@ -662,6 +662,8 @@ export default function App() {
   const [searchSelected, setSearchSelected] = useState(0);
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
+  const [draggingNotebook, setDraggingNotebook] = useState<string | null>(null);
+  const [stackDropTarget, setStackDropTarget] = useState<string | null>(null);
   const [attachmentDropTarget, setAttachmentDropTarget] = useState<"markdown" | "rich" | null>(null);
   const [dropNotebook, setDropNotebook] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -1355,6 +1357,8 @@ export default function App() {
         setNoteListMenu(null);
         setNotebookMenu(null);
         setEditorContextMenu(null);
+        setDraggingNotebook(null);
+        setStackDropTarget(null);
         setStackDialog(null);
         setNoteHistoryDialog(null);
         setTasksDialogOpen(false);
@@ -1936,9 +1940,19 @@ export default function App() {
       return;
     }
 
+    assignNotebookToStack(stackDialog.notebook, chosen);
+    setStackDialog(null);
+  }
+
+  function assignNotebookToStack(notebook: string, stack: string): void {
+    const chosen = stack.trim();
+    if (!chosen) {
+      return;
+    }
+
     setNotebookStacks((previous) => ({
       ...previous,
-      [stackDialog.notebook]: chosen
+      [notebook]: chosen
     }));
     setCollapsedStacks((previous) => {
       if (!previous.has(chosen)) {
@@ -1948,8 +1962,7 @@ export default function App() {
       next.delete(chosen);
       return next;
     });
-    setStackDialog(null);
-    setToastMessage(`Moved "${stackDialog.notebook}" to stack "${chosen}"`);
+    setToastMessage(`Moved "${notebook}" to stack "${chosen}"`);
   }
 
   function removeNotebookFromStack(notebook: string): void {
@@ -2504,10 +2517,19 @@ export default function App() {
       <li key={notebook} className={nested ? "stack-notebook-row" : ""}>
         <button
           type="button"
+          draggable
           className={selectedNotebook === notebook ? "notebook-item active" : "notebook-item"}
           onClick={() => {
             flushActiveDraft();
             setSelectedNotebook(notebook);
+          }}
+          onDragStart={(event) => {
+            event.dataTransfer.effectAllowed = "move";
+            setDraggingNotebook(notebook);
+          }}
+          onDragEnd={() => {
+            setDraggingNotebook(null);
+            setStackDropTarget(null);
           }}
           onContextMenu={(event) => {
             event.preventDefault();
@@ -3170,6 +3192,8 @@ export default function App() {
         setNoteListMenu(null);
         setNotebookMenu(null);
         setEditorContextMenu(null);
+        setDraggingNotebook(null);
+        setStackDropTarget(null);
         setNoteHistoryDialog(null);
         setAttachmentDropTarget(null);
         setSlashMenu(null);
@@ -3382,13 +3406,31 @@ export default function App() {
           <ul>
             {stackedNotebookGroups.stacks.map((group) => {
               const isCollapsed = collapsedStacks.has(group.stack);
+              const isStackDrop = stackDropTarget === group.stack;
               return (
                 <li key={group.stack} className="stack-group">
                   <button
                     type="button"
-                    className="stack-header"
+                    className={isStackDrop ? "stack-header drop-active" : "stack-header"}
                     onClick={() => toggleStackCollapsed(group.stack)}
                     title={isCollapsed ? "Expand stack" : "Collapse stack"}
+                    onDragOver={(event) => {
+                      if (!draggingNotebook) {
+                        return;
+                      }
+                      event.preventDefault();
+                      setStackDropTarget(group.stack);
+                    }}
+                    onDragLeave={() => setStackDropTarget((previous) => (previous === group.stack ? null : previous))}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (!draggingNotebook) {
+                        return;
+                      }
+                      assignNotebookToStack(draggingNotebook, group.stack);
+                      setDraggingNotebook(null);
+                      setStackDropTarget(null);
+                    }}
                   >
                     <span>{isCollapsed ? "▸" : "▾"} {group.stack}</span>
                     <small>{group.notebooks.length}</small>

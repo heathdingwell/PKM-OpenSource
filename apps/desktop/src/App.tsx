@@ -205,6 +205,12 @@ interface SavedSearch {
   scope: "everywhere" | "current";
 }
 
+interface CommandPaletteAction {
+  id: string;
+  label: string;
+  keywords: string[];
+}
+
 interface ShellNotesPayload {
   [index: number]: unknown;
   length: number;
@@ -281,6 +287,18 @@ const seedNotes: SeedNote[] = [
 ];
 
 const sidePinned = ["Shortcuts", "Notes", "Tasks", "Files", "Calendar", "Templates"];
+const commandPaletteActions: CommandPaletteAction[] = [
+  { id: "new-note", label: "New note", keywords: ["create", "note"] },
+  { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
+  { id: "open-notes", label: "Open notes", keywords: ["notes", "sidebar"] },
+  { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
+  { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
+  { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
+  { id: "open-templates", label: "Open templates", keywords: ["templates"] },
+  { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
+  { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
+  { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
+];
 
 const seedCalendarEvents: Array<Pick<CalendarEvent, "title" | "startAt" | "endAt" | "allDay" | "calendar" | "noteId">> =
   [
@@ -1230,9 +1248,32 @@ export default function App() {
     return index;
   }, [notes]);
 
+  const commandMode = quickQuery.trim().startsWith(">");
+  const commandQuery = commandMode ? quickQuery.trim().slice(1).trim().toLowerCase() : "";
+  const paletteResults = useMemo(() => {
+    if (!commandMode) {
+      return [];
+    }
+
+    if (!commandQuery) {
+      return commandPaletteActions;
+    }
+
+    return commandPaletteActions.filter((action) => {
+      if (action.label.toLowerCase().includes(commandQuery)) {
+        return true;
+      }
+      return action.keywords.some((keyword) => keyword.toLowerCase().includes(commandQuery));
+    });
+  }, [commandMode, commandQuery]);
+
   const parsedQuickQuery = useMemo(() => parseSearchQuery(quickQuery), [quickQuery]);
 
   const quickResults = useMemo(() => {
+    if (commandMode) {
+      return [];
+    }
+
     const scopedNotes =
       searchScope === "current" && selectedNotebook !== "All Notes"
         ? notes.filter((note) => note.notebook === selectedNotebook)
@@ -1289,9 +1330,10 @@ export default function App() {
         return scopedIds.has(note.id);
       })
       .slice(0, 8);
-  }, [notes, parsedQuickQuery, searchIndex, searchScope, selectedNotebook, searchFilters]);
+  }, [notes, commandMode, parsedQuickQuery, searchIndex, searchScope, selectedNotebook, searchFilters]);
 
   const selectedSearchResult = quickResults[searchSelected] ?? null;
+  const selectedPaletteAction = paletteResults[searchSelected] ?? null;
   const quickResultGroups = useMemo(() => {
     const groups: Array<{ label: string; entries: Array<{ note: AppNote; index: number }> }> = [];
 
@@ -1931,11 +1973,12 @@ export default function App() {
   }, [searchOpen, quickQuery, searchScope, searchFilters]);
 
   useEffect(() => {
-    if (searchSelected < quickResults.length) {
+    const length = commandMode ? paletteResults.length : quickResults.length;
+    if (searchSelected < length) {
       return;
     }
-    setSearchSelected(Math.max(0, quickResults.length - 1));
-  }, [searchSelected, quickResults.length]);
+    setSearchSelected(Math.max(0, length - 1));
+  }, [searchSelected, quickResults.length, commandMode, paletteResults.length]);
 
   useEffect(() => {
     if (!slashMenu) {
@@ -2587,6 +2630,85 @@ export default function App() {
 
     focusNote(note.id);
     setSearchOpen(false);
+  }
+
+  function runPaletteAction(actionId: string): void {
+    if (actionId === "new-note") {
+      setSearchOpen(false);
+      createNewNote();
+      return;
+    }
+
+    if (actionId === "new-notebook") {
+      setSearchOpen(false);
+      createNotebook();
+      return;
+    }
+
+    if (actionId === "open-notes") {
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-tasks") {
+      setSidebarView("tasks");
+      setTasksDialogOpen(true);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-files") {
+      setSidebarView("notes");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(true);
+      setCalendarDialogOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-calendar") {
+      setSidebarView("calendar");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(true);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-templates") {
+      setSidebarView("notes");
+      setBrowseMode("templates");
+      setSelectedNotebook("All Notes");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-view") {
+      setViewMode((previous) => (previous === "cards" ? "list" : "cards"));
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-editor") {
+      setEditorMode((previous) => (previous === "markdown" ? "rich" : "markdown"));
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "save-search") {
+      saveCurrentSearch();
+      return;
+    }
   }
 
   function openCardMenu(noteId: string, clientX: number, clientY: number): void {
@@ -5454,24 +5576,38 @@ export default function App() {
               value={quickQuery}
               onChange={(event) => setQuickQuery(event.target.value)}
               onKeyDown={(event) => {
-                if (!quickResults.length) {
-                  return;
-                }
+                const resultLength = commandMode ? paletteResults.length : quickResults.length;
 
                 if (event.key === "ArrowDown") {
+                  if (!resultLength) {
+                    return;
+                  }
                   event.preventDefault();
-                  setSearchSelected((previous) => Math.min(previous + 1, quickResults.length - 1));
+                  setSearchSelected((previous) => Math.min(previous + 1, resultLength - 1));
                   return;
                 }
 
                 if (event.key === "ArrowUp") {
+                  if (!resultLength) {
+                    return;
+                  }
                   event.preventDefault();
                   setSearchSelected((previous) => Math.max(previous - 1, 0));
                   return;
                 }
 
                 if (event.key === "Enter") {
+                  if (!resultLength) {
+                    return;
+                  }
                   event.preventDefault();
+                  if (commandMode) {
+                    const action = paletteResults[searchSelected];
+                    if (action) {
+                      runPaletteAction(action.id);
+                    }
+                    return;
+                  }
                   const note = quickResults[searchSelected];
                   if (note) {
                     openSearchResult(note, "open");
@@ -5514,7 +5650,7 @@ export default function App() {
                 </button>
               ) : null}
             </div>
-            <p className="search-hint">Filters: tag:, notebook:, after:, before:, has:attachment|task|image|pdf</p>
+            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, has:attachment|task|image|pdf</p>
             <div className="search-results">
               <h4>Recent searches</h4>
               <ul>
@@ -5528,71 +5664,112 @@ export default function App() {
                   <li className="empty-recent">No recent searches</li>
                 )}
               </ul>
-              <h4>Results</h4>
-              {quickResultGroups.map((group) => (
-                <div key={group.label} className="search-group">
-                  <h5>{group.label}</h5>
+              {commandMode ? (
+                <>
+                  <h4>Command palette</h4>
                   <ul>
-                    {group.entries.map(({ note, index }) => (
-                      <li
-                        key={note.id}
-                        className={index === searchSelected ? "active" : ""}
-                        onMouseEnter={() => setSearchSelected(index)}
-                        onClick={() => openSearchResult(note, "open")}
-                      >
-                        <strong>{note.title}</strong>
-                        <small>{note.notebook}</small>
-                      </li>
-                    ))}
+                    {paletteResults.length ? (
+                      paletteResults.map((action, index) => (
+                        <li
+                          key={action.id}
+                          className={index === searchSelected ? "active" : ""}
+                          onMouseEnter={() => setSearchSelected(index)}
+                          onClick={() => runPaletteAction(action.id)}
+                        >
+                          <strong>{action.label}</strong>
+                          <small>Action</small>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="empty-recent">No commands found</li>
+                    )}
                   </ul>
-                </div>
-              ))}
+                </>
+              ) : (
+                <>
+                  <h4>Results</h4>
+                  {quickResultGroups.map((group) => (
+                    <div key={group.label} className="search-group">
+                      <h5>{group.label}</h5>
+                      <ul>
+                        {group.entries.map(({ note, index }) => (
+                          <li
+                            key={note.id}
+                            className={index === searchSelected ? "active" : ""}
+                            onMouseEnter={() => setSearchSelected(index)}
+                            onClick={() => openSearchResult(note, "open")}
+                          >
+                            <strong>{note.title}</strong>
+                            <small>{note.notebook}</small>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
             <footer className="search-actions">
-              <button
-                type="button"
-                disabled={!selectedSearchResult}
-                onClick={() => {
-                  if (selectedSearchResult) {
-                    openSearchResult(selectedSearchResult, "open");
-                  }
-                }}
-              >
-                Select <kbd>↩</kbd>
-              </button>
-              <button
-                type="button"
-                disabled={!selectedSearchResult}
-                onClick={() => {
-                  if (selectedSearchResult) {
-                    openSearchResult(selectedSearchResult, "open");
-                  }
-                }}
-              >
-                Open
-              </button>
-              <button
-                type="button"
-                disabled={!selectedSearchResult}
-                onClick={() => {
-                  if (selectedSearchResult) {
-                    openSearchResult(selectedSearchResult, "copy-link");
-                  }
-                }}
-              >
-                Copy Link
-              </button>
-              <button
-                type="button"
-                disabled={!selectedSearchResult}
-                onClick={() => {
-                  if (selectedSearchResult) {
-                    openSearchResult(selectedSearchResult, "open-window");
-                  }
-                }}
-              >
-                Open in New Window
-              </button>
+              {commandMode ? (
+                <button
+                  type="button"
+                  disabled={!selectedPaletteAction}
+                  onClick={() => {
+                    if (selectedPaletteAction) {
+                      runPaletteAction(selectedPaletteAction.id);
+                    }
+                  }}
+                >
+                  Execute <kbd>↩</kbd>
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open");
+                      }
+                    }}
+                  >
+                    Select <kbd>↩</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open");
+                      }
+                    }}
+                  >
+                    Open
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "copy-link");
+                      }
+                    }}
+                  >
+                    Copy Link
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open-window");
+                      }
+                    }}
+                  >
+                    Open in New Window
+                  </button>
+                </>
+              )}
               <button type="button" disabled={!quickQuery.trim()} onClick={saveCurrentSearch}>
                 Save Search
               </button>

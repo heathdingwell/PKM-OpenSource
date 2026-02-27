@@ -2,6 +2,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import App from "./App";
 
 describe("App", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it("renders the notebook view shell", () => {
     render(<App />);
     expect(screen.getByRole("application", { name: "PKM OpenSource Shell" })).toBeInTheDocument();
@@ -38,21 +42,53 @@ describe("App", () => {
     promptSpy.mockRestore();
   });
 
-  it("moves a note to trash and restores it from trash view", () => {
+  it("toggles backlinks dock in notes view", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    expect(screen.getByRole("heading", { name: "Backlinks", level: 2 })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Backlinks" }));
+    expect(screen.queryByRole("heading", { name: "Backlinks", level: 2 })).not.toBeInTheDocument();
+  });
+
+  it("opens a note in lite edit mode from context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
 
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Open in Lite edit mode/i }));
+
+    expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
+  });
+
+  it("moves the active note to trash with cmd+backspace", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.keyDown(window, { key: "Backspace", metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    expect(screen.getByRole("heading", { name: "Trash", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
+  });
+
+  it("moves a note to trash and restores it from trash view", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
+    expect(noteCard).toBeTruthy();
+    fireEvent.contextMenu(noteCard as HTMLButtonElement);
     fireEvent.click(screen.getByRole("button", { name: /Move to Trash/i }));
 
     fireEvent.click(screen.getByRole("button", { name: "Trash" }));
     expect(screen.getByRole("heading", { name: "Trash", level: 1 })).toBeInTheDocument();
 
-    const trashedAgendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(trashedAgendaCard).toBeTruthy();
-    fireEvent.contextMenu(trashedAgendaCard as HTMLButtonElement);
+    const trashedCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
+    expect(trashedCard).toBeTruthy();
+    fireEvent.contextMenu(trashedCard as HTMLButtonElement);
     fireEvent.click(screen.getByRole("button", { name: /Restore from Trash/i }));
 
     expect(screen.getByText("Trash is empty.")).toBeInTheDocument();
@@ -62,9 +98,9 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
 
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
+    expect(noteCard).toBeTruthy();
+    fireEvent.contextMenu(noteCard as HTMLButtonElement);
     fireEvent.click(screen.getByRole("button", { name: /Move to Trash/i }));
 
     fireEvent.click(screen.getByRole("button", { name: "Trash" }));

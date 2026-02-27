@@ -145,6 +145,7 @@ interface AppPrefs {
   homePinnedNoteIds?: string[];
   notebookPinnedNoteIds?: string[];
   savedSearches?: SavedSearch[];
+  backlinksPaneOpen?: boolean;
   notebookStacks?: Record<string, string>;
   collapsedStacks?: string[];
 }
@@ -245,6 +246,18 @@ interface AiChatMessage {
 interface AiConnectionState {
   tone: "success" | "error";
   message: string;
+}
+
+interface GitBackupStatus {
+  enabled: boolean;
+  available: boolean | null;
+  repoReady: boolean;
+  dirty: boolean;
+  busy: boolean;
+  lastRunAt: string | null;
+  lastCommitAt: string | null;
+  lastCommitHash: string;
+  lastError: string;
 }
 
 interface ShellNotesPayload {
@@ -351,6 +364,8 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "toggle-density", label: "Toggle note density", keywords: ["density", "compact", "comfortable"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
   { id: "cycle-theme", label: "Cycle theme", keywords: ["theme", "color", "palette"] },
+  { id: "toggle-git-backup", label: "Toggle Git backups", keywords: ["git", "backup", "versioning"] },
+  { id: "git-backup-now", label: "Run Git backup now", keywords: ["git", "backup", "commit"] },
   { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
 ];
 
@@ -903,6 +918,7 @@ function defaultPrefs(): AppPrefs {
     homePinnedNoteIds: [],
     notebookPinnedNoteIds: [],
     savedSearches: [],
+    backlinksPaneOpen: true,
     notebookStacks: {},
     collapsedStacks: []
   };
@@ -968,6 +984,7 @@ function loadPrefs(): AppPrefs {
               ((entry as SavedSearch).scope === "everywhere" || (entry as SavedSearch).scope === "current")
           )
         : [],
+      backlinksPaneOpen: typeof parsed.backlinksPaneOpen === "boolean" ? parsed.backlinksPaneOpen : true,
       notebookStacks:
         parsed.notebookStacks && typeof parsed.notebookStacks === "object"
           ? Object.fromEntries(
@@ -1297,6 +1314,7 @@ export default function App() {
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">("saved");
   const [sidebarView, setSidebarView] = useState<SidebarView>("notes");
   const [editorMode, setEditorMode] = useState<EditorMode>("markdown");
+  const [liteEditMode, setLiteEditMode] = useState(false);
   const [themeId, setThemeId] = useState<ThemeId>(initialPrefs.themeId ?? "cobalt");
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [noteDensity, setNoteDensity] = useState<NoteDensityMode>(initialPrefs.noteDensity ?? "comfortable");
@@ -1309,6 +1327,7 @@ export default function App() {
     initialPrefs.notebookPinnedNoteIds ?? []
   );
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(initialPrefs.savedSearches ?? []);
+  const [backlinksPaneOpen, setBacklinksPaneOpen] = useState<boolean>(initialPrefs.backlinksPaneOpen ?? true);
   const [notebookStacks, setNotebookStacks] = useState<Record<string, string>>(initialPrefs.notebookStacks ?? {});
   const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(
     () => new Set(initialPrefs.collapsedStacks ?? [])
@@ -1325,6 +1344,8 @@ export default function App() {
   const [aiModelFetchBusy, setAiModelFetchBusy] = useState(false);
   const [aiConnectionState, setAiConnectionState] = useState<AiConnectionState | null>(null);
   const [aiModels, setAiModels] = useState<string[]>([]);
+  const [gitBackupStatus, setGitBackupStatus] = useState<GitBackupStatus | null>(null);
+  const [gitBackupBusy, setGitBackupBusy] = useState(false);
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [homeScratchPad, setHomeScratchPad] = useState<string>(() => loadScratchPad());
@@ -1799,6 +1820,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    void refreshGitBackupStatus();
+  }, []);
+
+  useEffect(() => {
     if (queryNoteHandled || typeof window === "undefined") {
       return;
     }
@@ -2128,6 +2153,7 @@ export default function App() {
       homePinnedNoteIds,
       notebookPinnedNoteIds,
       savedSearches,
+      backlinksPaneOpen,
       notebookStacks,
       collapsedStacks: Array.from(collapsedStacks)
     };
@@ -2149,12 +2175,19 @@ export default function App() {
     homePinnedNoteIds,
     notebookPinnedNoteIds,
     savedSearches,
+    backlinksPaneOpen,
     notebookStacks,
     collapsedStacksKey
   ]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const eventTarget = event.target;
+      const isTextEntryTarget =
+        eventTarget instanceof HTMLInputElement ||
+        eventTarget instanceof HTMLTextAreaElement ||
+        (eventTarget instanceof HTMLElement && eventTarget.isContentEditable);
+
       if (slashMenu?.editor === "rich") {
         if (event.key === "Escape") {
           event.preventDefault();
@@ -2191,6 +2224,22 @@ export default function App() {
 
       if (!searchOpen && activeNote && (event.metaKey || event.ctrlKey)) {
         const key = event.key.toLowerCase();
+        if (key === "backspace" && !isTextEntryTarget) {
+          event.preventDefault();
+          if (activeNote.trashedAt) {
+            const removed = deleteNotesPermanently([activeNote.id]);
+            if (removed > 0) {
+              setToastMessage(`"${activeNote.title}" deleted permanently`);
+            }
+          } else {
+            const moved = moveNotesToTrash([activeNote.id]);
+            if (moved > 0) {
+              setToastMessage(`"${activeNote.title}" moved to Trash`);
+            }
+          }
+          return;
+        }
+
         if (key === "b") {
           event.preventDefault();
           if (editorMode === "rich") {
@@ -2454,6 +2503,93 @@ export default function App() {
   function clearAiChat(): void {
     setAiMessages([]);
     setAiError(null);
+  }
+
+  function describeGitBackup(status: GitBackupStatus | null): string {
+    if (!status) {
+      return "Status unavailable";
+    }
+    if (!status.enabled) {
+      return "Disabled";
+    }
+    if (status.lastError) {
+      return status.lastError;
+    }
+    if (status.lastCommitAt) {
+      const hash = status.lastCommitHash ? ` (${status.lastCommitHash})` : "";
+      return `Last commit ${new Date(status.lastCommitAt).toLocaleString()}${hash}`;
+    }
+    if (status.dirty) {
+      return "Pending changes";
+    }
+    if (status.available === false) {
+      return "Git is unavailable";
+    }
+    return "Ready";
+  }
+
+  async function refreshGitBackupStatus(): Promise<GitBackupStatus | null> {
+    if (!window.pkmShell?.getGitBackupStatus) {
+      setGitBackupStatus(null);
+      return null;
+    }
+
+    const status = (await window.pkmShell.getGitBackupStatus()) as GitBackupStatus | null;
+    if (status) {
+      setGitBackupStatus(status);
+    }
+    return status;
+  }
+
+  async function runGitBackupNow(): Promise<void> {
+    if (!window.pkmShell?.backupVaultToGit) {
+      setToastMessage("Git backup is only available in the desktop app");
+      return;
+    }
+
+    try {
+      setGitBackupBusy(true);
+      const status = (await window.pkmShell.backupVaultToGit()) as GitBackupStatus | null;
+      if (status) {
+        setGitBackupStatus(status);
+        if (status.lastError) {
+          setToastMessage(`Git backup failed: ${status.lastError}`);
+        } else if (!status.enabled) {
+          setToastMessage("Git backups are disabled");
+        } else if (status.lastCommitHash) {
+          setToastMessage(`Git backup saved (${status.lastCommitHash})`);
+        } else {
+          setToastMessage("Git backup checked (no new changes)");
+        }
+      } else {
+        setToastMessage("Git backup request returned no status");
+      }
+    } catch (error) {
+      setToastMessage(error instanceof Error ? error.message : "Git backup failed");
+    } finally {
+      setGitBackupBusy(false);
+    }
+  }
+
+  async function toggleGitBackups(): Promise<void> {
+    if (!window.pkmShell?.setGitBackupEnabled) {
+      setToastMessage("Git backup controls are only available in the desktop app");
+      return;
+    }
+
+    const nextEnabled = !(gitBackupStatus?.enabled ?? true);
+    try {
+      setGitBackupBusy(true);
+      const status = (await window.pkmShell.setGitBackupEnabled(nextEnabled)) as GitBackupStatus | null;
+      if (status) {
+        setGitBackupStatus(status);
+      }
+      setToastMessage(nextEnabled ? "Git backups enabled" : "Git backups disabled");
+    } catch (error) {
+      setToastMessage(error instanceof Error ? error.message : "Failed to update Git backup setting");
+    } finally {
+      setGitBackupBusy(false);
+    }
   }
 
   async function testAiConnection(): Promise<void> {
@@ -3447,6 +3583,9 @@ export default function App() {
     }
 
     if (actionId === "toggle-editor") {
+      if (editorMode === "markdown") {
+        setLiteEditMode(false);
+      }
       setEditorMode((previous) => (previous === "markdown" ? "rich" : "markdown"));
       setSearchOpen(false);
       return;
@@ -3455,6 +3594,18 @@ export default function App() {
     if (actionId === "cycle-theme") {
       cycleTheme();
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-git-backup") {
+      setSearchOpen(false);
+      void toggleGitBackups();
+      return;
+    }
+
+    if (actionId === "git-backup-now") {
+      setSearchOpen(false);
+      void runGitBackupNow();
       return;
     }
 
@@ -4220,12 +4371,18 @@ export default function App() {
     }
 
     if (action === "open-lite-edit") {
-      if (targetId && targetId !== activeId) {
+      const openingDifferentTarget = Boolean(targetId && targetId !== activeId);
+      if (openingDifferentTarget && targetId) {
         focusNote(targetId);
       }
-      setEditorMode("markdown");
-      setMetadataOpen(false);
-      setAiPanelOpen(false);
+      if (liteEditMode && !openingDifferentTarget) {
+        setLiteEditMode(false);
+      } else {
+        setEditorMode("markdown");
+        setLiteEditMode(true);
+        setMetadataOpen(false);
+        setAiPanelOpen(false);
+      }
       setContextMenu(null);
       return;
     }
@@ -4407,6 +4564,10 @@ export default function App() {
     }
     if (action === "toggle-template") {
       return allTemplates ? "Remove from Templates" : "Set as template";
+    }
+    if (action === "open-lite-edit") {
+      const targetIsActive = contextMenu.noteIds.length === 1 && contextMenu.noteIds[0] === activeId;
+      return liteEditMode && targetIsActive ? "Open full editor" : "Open in Lite edit mode";
     }
     if (action === "move-trash") {
       return allTrashed ? "Delete permanently" : "Move to Trash";
@@ -5718,6 +5879,13 @@ export default function App() {
               </button>
               <button
                 type="button"
+                className={backlinksPaneOpen ? "active" : ""}
+                onClick={() => setBacklinksPaneOpen((previous) => !previous)}
+              >
+                Backlinks
+              </button>
+              <button
+                type="button"
                 onClick={(event) => {
                   const rect = event.currentTarget.getBoundingClientRect();
                   openNoteListMenu("sort", rect.left, rect.bottom + 8);
@@ -6051,6 +6219,42 @@ export default function App() {
                 </div>
               )}
             </div>
+            {backlinksPaneOpen ? (
+              <section className="note-backlinks-dock" aria-label="Backlinks dock">
+                <header>
+                  <h2>Backlinks</h2>
+                  <small>{backlinks.length}</small>
+                </header>
+                {activeNote ? (
+                  <>
+                    <p className="note-backlinks-context">Notes linking to "{activeNote.title}"</p>
+                    {backlinks.length ? (
+                      <ul>
+                        {backlinks.map((note) => (
+                          <li key={note.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBrowseMode("all");
+                                setSelectedNotebook(note.notebook);
+                                focusNote(note.id);
+                              }}
+                            >
+                              <strong>{note.title}</strong>
+                              <small>{note.notebook}</small>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="note-backlinks-empty">No backlinks yet</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="note-backlinks-empty">Select a note to view backlinks</p>
+                )}
+              </section>
+            ) : null}
           </>
         )}
       </section>
@@ -6103,6 +6307,22 @@ export default function App() {
                 <button type="button" className="link-btn">
                   Link
                 </button>
+                <button
+                  type="button"
+                  className={liteEditMode ? "link-btn active" : "link-btn"}
+                  onClick={() => {
+                    if (liteEditMode) {
+                      setLiteEditMode(false);
+                    } else {
+                      setEditorMode("markdown");
+                      setLiteEditMode(true);
+                      setMetadataOpen(false);
+                      setAiPanelOpen(false);
+                    }
+                  }}
+                >
+                  Lite
+                </button>
                 <button type="button" className={aiPanelOpen ? "link-btn active" : "link-btn"} onClick={toggleAiPanel}>
                   AI
                 </button>
@@ -6135,6 +6355,7 @@ export default function App() {
                 type="button"
                 className={editorMode === "rich" ? "active" : ""}
                 onClick={() => {
+                  setLiteEditMode(false);
                   setEditorMode("rich");
                   window.requestAnimationFrame(() => richEditorRef.current?.focus());
                 }}
@@ -6198,7 +6419,7 @@ export default function App() {
 
             <div ref={editorMainRef} className="editor-main" style={editorMainStyle}>
               <article className={metadataOpen || aiPanelOpen ? "editor-content with-metadata" : "editor-content"}>
-              <div className="editor-workbench">
+              <div className={liteEditMode ? "editor-workbench lite" : "editor-workbench"}>
                 {editorMode === "markdown" ? (
                   <section
                     className={attachmentDropTarget === "markdown" ? "markdown-pane drop-active" : "markdown-pane"}
@@ -6458,9 +6679,10 @@ export default function App() {
                   </section>
                 )}
 
-                <section className="preview-pane" aria-label="Rendered preview">
-                  <h3>Preview</h3>
-                  <div className="preview-document">
+                {editorMode !== "markdown" || !liteEditMode ? (
+                  <section className="preview-pane" aria-label="Rendered preview">
+                    <h3>Preview</h3>
+                    <div className="preview-document">
                     <h2>{draftPreview.title}</h2>
                     {draftPreview.body.map((line, index) => {
                       const key = `${line}-${index}`;
@@ -6494,77 +6716,78 @@ export default function App() {
                       return <p key={key}>{renderInlineWithLinks(line)}</p>;
                     })}
 
-                    <div className="link-sections">
-                      <section>
-                        <h5>Outgoing links</h5>
-                        <ul>
-                          {outgoingLinks.length ? (
-                            outgoingLinks.map((entry, index) => (
-                              <li key={`${entry.title}-${index}`}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (entry.target) {
-                                      focusNote(entry.target.id);
-                                    } else {
-                                      const created = ensureLinkedNote(entry.title);
-                                      focusNote(created.id);
-                                    }
-                                  }}
-                                >
-                                  {entry.title}
-                                </button>
-                              </li>
-                            ))
-                          ) : (
-                            <li className="muted">No outgoing links</li>
-                          )}
-                        </ul>
-                      </section>
-                      <section>
-                        <h5>Backlinks</h5>
-                        <ul>
-                          {backlinks.length ? (
-                            backlinks.map((entry) => (
-                              <li key={entry.id}>
-                                <button type="button" onClick={() => focusNote(entry.id)}>
-                                  {entry.title}
-                                </button>
-                              </li>
-                            ))
-                          ) : (
-                            <li className="muted">No backlinks yet</li>
-                          )}
-                        </ul>
-                      </section>
-                      <section>
-                        <h5>Linked events</h5>
-                        <ul>
-                          {eventReferences.length ? (
-                            eventReferences.map((entry, index) => (
-                              <li key={`${entry.id}-${index}`}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (entry.event) {
-                                      openEditEventDialog(entry.event.id);
-                                    }
-                                    setSidebarView("calendar");
-                                    setCalendarDialogOpen(true);
-                                  }}
-                                >
-                                  {entry.event?.title ?? entry.title}
-                                </button>
-                              </li>
-                            ))
-                          ) : (
-                            <li className="muted">No linked events</li>
-                          )}
-                        </ul>
-                      </section>
+                      <div className="link-sections">
+                        <section>
+                          <h5>Outgoing links</h5>
+                          <ul>
+                            {outgoingLinks.length ? (
+                              outgoingLinks.map((entry, index) => (
+                                <li key={`${entry.title}-${index}`}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (entry.target) {
+                                        focusNote(entry.target.id);
+                                      } else {
+                                        const created = ensureLinkedNote(entry.title);
+                                        focusNote(created.id);
+                                      }
+                                    }}
+                                  >
+                                    {entry.title}
+                                  </button>
+                                </li>
+                              ))
+                            ) : (
+                              <li className="muted">No outgoing links</li>
+                            )}
+                          </ul>
+                        </section>
+                        <section>
+                          <h5>Backlinks</h5>
+                          <ul>
+                            {backlinks.length ? (
+                              backlinks.map((entry) => (
+                                <li key={entry.id}>
+                                  <button type="button" onClick={() => focusNote(entry.id)}>
+                                    {entry.title}
+                                  </button>
+                                </li>
+                              ))
+                            ) : (
+                              <li className="muted">No backlinks yet</li>
+                            )}
+                          </ul>
+                        </section>
+                        <section>
+                          <h5>Linked events</h5>
+                          <ul>
+                            {eventReferences.length ? (
+                              eventReferences.map((entry, index) => (
+                                <li key={`${entry.id}-${index}`}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (entry.event) {
+                                        openEditEventDialog(entry.event.id);
+                                      }
+                                      setSidebarView("calendar");
+                                      setCalendarDialogOpen(true);
+                                    }}
+                                  >
+                                    {entry.event?.title ?? entry.title}
+                                  </button>
+                                </li>
+                              ))
+                            ) : (
+                              <li className="muted">No linked events</li>
+                            )}
+                          </ul>
+                        </section>
+                      </div>
                     </div>
-                  </div>
-                </section>
+                  </section>
+                ) : null}
               </div>
 
               {slashMenu ? (
@@ -6714,6 +6937,29 @@ export default function App() {
                         {aiConnectionState ? (
                           <p className={`ai-connection ${aiConnectionState.tone}`}>{aiConnectionState.message}</p>
                         ) : null}
+                        <div className="vault-backup-settings">
+                          <div className="vault-backup-head">
+                            <strong>Git backup</strong>
+                            <button
+                              type="button"
+                              onClick={() => void toggleGitBackups()}
+                              disabled={gitBackupBusy}
+                            >
+                              {gitBackupStatus?.enabled ?? true ? "Disable" : "Enable"}
+                            </button>
+                          </div>
+                          <div className="vault-backup-actions">
+                            <button type="button" onClick={() => void runGitBackupNow()} disabled={gitBackupBusy}>
+                              {gitBackupBusy ? "Running..." : "Backup now"}
+                            </button>
+                            <button type="button" onClick={() => void refreshGitBackupStatus()} disabled={gitBackupBusy}>
+                              Refresh
+                            </button>
+                          </div>
+                          <p className={`vault-backup-status ${gitBackupStatus?.lastError ? "error" : ""}`}>
+                            {describeGitBackup(gitBackupStatus)}
+                          </p>
+                        </div>
                         <label>
                           <span>Temperature</span>
                           <input

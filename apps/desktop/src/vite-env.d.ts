@@ -23,6 +23,39 @@ declare global {
         markdown: string;
         copied?: number;
       } | null>;
+      getGitBackupStatus?: () => Promise<{
+        enabled: boolean;
+        available: boolean | null;
+        repoReady: boolean;
+        dirty: boolean;
+        busy: boolean;
+        lastRunAt: string | null;
+        lastCommitAt: string | null;
+        lastCommitHash: string;
+        lastError: string;
+      } | null>;
+      setGitBackupEnabled?: (enabled: boolean) => Promise<{
+        enabled: boolean;
+        available: boolean | null;
+        repoReady: boolean;
+        dirty: boolean;
+        busy: boolean;
+        lastRunAt: string | null;
+        lastCommitAt: string | null;
+        lastCommitHash: string;
+        lastError: string;
+      } | null>;
+      backupVaultToGit?: () => Promise<{
+        enabled: boolean;
+        available: boolean | null;
+        repoReady: boolean;
+        dirty: boolean;
+        busy: boolean;
+        lastRunAt: string | null;
+        lastCommitAt: string | null;
+        lastCommitHash: string;
+        lastError: string;
+      } | null>;
       chatWithLlm?: (payload: {
         provider?: "openai" | "anthropic" | "gemini" | "perplexity" | "openai-compatible" | "ollama";
         baseUrl: string;

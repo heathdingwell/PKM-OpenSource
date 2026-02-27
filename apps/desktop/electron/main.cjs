@@ -1,10 +1,18 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const { randomUUID } = require("node:crypto");
+const { execFile } = require("node:child_process");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { promisify } = require("node:util");
+
+const execFileAsync = promisify(execFile);
 
 const VAULT_DIR_NAME = "vault";
 const VAULT_INDEX_NAME = ".vault-index.json";
+const GIT_BACKUP_STATE_NAME = ".vault-git-backup.json";
+const GIT_BACKUP_AUTHOR_NAME = "PKM OpenSource";
+const GIT_BACKUP_AUTHOR_EMAIL = "backup@pkm-open-source.local";
+const GIT_BACKUP_AUTOSAVE_DELAY_MS = 4000;
 
 function vaultRootPath() {
   return path.join(app.getPath("userData"), VAULT_DIR_NAME);
@@ -13,6 +21,27 @@ function vaultRootPath() {
 function vaultIndexPath() {
   return path.join(vaultRootPath(), VAULT_INDEX_NAME);
 }
+
+function gitBackupStatePath() {
+  return path.join(app.getPath("userData"), GIT_BACKUP_STATE_NAME);
+}
+
+let cachedGitBackupState = null;
+let gitBackupTimer = null;
+let gitBackupQueuedReason = null;
+let gitBackupPending = false;
+let gitBackupInFlight = false;
+let lastGitBackupStatus = {
+  enabled: true,
+  available: null,
+  repoReady: false,
+  dirty: false,
+  busy: false,
+  lastRunAt: null,
+  lastCommitAt: null,
+  lastCommitHash: "",
+  lastError: ""
+};
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object";
@@ -24,6 +53,292 @@ function normalizeSegment(segment) {
 
 function asString(value) {
   return typeof value === "string" ? value : "";
+}
+
+function normalizeGitBackupState(value) {
+  if (!isObject(value)) {
+    return { enabled: true };
+  }
+  return {
+    enabled: value.enabled !== false
+  };
+}
+
+async function readGitBackupState() {
+  try {
+    const raw = await fs.readFile(gitBackupStatePath(), "utf8");
+    const parsed = JSON.parse(raw);
+    return normalizeGitBackupState(parsed);
+  } catch (error) {
+    if (error && typeof error === "object" && error.code === "ENOENT") {
+      return { enabled: true };
+    }
+    console.error("Failed to read git backup state", error);
+    return { enabled: true };
+  }
+}
+
+async function writeGitBackupState(value) {
+  const safe = normalizeGitBackupState(value);
+  await fs.mkdir(path.dirname(gitBackupStatePath()), { recursive: true });
+  await fs.writeFile(gitBackupStatePath(), JSON.stringify(safe, null, 2), "utf8");
+  return safe;
+}
+
+async function getGitBackupState() {
+  if (cachedGitBackupState) {
+    return cachedGitBackupState;
+  }
+  const loaded = await readGitBackupState();
+  cachedGitBackupState = loaded;
+  return loaded;
+}
+
+async function setGitBackupEnabled(enabled) {
+  const next = await writeGitBackupState({ enabled: Boolean(enabled) });
+  cachedGitBackupState = next;
+  lastGitBackupStatus = {
+    ...lastGitBackupStatus,
+    enabled: next.enabled,
+    lastError: next.enabled ? lastGitBackupStatus.lastError : ""
+  };
+  return next;
+}
+
+async function runGitCommand(args, cwd) {
+  try {
+    const { stdout, stderr } = await execFileAsync("git", args, {
+      cwd,
+      windowsHide: true,
+      maxBuffer: 1024 * 1024
+    });
+    return {
+      ok: true,
+      code: 0,
+      stdout: asString(stdout),
+      stderr: asString(stderr)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      code: typeof error?.code === "number" ? error.code : -1,
+      stdout: asString(error?.stdout),
+      stderr: asString(error?.stderr) || asString(error?.message)
+    };
+  }
+}
+
+function gitCommandError(result, fallback) {
+  const stderr = asString(result?.stderr).trim();
+  const stdout = asString(result?.stdout).trim();
+  return stderr || stdout || fallback;
+}
+
+async function ensureVaultGitRepo(rootDir) {
+  const probe = await runGitCommand(["rev-parse", "--is-inside-work-tree"], rootDir);
+  if (!probe.ok || probe.stdout.trim() !== "true") {
+    const init = await runGitCommand(["init"], rootDir);
+    if (!init.ok) {
+      return {
+        ok: false,
+        error: gitCommandError(init, "Failed to initialize Git repository")
+      };
+    }
+  }
+
+  const name = await runGitCommand(["config", "user.name"], rootDir);
+  if (!name.ok || !name.stdout.trim()) {
+    await runGitCommand(["config", "user.name", GIT_BACKUP_AUTHOR_NAME], rootDir);
+  }
+
+  const email = await runGitCommand(["config", "user.email"], rootDir);
+  if (!email.ok || !email.stdout.trim()) {
+    await runGitCommand(["config", "user.email", GIT_BACKUP_AUTHOR_EMAIL], rootDir);
+  }
+
+  return { ok: true };
+}
+
+function nextGitBackupMessage(reason) {
+  const suffix = asString(reason).trim() || "autosave";
+  return `Vault backup (${suffix}) ${new Date().toISOString()}`;
+}
+
+async function performVaultGitBackup(reason = "autosave") {
+  const state = await getGitBackupState();
+  const lastRunAt = new Date().toISOString();
+  lastGitBackupStatus = {
+    ...lastGitBackupStatus,
+    enabled: state.enabled,
+    lastRunAt
+  };
+
+  if (!state.enabled) {
+    return { ...lastGitBackupStatus };
+  }
+
+  const rootDir = vaultRootPath();
+  const gitVersion = await runGitCommand(["--version"], rootDir);
+  if (!gitVersion.ok) {
+    lastGitBackupStatus = {
+      ...lastGitBackupStatus,
+      available: false,
+      repoReady: false,
+      dirty: false,
+      lastError: gitCommandError(gitVersion, "Git is not available on this system")
+    };
+    return { ...lastGitBackupStatus };
+  }
+
+  const repo = await ensureVaultGitRepo(rootDir);
+  if (!repo.ok) {
+    lastGitBackupStatus = {
+      ...lastGitBackupStatus,
+      available: true,
+      repoReady: false,
+      dirty: false,
+      lastError: repo.error || "Failed to prepare Git repository"
+    };
+    return { ...lastGitBackupStatus };
+  }
+
+  const status = await runGitCommand(["status", "--porcelain"], rootDir);
+  if (!status.ok) {
+    lastGitBackupStatus = {
+      ...lastGitBackupStatus,
+      available: true,
+      repoReady: true,
+      dirty: false,
+      lastError: gitCommandError(status, "Failed to inspect Git status")
+    };
+    return { ...lastGitBackupStatus };
+  }
+
+  const hasChanges = Boolean(status.stdout.trim());
+  if (!hasChanges) {
+    lastGitBackupStatus = {
+      ...lastGitBackupStatus,
+      available: true,
+      repoReady: true,
+      dirty: false,
+      lastError: ""
+    };
+    return { ...lastGitBackupStatus };
+  }
+
+  const staged = await runGitCommand(["add", "-A"], rootDir);
+  if (!staged.ok) {
+    lastGitBackupStatus = {
+      ...lastGitBackupStatus,
+      available: true,
+      repoReady: true,
+      dirty: true,
+      lastError: gitCommandError(staged, "Failed to stage vault changes")
+    };
+    return { ...lastGitBackupStatus };
+  }
+
+  const committed = await runGitCommand(["commit", "-m", nextGitBackupMessage(reason)], rootDir);
+  if (!committed.ok) {
+    const combined = `${committed.stdout}\n${committed.stderr}`.toLowerCase();
+    if (combined.includes("nothing to commit")) {
+      lastGitBackupStatus = {
+        ...lastGitBackupStatus,
+        available: true,
+        repoReady: true,
+        dirty: false,
+        lastError: ""
+      };
+      return { ...lastGitBackupStatus };
+    }
+
+    lastGitBackupStatus = {
+      ...lastGitBackupStatus,
+      available: true,
+      repoReady: true,
+      dirty: true,
+      lastError: gitCommandError(committed, "Failed to create Git backup commit")
+    };
+    return { ...lastGitBackupStatus };
+  }
+
+  const head = await runGitCommand(["rev-parse", "--short", "HEAD"], rootDir);
+  lastGitBackupStatus = {
+    ...lastGitBackupStatus,
+    available: true,
+    repoReady: true,
+    dirty: false,
+    lastCommitAt: new Date().toISOString(),
+    lastCommitHash: head.ok ? head.stdout.trim() : lastGitBackupStatus.lastCommitHash,
+    lastError: ""
+  };
+  return { ...lastGitBackupStatus };
+}
+
+function scheduleVaultGitBackup(reason = "autosave") {
+  gitBackupPending = true;
+  gitBackupQueuedReason = reason;
+
+  if (gitBackupTimer) {
+    clearTimeout(gitBackupTimer);
+  }
+
+  gitBackupTimer = setTimeout(() => {
+    gitBackupTimer = null;
+    void flushVaultGitBackups();
+  }, GIT_BACKUP_AUTOSAVE_DELAY_MS);
+}
+
+async function flushVaultGitBackups(reason) {
+  if (reason) {
+    gitBackupPending = true;
+    gitBackupQueuedReason = reason;
+    if (gitBackupTimer) {
+      clearTimeout(gitBackupTimer);
+      gitBackupTimer = null;
+    }
+  }
+
+  if (gitBackupInFlight) {
+    gitBackupPending = true;
+    lastGitBackupStatus = {
+      ...lastGitBackupStatus,
+      busy: true
+    };
+    return { ...lastGitBackupStatus };
+  }
+
+  gitBackupInFlight = true;
+  lastGitBackupStatus = {
+    ...lastGitBackupStatus,
+    busy: true
+  };
+
+  try {
+    do {
+      gitBackupPending = false;
+      const queuedReason = gitBackupQueuedReason || "autosave";
+      gitBackupQueuedReason = null;
+      await performVaultGitBackup(queuedReason);
+    } while (gitBackupPending);
+  } finally {
+    gitBackupInFlight = false;
+    lastGitBackupStatus = {
+      ...lastGitBackupStatus,
+      busy: false
+    };
+  }
+
+  return { ...lastGitBackupStatus };
+}
+
+async function gitBackupStatus() {
+  const state = await getGitBackupState();
+  return {
+    ...lastGitBackupStatus,
+    enabled: state.enabled,
+    busy: gitBackupInFlight || Boolean(gitBackupTimer)
+  };
 }
 
 function sanitizeNotePath(input) {
@@ -395,6 +710,8 @@ async function saveVaultNotes(payload) {
     }
   }
 
+  scheduleVaultGitBackup("notes-save");
+
   return true;
 }
 
@@ -434,6 +751,8 @@ async function saveVaultAttachment(payload) {
     noteDir === "." ? "" : noteDir,
     attachmentRelativePath
   );
+
+  scheduleVaultGitBackup("attachment-save");
 
   return {
     relativePath: relativeFromNote.startsWith(".") ? relativeFromNote : `./${relativeFromNote}`,
@@ -525,6 +844,9 @@ async function cloneAttachmentLinks(payload) {
   }
 
   rewritten.push(markdown.slice(cursor));
+  if (copiedMap.size > 0) {
+    scheduleVaultGitBackup("attachment-clone");
+  }
   return { markdown: rewritten.join(""), copied: copiedMap.size };
 }
 
@@ -991,6 +1313,52 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error("Failed to clone note attachments", error);
       return null;
+    }
+  });
+
+  ipcMain.handle("vault:git-status", async () => {
+    try {
+      return await gitBackupStatus();
+    } catch (error) {
+      console.error("Failed to fetch git backup status", error);
+      return {
+        ...lastGitBackupStatus,
+        enabled: true,
+        busy: false,
+        lastError: "Failed to read Git backup status"
+      };
+    }
+  });
+
+  ipcMain.handle("vault:git-set-enabled", async (_event, payload) => {
+    try {
+      const nextEnabled = Boolean(payload);
+      await setGitBackupEnabled(nextEnabled);
+      if (nextEnabled) {
+        await flushVaultGitBackups("enabled");
+      }
+      return await gitBackupStatus();
+    } catch (error) {
+      console.error("Failed to update git backup setting", error);
+      return {
+        ...lastGitBackupStatus,
+        enabled: Boolean(payload),
+        busy: false,
+        lastError: "Failed to update Git backup setting"
+      };
+    }
+  });
+
+  ipcMain.handle("vault:git-backup", async () => {
+    try {
+      return await flushVaultGitBackups("manual");
+    } catch (error) {
+      console.error("Failed to run git backup", error);
+      return {
+        ...lastGitBackupStatus,
+        busy: false,
+        lastError: "Git backup failed"
+      };
     }
   });
 

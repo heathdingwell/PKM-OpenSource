@@ -323,6 +323,7 @@ button {
 }
 
 .note-card {
+  position: relative;
   min-height: 170px;
   display: flex;
   flex-direction: column;
@@ -347,6 +348,7 @@ button {
 }
 
 .note-card strong {
+  padding-right: 24px;
   font-size: 22px;
   line-height: 1.2;
 }
@@ -371,6 +373,32 @@ button {
 .note-card em {
   font-style: normal;
   color: #1f4ecb;
+}
+
+.note-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.note-card-menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  border-radius: 6px;
+  color: #6e5d47;
+  font-size: 12px;
+}
+
+.note-card-menu:hover {
+  background: #e8dcc9;
+}
+
+.note-card-menu:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.4);
+  outline-offset: 1px;
 }
 
 .editor-shell {

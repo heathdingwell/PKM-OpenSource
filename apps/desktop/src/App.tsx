@@ -447,6 +447,7 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickQuery, setQuickQuery] = useState("");
   const [searchSelected, setSearchSelected] = useState(0);
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
   const [dropNotebook, setDropNotebook] = useState<string | null>(null);
   const [noteInfoId, setNoteInfoId] = useState<string | null>(null);
@@ -2232,11 +2233,14 @@ export default function App() {
         <div className={viewMode === "list" ? "note-grid list-mode" : "note-grid"} aria-label="Notes list">
           {visibleNotes.map((note) => {
             const isSelected = selectedIds.has(note.id);
+            const showQuickAction = hoveredCardId === note.id || isSelected;
             return (
               <button
                 key={note.id}
                 type="button"
                 draggable
+                onMouseEnter={() => setHoveredCardId(note.id)}
+                onMouseLeave={() => setHoveredCardId((previous) => (previous === note.id ? null : previous))}
                 onDragStart={() => setDraggingNoteId(note.id)}
                 onDragEnd={() => {
                   setDraggingNoteId(null);
@@ -2250,6 +2254,28 @@ export default function App() {
                   openCardMenu(note.id, event.clientX, event.clientY);
                 }}
               >
+                <span className="note-card-actions">
+                  {showQuickAction ? (
+                    <span
+                      className="note-card-menu"
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openCardMenu(note.id, event.clientX, event.clientY);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          const target = event.currentTarget.getBoundingClientRect();
+                          openCardMenu(note.id, target.left, target.bottom + 6);
+                        }
+                      }}
+                    >
+                      ...
+                    </span>
+                  ) : null}
+                </span>
                 <strong>{note.title}</strong>
                 <p>{note.snippet || "Untitled"}</p>
                 <footer>

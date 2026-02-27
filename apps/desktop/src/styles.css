@@ -747,10 +747,46 @@ body.is-resizing {
   flex-direction: column;
 }
 
+.rich-editor-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
 .rich-editor-surface {
   flex: 1;
   min-height: 460px;
   overflow: auto;
+}
+
+.rich-bubble-menu {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #d8cab7;
+  border-radius: 10px;
+  box-shadow: 0 12px 24px rgba(29, 24, 18, 0.24);
+  background: #fffaf3;
+}
+
+.rich-bubble-menu button {
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  color: #5a4631;
+  background: transparent;
+  font-size: 12px;
+}
+
+.rich-bubble-menu button:hover {
+  background: #f2e2cc;
+}
+
+.rich-bubble-menu button.active {
+  color: #1e4fa6;
+  background: #e2ecff;
+  font-weight: 600;
 }
 
 .rich-editor-content {

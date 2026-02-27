@@ -8,6 +8,7 @@ import {
   type MouseEvent
 } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import TaskList from "@tiptap/extension-task-list";
@@ -269,7 +270,73 @@ function RichMarkdownEditorInner(
     [editor]
   );
 
-  return <EditorContent editor={editor} className="rich-editor-surface" onContextMenu={onContextMenu} />;
+  return (
+    <div className="rich-editor-shell">
+      {editor ? (
+        <BubbleMenu
+          editor={editor}
+          className="rich-bubble-menu"
+          appendTo={() => document.body}
+          options={{ placement: "top" }}
+        >
+          <button
+            type="button"
+            className={editor.isActive("bold") ? "active" : ""}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+          >
+            B
+          </button>
+          <button
+            type="button"
+            className={editor.isActive("italic") ? "active" : ""}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+          >
+            I
+          </button>
+          <button
+            type="button"
+            className={editor.isActive("underline") ? "active" : ""}
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+          >
+            U
+          </button>
+          <button
+            type="button"
+            className={editor.isActive("strike") ? "active" : ""}
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+          >
+            S
+          </button>
+          <button
+            type="button"
+            className={editor.isActive("bulletList") ? "active" : ""}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+          >
+            List
+          </button>
+          {editor.isActive("link") ? (
+            <button type="button" onClick={() => editor.chain().focus().unsetLink().run()}>
+              Unlink
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                const href = window.prompt("Enter a URL for this link");
+                if (!href?.trim()) {
+                  return;
+                }
+                editor.chain().focus().setLink({ href: href.trim() }).run();
+              }}
+            >
+              Link
+            </button>
+          )}
+        </BubbleMenu>
+      ) : null}
+      <EditorContent editor={editor} className="rich-editor-surface" onContextMenu={onContextMenu} />
+    </div>
+  );
 }
 
 const RichMarkdownEditor = forwardRef(RichMarkdownEditorInner);

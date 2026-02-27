@@ -5571,6 +5571,26 @@ export default function App() {
             </section>
             <section className="home-panel">
               <header>
+                <h2>Saved searches</h2>
+                <small>{savedSearches.length}</small>
+              </header>
+              {savedSearches.length ? (
+                <ul className="home-list">
+                  {savedSearches.slice(0, 8).map((saved) => (
+                    <li key={saved.id}>
+                      <button type="button" onClick={() => openSavedSearch(saved)}>
+                        <strong>{saved.label}</strong>
+                        <small>{saved.scope === "current" ? `In ${selectedNotebook}` : "Everywhere"}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="home-empty">No saved searches yet</p>
+              )}
+            </section>
+            <section className="home-panel">
+              <header>
                 <h2>Tags</h2>
                 <small>{homeTagSuggestions.length}</small>
               </header>

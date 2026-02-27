@@ -21,6 +21,7 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Home" }));
     expect(screen.getByRole("heading", { name: "Home", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Saved searches", level: 2 })).toBeInTheDocument();
   });
 
   it("opens command palette from quick actions button", () => {

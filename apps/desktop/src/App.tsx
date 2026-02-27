@@ -191,6 +191,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "note-history", label: "Note history" },
   { id: "divider-4", label: "", divider: true },
   { id: "export", label: "Export" },
+  { id: "export-pdf", label: "Export as PDF" },
   { id: "print", label: "Print", shortcut: "cmd+p" },
   { id: "divider-5", label: "", divider: true },
   { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace" }
@@ -552,6 +553,7 @@ export default function App() {
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [vaultReady, setVaultReady] = useState(false);
+  const [queryNoteHandled, setQueryNoteHandled] = useState(false);
   const [vaultMode] = useState<"local" | "desktop">(() =>
     typeof window !== "undefined" && window.pkmShell?.saveVaultState ? "desktop" : "local"
   );
@@ -815,6 +817,32 @@ export default function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (queryNoteHandled || typeof window === "undefined") {
+      return;
+    }
+
+    const noteId = new URLSearchParams(window.location.search).get("note");
+    if (!noteId) {
+      setQueryNoteHandled(true);
+      return;
+    }
+
+    const note = notes.find((entry) => entry.id === noteId);
+    if (!note) {
+      if (vaultReady) {
+        setQueryNoteHandled(true);
+      }
+      return;
+    }
+
+    setSelectedNotebook(note.notebook);
+    setActiveId(note.id);
+    setSelectedIds(new Set([note.id]));
+    setLastSelectedId(note.id);
+    setQueryNoteHandled(true);
+  }, [notes, queryNoteHandled, vaultReady]);
 
   useEffect(() => {
     if (!notebooks.includes(selectedNotebook)) {
@@ -1386,7 +1414,7 @@ export default function App() {
     }
 
     if (mode === "open-window") {
-      setToastMessage(`Open in new window planned for "${note.title}"`);
+      openNoteInNewWindow(note.id);
       return;
     }
 
@@ -1728,6 +1756,33 @@ export default function App() {
     setToastMessage(link);
   }
 
+  function openNoteInNewWindow(noteId: string): void {
+    const note = notes.find((entry) => entry.id === noteId);
+    if (!note || typeof window === "undefined") {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("note", note.id);
+    window.open(url.toString(), "_blank", "noopener,noreferrer");
+  }
+
+  function exportNote(noteId: string): void {
+    const note = notes.find((entry) => entry.id === noteId);
+    if (!note || typeof document === "undefined") {
+      return;
+    }
+
+    const blob = new Blob([note.markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = toFileName(note.title);
+    link.click();
+    URL.revokeObjectURL(url);
+    setToastMessage(`Exported "${note.title}"`);
+  }
+
   function handleMenuAction(action: string): void {
     if (!contextMenu) {
       return;
@@ -1787,10 +1842,7 @@ export default function App() {
     }
 
     if (action === "open-window") {
-      const target = notes.find((note) => note.id === targetId);
-      if (target) {
-        setToastMessage(`Open in new window planned for "${target.title}"`);
-      }
+      openNoteInNewWindow(targetId);
       setContextMenu(null);
       return;
     }
@@ -1838,10 +1890,13 @@ export default function App() {
     }
 
     if (action === "export") {
-      const target = notes.find((note) => note.id === targetId);
-      if (target) {
-        setToastMessage(`Export planned for "${target.title}"`);
-      }
+      exportNote(targetId);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "export-pdf") {
+      window.print();
       setContextMenu(null);
       return;
     }

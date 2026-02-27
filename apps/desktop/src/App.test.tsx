@@ -90,6 +90,25 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
+  it("shows bulk actions for multi-select and can trash selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    expect(screen.getByRole("toolbar", { name: "Bulk note actions" })).toBeInTheDocument();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Move to Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+
+    const trashedCards = document.querySelectorAll(".note-grid .note-card");
+    expect(trashedCards.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("moves the active note to trash with cmd+backspace", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

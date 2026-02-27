@@ -502,6 +502,42 @@ body.is-resizing {
   border-style: dashed;
 }
 
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 10px 0;
+  padding: 8px 10px;
+  border: 1px solid #d5e0f1;
+  border-radius: 10px;
+  background: #f7faff;
+}
+
+.bulk-actions strong {
+  margin-right: 6px;
+  color: #395478;
+  font-size: 12px;
+}
+
+.bulk-actions button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #c9d8ef;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #395478;
+  font-size: 12px;
+}
+
+.bulk-actions button.danger {
+  border-color: #d8c2ca;
+  color: #9f1239;
+}
+
+.bulk-actions button.clear {
+  margin-left: auto;
+}
+
 .home-dashboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));

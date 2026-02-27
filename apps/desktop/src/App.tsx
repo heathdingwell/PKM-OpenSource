@@ -1492,6 +1492,11 @@ export default function App() {
     return Array.from(new Set(source.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
   }, [activeNotes, trashedNotes, selectedNotebook, browseMode, shortcutNoteIds]);
 
+  const selectedVisibleNoteIds = useMemo(
+    () => visibleNotes.filter((note) => selectedIds.has(note.id)).map((note) => note.id),
+    [visibleNotes, selectedIds]
+  );
+
   const recentNotes = useMemo(() => {
     return recentNoteIds
       .map((noteId) => activeNotes.find((note) => note.id === noteId))
@@ -6256,6 +6261,81 @@ export default function App() {
                   </button>
                 ))}
                 <button type="button" className="clear" onClick={() => setTagFilters([])}>
+                  Clear
+                </button>
+              </div>
+            ) : null}
+
+            {selectedVisibleNoteIds.length > 1 ? (
+              <div className="bulk-actions" role="toolbar" aria-label="Bulk note actions">
+                <strong>{selectedVisibleNoteIds.length} selected</strong>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMoveDialog({
+                      noteIds: selectedVisibleNoteIds,
+                      destination: selectedNotebook === "All Notes" ? "" : selectedNotebook,
+                      mode: "move"
+                    })
+                  }
+                >
+                  Move
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMoveDialog({
+                      noteIds: selectedVisibleNoteIds,
+                      destination: selectedNotebook === "All Notes" ? "" : selectedNotebook,
+                      mode: "copy"
+                    })
+                  }
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const { marked, unmarked } = toggleTemplateNotes(selectedVisibleNoteIds);
+                    if (marked && unmarked) {
+                      setToastMessage(`Templates updated (+${marked}/-${unmarked})`);
+                    } else if (marked) {
+                      setToastMessage(`${marked} marked as template`);
+                    } else if (unmarked) {
+                      setToastMessage(`${unmarked} removed from templates`);
+                    } else {
+                      setToastMessage("No template changes");
+                    }
+                  }}
+                >
+                  Template
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => {
+                    const selected = notes.filter((note) => selectedVisibleNoteIds.includes(note.id));
+                    const allTrashed = selected.length > 0 && selected.every((note) => Boolean(note.trashedAt));
+                    if (allTrashed) {
+                      const removed = deleteNotesPermanently(selectedVisibleNoteIds);
+                      if (removed > 0) {
+                        setToastMessage(`${removed === 1 ? "1 note" : `${removed} notes`} deleted permanently`);
+                      }
+                      return;
+                    }
+                    const moved = moveNotesToTrash(selectedVisibleNoteIds);
+                    if (moved > 0) {
+                      setToastMessage(`${moved === 1 ? "1 note" : `${moved} notes`} moved to Trash`);
+                    }
+                  }}
+                >
+                  {browseMode === "trash" ? "Delete permanently" : "Move to Trash"}
+                </button>
+                <button
+                  type="button"
+                  className="clear"
+                  onClick={() => setSelectedIds(activeId ? new Set([activeId]) : new Set())}
+                >
                   Clear
                 </button>
               </div>

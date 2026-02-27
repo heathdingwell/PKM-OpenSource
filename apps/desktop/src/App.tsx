@@ -815,6 +815,7 @@ export default function App() {
 
   const homePinnedSet = useMemo(() => new Set(homePinnedNoteIds), [homePinnedNoteIds]);
   const notebookPinnedSet = useMemo(() => new Set(notebookPinnedNoteIds), [notebookPinnedNoteIds]);
+  const shortcutSet = useMemo(() => new Set(shortcutNoteIds), [shortcutNoteIds]);
 
   const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
 
@@ -1837,21 +1838,29 @@ export default function App() {
     setToastMessage(`Notebook "${notebook}" created`);
   }
 
-  function addNotesToShortcuts(noteIds: string[]): number {
+  function toggleShortcutNotes(noteIds: string[]): { added: number; removed: number } {
     const validIds = new Set(notes.map((note) => note.id));
     let added = 0;
+    let removed = 0;
     setShortcutNoteIds((previous) => {
       const next = [...previous];
       for (const noteId of noteIds) {
-        if (!validIds.has(noteId) || next.includes(noteId)) {
+        if (!validIds.has(noteId)) {
           continue;
         }
-        next.push(noteId);
-        added += 1;
+
+        const index = next.indexOf(noteId);
+        if (index >= 0) {
+          next.splice(index, 1);
+          removed += 1;
+        } else {
+          next.push(noteId);
+          added += 1;
+        }
       }
       return next;
     });
-    return added;
+    return { added, removed };
   }
 
   function removeShortcut(noteId: string): void {
@@ -2321,8 +2330,16 @@ export default function App() {
     }
 
     if (action === "add-shortcuts") {
-      const added = addNotesToShortcuts(contextMenu.noteIds);
-      setToastMessage(added ? `${added} added to shortcuts` : "Already in shortcuts");
+      const { added, removed } = toggleShortcutNotes(contextMenu.noteIds);
+      if (added && removed) {
+        setToastMessage(`Shortcuts updated (+${added}/-${removed})`);
+      } else if (added) {
+        setToastMessage(`${added} added to shortcuts`);
+      } else if (removed) {
+        setToastMessage(`${removed} removed from shortcuts`);
+      } else {
+        setToastMessage("No shortcut changes");
+      }
       setContextMenu(null);
       return;
     }
@@ -2382,6 +2399,28 @@ export default function App() {
     }
 
     setContextMenu(null);
+  }
+
+  function getContextMenuLabel(action: string, defaultLabel: string): string {
+    if (!contextMenu) {
+      return defaultLabel;
+    }
+
+    const allShortcut = contextMenu.noteIds.every((noteId) => shortcutSet.has(noteId));
+    const allHomePinned = contextMenu.noteIds.every((noteId) => homePinnedSet.has(noteId));
+    const allNotebookPinned = contextMenu.noteIds.every((noteId) => notebookPinnedSet.has(noteId));
+
+    if (action === "add-shortcuts") {
+      return allShortcut ? "Remove from Shortcuts" : "Add to Shortcuts";
+    }
+    if (action === "pin-home") {
+      return allHomePinned ? "Unpin from Home" : "Pin to Home";
+    }
+    if (action === "pin-notebook") {
+      return allNotebookPinned ? "Unpin from Notebook" : "Pin to Notebook";
+    }
+
+    return defaultLabel;
   }
 
   function createNewNote(): void {
@@ -4119,7 +4158,7 @@ export default function App() {
               <div key={row.id} className="context-divider" />
             ) : (
               <button key={row.id} type="button" onClick={() => handleMenuAction(row.id)}>
-                <span>{row.label}</span>
+                <span>{getContextMenuLabel(row.id, row.label)}</span>
                 {row.shortcut ? <small>{row.shortcut}</small> : null}
               </button>
             )

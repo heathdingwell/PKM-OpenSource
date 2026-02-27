@@ -420,6 +420,7 @@ export default function App() {
   const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickQuery, setQuickQuery] = useState("");
+  const [searchSelected, setSearchSelected] = useState(0);
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
   const [dropNotebook, setDropNotebook] = useState<string | null>(null);
   const [noteInfoId, setNoteInfoId] = useState<string | null>(null);
@@ -518,6 +519,8 @@ export default function App() {
       .filter((note): note is AppNote => Boolean(note))
       .slice(0, 8);
   }, [notes, quickQuery, searchIndex, visibleNotes]);
+
+  const selectedSearchResult = quickResults[searchSelected] ?? null;
 
   const suggestions = useMemo(() => {
     if (!linkSuggestion) {
@@ -808,6 +811,20 @@ export default function App() {
   }, [toastMessage]);
 
   useEffect(() => {
+    if (!searchOpen) {
+      return;
+    }
+    setSearchSelected(0);
+  }, [searchOpen, quickQuery]);
+
+  useEffect(() => {
+    if (searchSelected < quickResults.length) {
+      return;
+    }
+    setSearchSelected(Math.max(0, quickResults.length - 1));
+  }, [searchSelected, quickResults.length]);
+
+  useEffect(() => {
     if (!slashMenu) {
       return;
     }
@@ -1046,6 +1063,21 @@ export default function App() {
     }
 
     focusNote(noteId);
+  }
+
+  function openSearchResult(note: AppNote, mode: "open" | "copy-link" | "open-window" = "open"): void {
+    if (mode === "copy-link") {
+      void copyNoteLink(note.id);
+      return;
+    }
+
+    if (mode === "open-window") {
+      setToastMessage(`Open in new window planned for "${note.title}"`);
+      return;
+    }
+
+    focusNote(note.id);
+    setSearchOpen(false);
   }
 
   function openCardMenu(noteId: string, clientX: number, clientY: number): void {
@@ -2604,6 +2636,31 @@ export default function App() {
               placeholder="Search or ask a question"
               value={quickQuery}
               onChange={(event) => setQuickQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (!quickResults.length) {
+                  return;
+                }
+
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setSearchSelected((previous) => Math.min(previous + 1, quickResults.length - 1));
+                  return;
+                }
+
+                if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setSearchSelected((previous) => Math.max(previous - 1, 0));
+                  return;
+                }
+
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  const note = quickResults[searchSelected];
+                  if (note) {
+                    openSearchResult(note, "open");
+                  }
+                }
+              }}
             />
             <div className="search-chips">
               <span className="chip active">Everywhere</span>
@@ -2618,13 +2675,12 @@ export default function App() {
               </ul>
               <h4>Results</h4>
               <ul>
-                {quickResults.map((note) => (
+                {quickResults.map((note, index) => (
                   <li
                     key={note.id}
-                    onClick={() => {
-                      focusNote(note.id);
-                      setSearchOpen(false);
-                    }}
+                    className={index === searchSelected ? "active" : ""}
+                    onMouseEnter={() => setSearchSelected(index)}
+                    onClick={() => openSearchResult(note, "open")}
                   >
                     <strong>{note.title}</strong>
                     <small>{note.notebook}</small>
@@ -2632,6 +2688,52 @@ export default function App() {
                 ))}
               </ul>
             </div>
+            <footer className="search-actions">
+              <button
+                type="button"
+                disabled={!selectedSearchResult}
+                onClick={() => {
+                  if (selectedSearchResult) {
+                    openSearchResult(selectedSearchResult, "open");
+                  }
+                }}
+              >
+                Select <kbd>↩</kbd>
+              </button>
+              <button
+                type="button"
+                disabled={!selectedSearchResult}
+                onClick={() => {
+                  if (selectedSearchResult) {
+                    openSearchResult(selectedSearchResult, "open");
+                  }
+                }}
+              >
+                Open
+              </button>
+              <button
+                type="button"
+                disabled={!selectedSearchResult}
+                onClick={() => {
+                  if (selectedSearchResult) {
+                    openSearchResult(selectedSearchResult, "copy-link");
+                  }
+                }}
+              >
+                Copy Link
+              </button>
+              <button
+                type="button"
+                disabled={!selectedSearchResult}
+                onClick={() => {
+                  if (selectedSearchResult) {
+                    openSearchResult(selectedSearchResult, "open-window");
+                  }
+                }}
+              >
+                Open in New Window
+              </button>
+            </footer>
           </section>
         </div>
       ) : null}

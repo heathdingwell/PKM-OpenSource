@@ -1048,8 +1048,46 @@ button {
   font-size: 14px;
 }
 
+.search-results li.active {
+  border-radius: 8px;
+  border-bottom-color: transparent;
+  background: #eef3ff;
+}
+
 .search-results li small {
   color: #8a8a8a;
+}
+
+.search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px 12px;
+  border-top: 1px solid #ede1d0;
+}
+
+.search-actions button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #dac9b2;
+  border-radius: 7px;
+  color: #5f4f3a;
+  background: #f9efdf;
+  font-size: 12px;
+}
+
+.search-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.search-actions kbd {
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid #ccbca5;
+  background: #fffaf1;
+  font-size: 11px;
 }
 
 .move-modal,

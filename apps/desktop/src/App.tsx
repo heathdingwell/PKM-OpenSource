@@ -110,6 +110,7 @@ type NoteSortMode =
   | "created-asc"
   | "title-asc"
   | "title-desc";
+type SearchFilterKind = "attachments" | "tasks";
 
 interface SlashMenuState {
   editor: EditorMode;
@@ -376,6 +377,14 @@ function extractOpenTasks(notes: AppNote[]): OpenTaskItem[] {
   }
 
   return tasks.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
+function noteHasAttachmentLink(markdown: string): boolean {
+  return /\[[^\]]+\]\((\.\/)?attachments\/[^)]+\)|!\[[^\]]*\]\((\.\/)?attachments\/[^)]+\)/i.test(markdown);
+}
+
+function noteHasOpenTasks(markdown: string): boolean {
+  return /^\s*-\s\[\s\]\s+/m.test(markdown);
 }
 
 function rewriteHeading(markdown: string, title: string): string {
@@ -657,6 +666,7 @@ export default function App() {
   const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<"everywhere" | "current">("everywhere");
+  const [searchFilters, setSearchFilters] = useState<SearchFilterKind[]>([]);
   const [quickQuery, setQuickQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>(() => loadRecentSearches());
   const [searchSelected, setSearchSelected] = useState(0);
@@ -841,10 +851,19 @@ export default function App() {
       searchScope === "current" && selectedNotebook !== "All Notes"
         ? notes.filter((note) => note.notebook === selectedNotebook)
         : notes;
-    const scopedIds = new Set(scopedNotes.map((note) => note.id));
+    const filteredScope = scopedNotes.filter((note) => {
+      if (searchFilters.includes("attachments") && !noteHasAttachmentLink(note.markdown)) {
+        return false;
+      }
+      if (searchFilters.includes("tasks") && !noteHasOpenTasks(note.markdown)) {
+        return false;
+      }
+      return true;
+    });
+    const scopedIds = new Set(filteredScope.map((note) => note.id));
 
     if (!quickQuery.trim()) {
-      return scopedNotes
+      return filteredScope
         .slice()
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
         .slice(0, 6);
@@ -860,7 +879,7 @@ export default function App() {
         return scopedIds.has(note.id);
       })
       .slice(0, 8);
-  }, [notes, quickQuery, searchIndex, searchScope, selectedNotebook]);
+  }, [notes, quickQuery, searchIndex, searchScope, selectedNotebook, searchFilters]);
 
   const selectedSearchResult = quickResults[searchSelected] ?? null;
   const quickResultGroups = useMemo(() => {
@@ -1398,7 +1417,7 @@ export default function App() {
       return;
     }
     setSearchSelected(0);
-  }, [searchOpen, quickQuery, searchScope]);
+  }, [searchOpen, quickQuery, searchScope, searchFilters]);
 
   useEffect(() => {
     if (searchSelected < quickResults.length) {
@@ -1789,6 +1808,15 @@ export default function App() {
         return previous.filter((entry) => entry !== tag);
       }
       return [...previous, tag].sort((left, right) => left.localeCompare(right));
+    });
+  }
+
+  function toggleSearchFilter(kind: SearchFilterKind): void {
+    setSearchFilters((previous) => {
+      if (previous.includes(kind)) {
+        return previous.filter((entry) => entry !== kind);
+      }
+      return [...previous, kind];
     });
   }
 
@@ -4334,6 +4362,25 @@ export default function App() {
               >
                 {selectedNotebook}
               </button>
+              <button
+                type="button"
+                className={searchFilters.includes("attachments") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("attachments")}
+              >
+                Has attachments
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("tasks") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("tasks")}
+              >
+                Has open tasks
+              </button>
+              {searchFilters.length ? (
+                <button type="button" className="chip" onClick={() => setSearchFilters([])}>
+                  Clear
+                </button>
+              ) : null}
             </div>
             <div className="search-results">
               <h4>Recent searches</h4>

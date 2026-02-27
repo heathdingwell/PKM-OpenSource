@@ -635,6 +635,7 @@ body.is-resizing {
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
   background: var(--bg-editor);
   min-width: 0;
@@ -793,11 +794,14 @@ body.is-resizing {
   grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
   gap: 12px;
   height: 100%;
-  min-height: 520px;
+  min-height: 0;
 }
 
 .markdown-pane,
 .preview-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   border: 1px solid #d3deee;
   border-radius: 12px;
   background: #ffffff;
@@ -823,14 +827,14 @@ body.is-resizing {
 
 .markdown-editor {
   width: 100%;
-  height: calc(100% - 44px);
-  min-height: 460px;
+  flex: 1;
+  min-height: 0;
   padding: 14px;
   border: 0;
   color: #1f2937;
   background: #ffffff;
   font: 500 16px/1.45 var(--font-code);
-  resize: vertical;
+  resize: none;
 }
 
 .markdown-editor:focus {
@@ -851,7 +855,7 @@ body.is-resizing {
 
 .rich-editor-surface {
   flex: 1;
-  min-height: 460px;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -1331,6 +1335,9 @@ body.is-resizing {
 }
 
 .preview-document {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   max-width: 760px;
   margin: 0 auto;
   padding: 14px 16px 22px;

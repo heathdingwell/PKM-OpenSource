@@ -2452,6 +2452,33 @@ export default function App() {
     setSavedSearches((previous) => previous.filter((entry) => entry.id !== id));
   }
 
+  function editSavedSearch(id: string): void {
+    const existing = savedSearches.find((entry) => entry.id === id);
+    if (!existing) {
+      return;
+    }
+
+    const labelInput = window.prompt("Saved search name", existing.label);
+    const label = labelInput?.trim();
+    if (!label) {
+      return;
+    }
+
+    const queryInput = window.prompt("Search query", existing.query);
+    const query = queryInput?.trim();
+    if (!query) {
+      return;
+    }
+
+    const scopeInput = window.prompt('Scope: "everywhere" or "current"', existing.scope);
+    const scope = scopeInput?.trim().toLowerCase() === "current" ? "current" : "everywhere";
+
+    setSavedSearches((previous) =>
+      previous.map((entry) => (entry.id === id ? { ...entry, label, query, scope } : entry))
+    );
+    setToastMessage(`Saved search "${label}" updated`);
+  }
+
   function completeOpenTask(task: OpenTaskItem): void {
     flushActiveDraft();
 
@@ -4548,14 +4575,24 @@ export default function App() {
                     <span>{saved.label}</span>
                     <small>{saved.scope === "current" ? `In ${selectedNotebook}` : "Everywhere"}</small>
                   </button>
-                  <button
-                    type="button"
-                    className="shortcut-remove"
-                    aria-label={`Remove saved search ${saved.label}`}
-                    onClick={() => removeSavedSearch(saved.id)}
-                  >
-                    ×
-                  </button>
+                  <span className="shortcut-actions">
+                    <button
+                      type="button"
+                      className="shortcut-remove"
+                      aria-label={`Edit saved search ${saved.label}`}
+                      onClick={() => editSavedSearch(saved.id)}
+                    >
+                      ✎
+                    </button>
+                    <button
+                      type="button"
+                      className="shortcut-remove"
+                      aria-label={`Remove saved search ${saved.label}`}
+                      onClick={() => removeSavedSearch(saved.id)}
+                    >
+                      ×
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>

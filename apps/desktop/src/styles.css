@@ -303,6 +303,18 @@ body.is-resizing {
   background: #d0def9;
 }
 
+.shortcut-actions {
+  display: inline-flex;
+}
+
+.shortcut-actions .shortcut-remove {
+  border-radius: 0;
+}
+
+.shortcut-actions .shortcut-remove:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
 .stack-group {
   margin-bottom: 4px;
 }

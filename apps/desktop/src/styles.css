@@ -15,8 +15,8 @@
   --grad-b: #f7fbff;
   --grad-c: #edf4ff;
   --shadow: 0 10px 30px rgba(20, 36, 70, 0.14);
-  --font-ui: "Gill Sans", "Trebuchet MS", "Segoe UI", sans-serif;
-  --font-editor: "Gill Sans", "Trebuchet MS", "Segoe UI", sans-serif;
+  --font-ui: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+  --font-editor: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
   --font-code: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
 
   color: var(--text);

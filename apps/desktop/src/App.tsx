@@ -160,6 +160,7 @@ type NoteViewMode = "cards" | "list";
 type SidebarView = "notes" | "tasks" | "calendar";
 type NoteBrowseMode = "all" | "templates";
 type ThemeId = "cobalt" | "sky" | "slate";
+type AiProvider = "openai" | "anthropic" | "gemini" | "perplexity" | "openai-compatible" | "ollama";
 type NoteSortMode =
   | "updated-desc"
   | "updated-asc"
@@ -214,6 +215,7 @@ interface CommandPaletteAction {
 }
 
 interface AiSettings {
+  provider: AiProvider;
   baseUrl: string;
   model: string;
   apiKey: string;
@@ -254,6 +256,7 @@ const MAX_SIDEBAR_WIDTH = 420;
 const MIN_LIST_WIDTH = 320;
 const MAX_LIST_WIDTH = 960;
 const themeIds: ThemeId[] = ["cobalt", "sky", "slate"];
+const aiProviders: AiProvider[] = ["openai", "anthropic", "gemini", "perplexity", "openai-compatible", "ollama"];
 
 const seedNotes: SeedNote[] = [
   {
@@ -942,9 +945,11 @@ function loadPrefs(): AppPrefs {
 }
 
 function defaultAiSettings(): AiSettings {
+  const defaults = aiProviderDefaults("openai");
   return {
-    baseUrl: "https://api.openai.com/v1",
-    model: "gpt-4o-mini",
+    provider: "openai",
+    baseUrl: defaults.baseUrl,
+    model: defaults.model,
     apiKey: "",
     temperature: 0.2,
     includeActiveNote: true,
@@ -953,6 +958,87 @@ function defaultAiSettings(): AiSettings {
     systemPrompt:
       "You are a note-taking copilot. Be concise and practical. Use note context when relevant and cite note titles in brackets."
   };
+}
+
+function aiProviderDefaults(provider: AiProvider): { baseUrl: string; model: string; apiKeyPlaceholder: string } {
+  if (provider === "anthropic") {
+    return {
+      baseUrl: "https://api.anthropic.com",
+      model: "claude-3-5-sonnet-latest",
+      apiKeyPlaceholder: "sk-ant-..."
+    };
+  }
+  if (provider === "gemini") {
+    return {
+      baseUrl: "https://generativelanguage.googleapis.com",
+      model: "gemini-1.5-pro",
+      apiKeyPlaceholder: "AIza..."
+    };
+  }
+  if (provider === "perplexity") {
+    return {
+      baseUrl: "https://api.perplexity.ai",
+      model: "sonar",
+      apiKeyPlaceholder: "pplx-..."
+    };
+  }
+  if (provider === "ollama") {
+    return {
+      baseUrl: "http://localhost:11434",
+      model: "llama3.1",
+      apiKeyPlaceholder: "(not required)"
+    };
+  }
+  if (provider === "openai-compatible") {
+    return {
+      baseUrl: "http://localhost:1234/v1",
+      model: "local-model",
+      apiKeyPlaceholder: "(optional)"
+    };
+  }
+  return {
+    baseUrl: "https://api.openai.com/v1",
+    model: "gpt-4o-mini",
+    apiKeyPlaceholder: "sk-..."
+  };
+}
+
+function aiProviderLabel(provider: AiProvider): string {
+  if (provider === "openai") {
+    return "OpenAI";
+  }
+  if (provider === "anthropic") {
+    return "Claude (Anthropic)";
+  }
+  if (provider === "gemini") {
+    return "Gemini (Google)";
+  }
+  if (provider === "perplexity") {
+    return "Perplexity";
+  }
+  if (provider === "openai-compatible") {
+    return "OpenAI-compatible";
+  }
+  return "Ollama (Local)";
+}
+
+function aiProviderHint(provider: AiProvider): string {
+  if (provider === "openai") {
+    return "OpenAI Chat Completions API.";
+  }
+  if (provider === "anthropic") {
+    return "Anthropic Messages API for Claude.";
+  }
+  if (provider === "gemini") {
+    return "Google Gemini generateContent API.";
+  }
+  if (provider === "perplexity") {
+    return "Perplexity OpenAI-style chat endpoint.";
+  }
+  if (provider === "openai-compatible") {
+    return "Any OpenAI-compatible endpoint (LM Studio, vLLM, OpenRouter, etc).";
+  }
+  return "Local Ollama server at /api/chat.";
 }
 
 function loadAiSettings(): AiSettings {
@@ -968,9 +1054,12 @@ function loadAiSettings(): AiSettings {
 
     const parsed = JSON.parse(raw) as Partial<AiSettings>;
     const defaults = defaultAiSettings();
+    const provider = aiProviders.includes(parsed.provider as AiProvider) ? (parsed.provider as AiProvider) : defaults.provider;
+    const providerDefaults = aiProviderDefaults(provider);
     return {
-      baseUrl: typeof parsed.baseUrl === "string" && parsed.baseUrl.trim() ? parsed.baseUrl : defaults.baseUrl,
-      model: typeof parsed.model === "string" && parsed.model.trim() ? parsed.model : defaults.model,
+      provider,
+      baseUrl: typeof parsed.baseUrl === "string" && parsed.baseUrl.trim() ? parsed.baseUrl : providerDefaults.baseUrl,
+      model: typeof parsed.model === "string" && parsed.model.trim() ? parsed.model : providerDefaults.model,
       apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : defaults.apiKey,
       temperature:
         typeof parsed.temperature === "number" ? Math.max(0, Math.min(parsed.temperature, 1.5)) : defaults.temperature,
@@ -1457,6 +1546,8 @@ export default function App() {
       event: calendarEventsById.get(reference.id) ?? null
     }));
   }, [draftMarkdown, calendarEventsById]);
+  const currentAiProviderDefaults = useMemo(() => aiProviderDefaults(aiSettings.provider), [aiSettings.provider]);
+  const aiKeyOptional = aiSettings.provider === "ollama" || aiSettings.provider === "openai-compatible";
 
   const suggestions = useMemo(() => {
     if (!linkSuggestion) {
@@ -2183,6 +2274,17 @@ export default function App() {
     });
   }
 
+  function applyAiProvider(provider: AiProvider): void {
+    const defaults = aiProviderDefaults(provider);
+    setAiSettings((previous) => ({
+      ...previous,
+      provider,
+      baseUrl: defaults.baseUrl,
+      model: defaults.model,
+      apiKey: provider === "ollama" ? "" : previous.apiKey
+    }));
+  }
+
   function clearAiChat(): void {
     setAiMessages([]);
     setAiError(null);
@@ -2261,6 +2363,7 @@ export default function App() {
       }
 
       const result = await window.pkmShell.chatWithLlm({
+        provider: aiSettings.provider,
         baseUrl: aiSettings.baseUrl,
         apiKey: aiSettings.apiKey,
         model: aiSettings.model,
@@ -5637,10 +5740,41 @@ export default function App() {
                     {aiShowSettings ? (
                       <section className="ai-settings">
                         <label>
+                          <span>Provider</span>
+                          <div className="ai-provider-row">
+                            <select
+                              value={aiSettings.provider}
+                              onChange={(event) => applyAiProvider(event.target.value as AiProvider)}
+                            >
+                              {aiProviders.map((provider) => (
+                                <option key={provider} value={provider}>
+                                  {aiProviderLabel(provider)}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAiSettings((previous) => {
+                                  const defaults = aiProviderDefaults(previous.provider);
+                                  return {
+                                    ...previous,
+                                    baseUrl: defaults.baseUrl,
+                                    model: defaults.model
+                                  };
+                                })
+                              }
+                            >
+                              Reset
+                            </button>
+                          </div>
+                          <small>{aiProviderHint(aiSettings.provider)}</small>
+                        </label>
+                        <label>
                           <span>Base URL</span>
                           <input
                             value={aiSettings.baseUrl}
-                            placeholder="https://api.openai.com/v1"
+                            placeholder={currentAiProviderDefaults.baseUrl}
                             onChange={(event) => setAiSettings({ ...aiSettings, baseUrl: event.target.value })}
                           />
                         </label>
@@ -5648,16 +5782,16 @@ export default function App() {
                           <span>Model</span>
                           <input
                             value={aiSettings.model}
-                            placeholder="gpt-4o-mini"
+                            placeholder={currentAiProviderDefaults.model}
                             onChange={(event) => setAiSettings({ ...aiSettings, model: event.target.value })}
                           />
                         </label>
                         <label>
-                          <span>API key</span>
+                          <span>API key {aiKeyOptional ? "(optional)" : ""}</span>
                           <input
                             type="password"
                             value={aiSettings.apiKey}
-                            placeholder="sk-..."
+                            placeholder={currentAiProviderDefaults.apiKeyPlaceholder}
                             onChange={(event) => setAiSettings({ ...aiSettings, apiKey: event.target.value })}
                           />
                         </label>

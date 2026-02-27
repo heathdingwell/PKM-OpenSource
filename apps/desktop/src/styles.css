@@ -1131,7 +1131,29 @@ body.is-resizing {
   font-size: 11px;
 }
 
+.ai-settings label small {
+  color: #7a664f;
+  font-size: 11px;
+}
+
+.ai-provider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.ai-provider-row button {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #d7c7af;
+  border-radius: 8px;
+  color: #5f4d38;
+  background: #f8efe2;
+  font-size: 12px;
+}
+
 .ai-settings input,
+.ai-settings select,
 .ai-settings textarea {
   width: 100%;
   border: 1px solid #d7c7af;

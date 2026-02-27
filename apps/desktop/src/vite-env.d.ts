@@ -24,6 +24,7 @@ declare global {
         copied?: number;
       } | null>;
       chatWithLlm?: (payload: {
+        provider?: "openai" | "anthropic" | "gemini" | "perplexity" | "openai-compatible" | "ollama";
         baseUrl: string;
         apiKey: string;
         model: string;

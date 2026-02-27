@@ -528,15 +528,8 @@ async function cloneAttachmentLinks(payload) {
   return { markdown: rewritten.join(""), copied: copiedMap.size };
 }
 
-async function callOpenAiCompatibleChat(payload) {
-  if (!isObject(payload)) {
-    return { error: "Invalid payload" };
-  }
-
-  const baseUrl = asString(payload.baseUrl).trim() || "https://api.openai.com/v1";
-  const model = asString(payload.model).trim();
-  const apiKey = asString(payload.apiKey).trim();
-  const messages = Array.isArray(payload.messages)
+function normalizeChatMessages(payload) {
+  return Array.isArray(payload.messages)
     ? payload.messages
         .filter((entry) => isObject(entry))
         .map((entry) => ({
@@ -545,71 +538,232 @@ async function callOpenAiCompatibleChat(payload) {
         }))
         .filter((entry) => entry.role && entry.content.trim())
     : [];
+}
+
+function responseErrorMessage(response, raw, data) {
+  return asString(data?.error?.message).trim() || raw.slice(0, 300) || `${response.status} ${response.statusText}`;
+}
+
+async function fetchJson(endpoint, options) {
+  const response = await fetch(endpoint, options);
+  const raw = await response.text();
+  let data = null;
+  try {
+    data = raw ? JSON.parse(raw) : null;
+  } catch {
+    data = null;
+  }
+  return { response, raw, data };
+}
+
+function normalizeOpenAiMessage(content) {
+  if (typeof content === "string" && content.trim()) {
+    return content.trim();
+  }
+  if (Array.isArray(content)) {
+    const combined = content
+      .map((part) => {
+        if (typeof part === "string") {
+          return part;
+        }
+        return asString(part?.text);
+      })
+      .join("")
+      .trim();
+    if (combined) {
+      return combined;
+    }
+  }
+  return "";
+}
+
+async function callLlmProvider(payload) {
+  if (!isObject(payload)) {
+    return { error: "Invalid payload" };
+  }
+
+  const provider = asString(payload.provider).trim() || "openai";
+  const baseUrl = asString(payload.baseUrl).trim();
+  const model = asString(payload.model).trim();
+  const apiKey = asString(payload.apiKey).trim();
+  const temperature = typeof payload.temperature === "number" ? payload.temperature : 0.2;
+  const messages = normalizeChatMessages(payload);
 
   if (!model) {
     return { error: "Model is required" };
-  }
-  if (!apiKey) {
-    return { error: "API key is required" };
   }
   if (!messages.length) {
     return { error: "At least one message is required" };
   }
 
-  const normalizedBase = baseUrl.replace(/\/+$/, "");
-  const endpoint = normalizedBase.endsWith("/v1") ? `${normalizedBase}/chat/completions` : `${normalizedBase}/v1/chat/completions`;
+  const requiresKey = ["openai", "perplexity", "anthropic", "gemini"].includes(provider);
+  if (requiresKey && !apiKey) {
+    return { error: "API key is required for this provider" };
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
 
   try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: typeof payload.temperature === "number" ? payload.temperature : 0.2
-      }),
-      signal: controller.signal
-    });
-
-    const raw = await response.text();
-    let data = null;
-    try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch {
-      data = null;
-    }
-
-    if (!response.ok) {
-      const errorMessage = asString(data?.error?.message).trim() || raw.slice(0, 300) || `${response.status} ${response.statusText}`;
-      return { error: errorMessage };
-    }
-
-    const message = data?.choices?.[0]?.message?.content;
-    if (typeof message === "string" && message.trim()) {
-      return { message };
-    }
-
-    if (Array.isArray(message)) {
-      const combined = message
-        .map((part) => {
-          if (typeof part === "string") {
-            return part;
-          }
-          return asString(part?.text);
-        })
-        .join("")
-        .trim();
-      if (combined) {
-        return { message: combined };
+    if (["openai", "perplexity", "openai-compatible"].includes(provider)) {
+      const fallbackBase =
+        provider === "openai"
+          ? "https://api.openai.com/v1"
+          : provider === "perplexity"
+            ? "https://api.perplexity.ai"
+            : "http://localhost:1234/v1";
+      const normalizedBase = (baseUrl || fallbackBase).replace(/\/+$/, "");
+      const endpoint = normalizedBase.endsWith("/v1")
+        ? `${normalizedBase}/chat/completions`
+        : `${normalizedBase}/v1/chat/completions`;
+      const headers = { "content-type": "application/json" };
+      if (apiKey) {
+        headers.authorization = `Bearer ${apiKey}`;
       }
+
+      const { response, raw, data } = await fetchJson(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        return { error: responseErrorMessage(response, raw, data) };
+      }
+
+      const content = normalizeOpenAiMessage(data?.choices?.[0]?.message?.content);
+      return content ? { message: content } : { error: "No assistant response received" };
     }
 
-    return { error: "No assistant response received" };
+    if (provider === "anthropic") {
+      const normalizedBase = (baseUrl || "https://api.anthropic.com").replace(/\/+$/, "");
+      const endpoint = `${normalizedBase}/v1/messages`;
+      const system = messages
+        .filter((entry) => entry.role === "system")
+        .map((entry) => entry.content)
+        .join("\n\n");
+      const anthropicMessages = messages
+        .filter((entry) => entry.role !== "system")
+        .map((entry) => ({
+          role: entry.role === "assistant" ? "assistant" : "user",
+          content: [{ type: "text", text: entry.content }]
+        }));
+
+      const { response, raw, data } = await fetchJson(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 2048,
+          temperature,
+          system: system || undefined,
+          messages: anthropicMessages
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        return { error: responseErrorMessage(response, raw, data) };
+      }
+
+      const content = Array.isArray(data?.content)
+        ? data.content
+            .map((part) => asString(part?.text))
+            .join("")
+            .trim()
+        : "";
+      return content ? { message: content } : { error: "No assistant response received" };
+    }
+
+    if (provider === "gemini") {
+      const normalizedBase = (baseUrl || "https://generativelanguage.googleapis.com").replace(/\/+$/, "");
+      const endpoint = `${normalizedBase}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const system = messages
+        .filter((entry) => entry.role === "system")
+        .map((entry) => entry.content)
+        .join("\n\n");
+      const geminiMessages = messages
+        .filter((entry) => entry.role !== "system")
+        .map((entry) => ({
+          role: entry.role === "assistant" ? "model" : "user",
+          parts: [{ text: entry.content }]
+        }));
+
+      const { response, raw, data } = await fetchJson(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          systemInstruction: system ? { parts: [{ text: system }] } : undefined,
+          generationConfig: { temperature },
+          contents: geminiMessages
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        return { error: responseErrorMessage(response, raw, data) };
+      }
+
+      const content = Array.isArray(data?.candidates?.[0]?.content?.parts)
+        ? data.candidates[0].content.parts
+            .map((part) => asString(part?.text))
+            .join("")
+            .trim()
+        : "";
+      return content ? { message: content } : { error: "No assistant response received" };
+    }
+
+    if (provider === "ollama") {
+      const normalizedBase = (baseUrl || "http://localhost:11434").replace(/\/+$/, "");
+      const endpoint = `${normalizedBase}/api/chat`;
+      const ollamaMessages = messages
+        .filter((entry) => entry.role !== "system")
+        .map((entry) => ({
+          role: entry.role === "assistant" ? "assistant" : "user",
+          content: entry.content
+        }));
+      const system = messages
+        .filter((entry) => entry.role === "system")
+        .map((entry) => entry.content)
+        .join("\n\n");
+      if (system) {
+        ollamaMessages.unshift({ role: "system", content: system });
+      }
+
+      const { response, raw, data } = await fetchJson(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          model,
+          stream: false,
+          messages: ollamaMessages,
+          options: { temperature }
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        return { error: responseErrorMessage(response, raw, data) };
+      }
+
+      const content = asString(data?.message?.content).trim();
+      return content ? { message: content } : { error: "No assistant response received" };
+    }
+
+    return { error: `Unsupported provider "${provider}"` };
   } catch (error) {
     if (error && typeof error === "object" && error.name === "AbortError") {
       return { error: "LLM request timed out after 60 seconds" };
@@ -681,7 +835,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle("llm:chat", async (_event, payload) => {
     try {
-      return await callOpenAiCompatibleChat(payload);
+      return await callLlmProvider(payload);
     } catch (error) {
       console.error("Failed to query llm provider", error);
       return { error: "LLM request failed" };

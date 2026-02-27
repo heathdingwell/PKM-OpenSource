@@ -79,6 +79,17 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
+  it("supports arrow navigation and enter for focused editor mode", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
+  });
+
   it("moves the active note to trash with cmd+backspace", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

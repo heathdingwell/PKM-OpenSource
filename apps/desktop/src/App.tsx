@@ -2237,6 +2237,44 @@ export default function App() {
         }
       }
 
+      const canNavigateNotes =
+        !searchOpen &&
+        !isTextEntryTarget &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !tasksDialogOpen &&
+        !filesDialogOpen &&
+        !calendarDialogOpen &&
+        !moveDialog &&
+        !noteRenameDialog &&
+        !noteHistoryDialog &&
+        !eventDialog &&
+        !templateDialog &&
+        sidebarView === "notes" &&
+        browseMode !== "home";
+
+      if (canNavigateNotes && visibleNotes.length) {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          const currentIndex = visibleNotes.findIndex((note) => note.id === activeId);
+          const fallbackIndex = currentIndex >= 0 ? currentIndex : 0;
+          const delta = event.key === "ArrowDown" ? 1 : -1;
+          const targetIndex = Math.max(0, Math.min(visibleNotes.length - 1, fallbackIndex + delta));
+          const target = visibleNotes[targetIndex];
+          if (target) {
+            focusNote(target.id);
+          }
+          return;
+        }
+
+        if (event.key === "Enter" && activeId) {
+          event.preventDefault();
+          openFocusedEditor(activeId);
+          return;
+        }
+      }
+
       if (!searchOpen && activeNote && (event.metaKey || event.ctrlKey)) {
         const key = event.key.toLowerCase();
         if (key === "backspace" && !isTextEntryTarget) {
@@ -2329,7 +2367,27 @@ export default function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [draftMarkdown, activeNote?.id, activeNote?.markdown, slashMenu, slashResults, searchOpen, editorMode]);
+  }, [
+    draftMarkdown,
+    activeNote?.id,
+    activeNote?.markdown,
+    slashMenu,
+    slashResults,
+    searchOpen,
+    editorMode,
+    tasksDialogOpen,
+    filesDialogOpen,
+    calendarDialogOpen,
+    moveDialog,
+    noteRenameDialog,
+    noteHistoryDialog,
+    eventDialog,
+    templateDialog,
+    sidebarView,
+    browseMode,
+    visibleNotes,
+    activeId
+  ]);
 
   useEffect(() => {
     if (!toastMessage) {
@@ -3095,6 +3153,14 @@ export default function App() {
     setLinkSuggestion(null);
     setMentionSuggestion(null);
     setSlashMenu(null);
+  }
+
+  function openFocusedEditor(noteId: string): void {
+    focusNote(noteId);
+    setEditorMode("markdown");
+    setLiteEditMode(true);
+    setMetadataOpen(false);
+    setAiPanelOpen(false);
   }
 
   function onCardClick(noteId: string, event: React.MouseEvent<HTMLButtonElement>): void {
@@ -6219,7 +6285,7 @@ export default function App() {
                       }}
                       className={isSelected ? "note-card selected" : "note-card"}
                       onClick={(event) => onCardClick(note.id, event)}
-                      onDoubleClick={() => focusNote(note.id)}
+                      onDoubleClick={() => openFocusedEditor(note.id)}
                       onContextMenu={(event) => {
                         event.preventDefault();
                         openCardMenu(note.id, event.clientX, event.clientY);

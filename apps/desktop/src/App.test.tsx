@@ -22,4 +22,16 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Home" }));
     expect(screen.getByRole("heading", { name: "Home", level: 1 })).toBeInTheDocument();
   });
+
+  it("opens command palette from quick actions button", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    expect(screen.getByRole("heading", { name: "Command palette", level: 4 })).toBeInTheDocument();
+  });
+
+  it("opens tasks panel from create task button", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
+  });
 });

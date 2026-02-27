@@ -2188,6 +2188,12 @@ export default function App() {
         }
       }
 
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        openCommandPalette();
+        return;
+      }
+
       if ((event.metaKey || event.ctrlKey) && ["k", "p"].includes(event.key.toLowerCase())) {
         event.preventDefault();
         setSearchOpen(true);
@@ -3209,6 +3215,21 @@ export default function App() {
     setSearchOpen(false);
   }
 
+  function openCommandPalette(): void {
+    setSearchScope("everywhere");
+    setSearchFilters([]);
+    setQuickQuery(">");
+    setSearchOpen(true);
+  }
+
+  function openTasksPanel(): void {
+    setSidebarView("tasks");
+    setTasksDialogOpen(true);
+    setFilesDialogOpen(false);
+    setCalendarDialogOpen(false);
+    setSearchOpen(false);
+  }
+
   function runPaletteAction(actionId: string): void {
     if (actionId === "new-note") {
       setSearchOpen(false);
@@ -3258,12 +3279,8 @@ export default function App() {
     }
 
     if (actionId === "open-tasks") {
-      setSidebarView("tasks");
-      setTasksDialogOpen(true);
-      setFilesDialogOpen(false);
-      setCalendarDialogOpen(false);
+      openTasksPanel();
       setAiPanelOpen(false);
-      setSearchOpen(false);
       return;
     }
 
@@ -5003,13 +5020,23 @@ export default function App() {
           <button type="button" className="new-note" onClick={createNewNote}>
             + Note
           </button>
-          <button type="button" className="round-action" aria-label="Quick actions">
+          <button type="button" className="round-action" aria-label="Quick actions" onClick={openCommandPalette}>
             +
           </button>
-          <button type="button" className="round-action" aria-label="Create task">
+          <button type="button" className="round-action" aria-label="Create task" onClick={openTasksPanel}>
             T
           </button>
-          <button type="button" className="round-action" aria-label="More actions">
+          <button
+            type="button"
+            className="round-action"
+            aria-label="More actions"
+            onClick={() => {
+              setSearchScope("everywhere");
+              setSearchFilters([]);
+              setQuickQuery("");
+              setSearchOpen(true);
+            }}
+          >
             ...
           </button>
         </div>

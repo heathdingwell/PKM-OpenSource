@@ -161,7 +161,7 @@ type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
 type NoteDensityMode = "comfortable" | "compact";
 type SidebarView = "notes" | "tasks" | "calendar";
-type NoteBrowseMode = "all" | "templates" | "shortcuts";
+type NoteBrowseMode = "all" | "templates" | "shortcuts" | "home";
 type ThemeId = "cobalt" | "sky" | "slate";
 type AiProvider = "openai" | "anthropic" | "gemini" | "perplexity" | "openai-compatible" | "ollama";
 type NoteSortMode =
@@ -326,10 +326,11 @@ const seedNotes: SeedNote[] = [
   }
 ];
 
-const sidePinned = ["Shortcuts", "Notes", "Tasks", "Files", "Calendar", "Templates"];
+const sidePinned = ["Home", "Shortcuts", "Notes", "Tasks", "Files", "Calendar", "Templates"];
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
+  { id: "open-home", label: "Open home", keywords: ["home", "dashboard"] },
   { id: "open-notes", label: "Open notes", keywords: ["notes", "sidebar"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
@@ -920,7 +921,9 @@ function loadPrefs(): AppPrefs {
         typeof parsed.tagPaneHeight === "number" ? clampTagPaneHeight(parsed.tagPaneHeight) : DEFAULT_TAG_PANE_HEIGHT,
       themeId: themeIds.includes(parsed.themeId as ThemeId) ? (parsed.themeId as ThemeId) : "cobalt",
       browseMode:
-        parsed.browseMode === "templates" || parsed.browseMode === "shortcuts" ? parsed.browseMode : "all",
+        parsed.browseMode === "templates" || parsed.browseMode === "shortcuts" || parsed.browseMode === "home"
+          ? parsed.browseMode
+          : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
       noteDensity: parsed.noteDensity === "compact" ? "compact" : "comfortable",
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
@@ -1589,6 +1592,20 @@ export default function App() {
 
     return groups;
   }, [calendarEvents]);
+  const homeRecentNotes = useMemo(() => {
+    if (recentNotes.length) {
+      return recentNotes.slice(0, 6);
+    }
+    return [...notes].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, 6);
+  }, [recentNotes, notes]);
+  const upcomingCalendarEvents = useMemo(() => {
+    const now = Date.now();
+    return [...calendarEvents]
+      .filter((event) => new Date(event.endAt).getTime() >= now)
+      .sort((left, right) => left.startAt.localeCompare(right.startAt))
+      .slice(0, 6);
+  }, [calendarEvents]);
+  const homeTagSuggestions = useMemo(() => availableTags.slice(0, 16), [availableTags]);
   const eventReferences = useMemo(() => {
     return extractEventReferences(draftMarkdown).map((reference) => ({
       ...reference,
@@ -3183,6 +3200,18 @@ export default function App() {
       return;
     }
 
+    if (actionId === "open-home") {
+      setSidebarView("notes");
+      setBrowseMode("home");
+      setSelectedNotebook("All Notes");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
     if (actionId === "open-notes") {
       setSidebarView("notes");
       setBrowseMode("all");
@@ -4236,6 +4265,11 @@ export default function App() {
           className={selectedNotebook === notebook ? "notebook-item active" : "notebook-item"}
           onClick={() => {
             flushActiveDraft();
+            setSidebarView("notes");
+            setTasksDialogOpen(false);
+            setFilesDialogOpen(false);
+            setCalendarDialogOpen(false);
+            setBrowseMode("all");
             setSelectedNotebook(notebook);
           }}
           onDragStart={(event) => {
@@ -4964,6 +4998,12 @@ export default function App() {
               key={item}
               type="button"
               className={
+                (item === "Home" &&
+                  sidebarView === "notes" &&
+                  browseMode === "home" &&
+                  !tasksDialogOpen &&
+                  !filesDialogOpen &&
+                  !calendarDialogOpen) ||
                 (item === "Notes" &&
                   sidebarView === "notes" &&
                   browseMode === "all" &&
@@ -4988,6 +5028,15 @@ export default function App() {
                   : "sidebar-link"
               }
               onClick={() => {
+                if (item === "Home") {
+                  setSidebarView("notes");
+                  setBrowseMode("home");
+                  setSelectedNotebook("All Notes");
+                  setTasksDialogOpen(false);
+                  setFilesDialogOpen(false);
+                  setCalendarDialogOpen(false);
+                  return;
+                }
                 if (item === "Notes") {
                   setSidebarView("notes");
                   setBrowseMode("all");
@@ -5278,126 +5327,294 @@ export default function App() {
         <header className="note-column-header">
           <div>
             <h1>
-              {browseMode === "templates" ? "Templates" : browseMode === "shortcuts" ? "Shortcuts" : selectedNotebook}
+              {browseMode === "home"
+                ? "Home"
+                : browseMode === "templates"
+                  ? "Templates"
+                  : browseMode === "shortcuts"
+                    ? "Shortcuts"
+                    : selectedNotebook}
             </h1>
-            <small>{visibleNotes.length}</small>
+            <small>{browseMode === "home" ? "Dashboard" : visibleNotes.length}</small>
           </div>
-          <div className="header-actions">
-            <button
-              type="button"
-              className={viewMode === "list" ? "active" : ""}
-              onClick={() => setViewMode((previous) => (previous === "cards" ? "list" : "cards"))}
-            >
-              {viewMode === "cards" ? "Cards" : "List"}
-            </button>
-            <button
-              type="button"
-              className={noteDensity === "compact" ? "active" : ""}
-              onClick={() => setNoteDensity((previous) => (previous === "comfortable" ? "compact" : "comfortable"))}
-            >
-              {noteDensity === "comfortable" ? "Comfortable" : "Compact"}
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                const rect = event.currentTarget.getBoundingClientRect();
-                openNoteListMenu("sort", rect.left, rect.bottom + 8);
-              }}
-            >
-              Sort
-            </button>
-            <button
-              type="button"
-              className={tagFilters.length ? "active" : ""}
-              onClick={(event) => {
-                const rect = event.currentTarget.getBoundingClientRect();
-                openNoteListMenu("filter", rect.left, rect.bottom + 8);
-              }}
-            >
-              Filter
-            </button>
-          </div>
-        </header>
-
-        {tagFilters.length ? (
-          <div className="active-filters">
-            <span>Filters:</span>
-            {tagFilters.map((tag) => (
-              <button key={tag} type="button" onClick={() => toggleTagFilter(tag)}>
-                #{tag} ×
-              </button>
-            ))}
-            <button type="button" className="clear" onClick={() => setTagFilters([])}>
-              Clear
-            </button>
-          </div>
-        ) : null}
-
-        <div
-          className={viewMode === "list" ? `note-grid list-mode ${noteDensity}` : `note-grid ${noteDensity}`}
-          aria-label="Notes list"
-        >
-          {visibleNotes.map((note) => {
-            const isSelected = selectedIds.has(note.id);
-            const showQuickAction = hoveredCardId === note.id || isSelected;
-            const homePinned = homePinnedSet.has(note.id);
-            const notebookPinned = notebookPinnedSet.has(note.id);
-            return (
+          {browseMode !== "home" ? (
+            <div className="header-actions">
               <button
-                key={note.id}
                 type="button"
-                draggable
-                onMouseEnter={() => setHoveredCardId(note.id)}
-                onMouseLeave={() => setHoveredCardId((previous) => (previous === note.id ? null : previous))}
-                onDragStart={() => setDraggingNoteId(note.id)}
-                onDragEnd={() => {
-                  setDraggingNoteId(null);
-                  setDropNotebook(null);
-                }}
-                className={isSelected ? "note-card selected" : "note-card"}
-                onClick={(event) => onCardClick(note.id, event)}
-                onDoubleClick={() => focusNote(note.id)}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  openCardMenu(note.id, event.clientX, event.clientY);
+                className={viewMode === "list" ? "active" : ""}
+                onClick={() => setViewMode((previous) => (previous === "cards" ? "list" : "cards"))}
+              >
+                {viewMode === "cards" ? "Cards" : "List"}
+              </button>
+              <button
+                type="button"
+                className={noteDensity === "compact" ? "active" : ""}
+                onClick={() => setNoteDensity((previous) => (previous === "comfortable" ? "compact" : "comfortable"))}
+              >
+                {noteDensity === "comfortable" ? "Comfortable" : "Compact"}
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  openNoteListMenu("sort", rect.left, rect.bottom + 8);
                 }}
               >
-                <span className="note-card-actions">
-                  {showQuickAction ? (
-                    <span
-                      className="note-card-menu"
-                      role="button"
-                      tabIndex={0}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        openCardMenu(note.id, event.clientX, event.clientY);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          const target = event.currentTarget.getBoundingClientRect();
-                          openCardMenu(note.id, target.left, target.bottom + 6);
-                        }
+                Sort
+              </button>
+              <button
+                type="button"
+                className={tagFilters.length ? "active" : ""}
+                onClick={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  openNoteListMenu("filter", rect.left, rect.bottom + 8);
+                }}
+              >
+                Filter
+              </button>
+            </div>
+          ) : null}
+        </header>
+        {browseMode === "home" ? (
+          <div className="home-dashboard" aria-label="Home dashboard">
+            <section className="home-panel">
+              <header>
+                <h2>Pinned to Home</h2>
+                <small>{homePinnedNotes.length}</small>
+              </header>
+              {homePinnedNotes.length ? (
+                <ul className="home-list">
+                  {homePinnedNotes.map((note) => (
+                    <li key={note.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBrowseMode("all");
+                          setSelectedNotebook(note.notebook);
+                          focusNote(note.id);
+                        }}
+                      >
+                        <strong>{note.title}</strong>
+                        <small>{note.notebook}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="home-empty">No Home pins yet</p>
+              )}
+            </section>
+            <section className="home-panel">
+              <header>
+                <h2>Recent notes</h2>
+                <small>{homeRecentNotes.length}</small>
+              </header>
+              {homeRecentNotes.length ? (
+                <ul className="home-list">
+                  {homeRecentNotes.map((note) => (
+                    <li key={note.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBrowseMode("all");
+                          setSelectedNotebook(note.notebook);
+                          focusNote(note.id);
+                        }}
+                      >
+                        <strong>{note.title}</strong>
+                        <small>{formatRelativeTime(note.updatedAt)}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="home-empty">No recent notes yet</p>
+              )}
+            </section>
+            <section className="home-panel">
+              <header>
+                <h2>Open tasks</h2>
+                <small>{openTasks.length}</small>
+              </header>
+              {openTasks.length ? (
+                <ul className="home-list">
+                  {openTasks.slice(0, 8).map((task) => (
+                    <li key={task.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBrowseMode("all");
+                          setSelectedNotebook(task.notebook);
+                          focusNote(task.noteId);
+                        }}
+                      >
+                        <strong>{task.text}</strong>
+                        <small>{task.noteTitle}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="home-empty">No open tasks</p>
+              )}
+            </section>
+            <section className="home-panel">
+              <header>
+                <h2>Upcoming events</h2>
+                <small>{upcomingCalendarEvents.length}</small>
+              </header>
+              {upcomingCalendarEvents.length ? (
+                <ul className="home-list">
+                  {upcomingCalendarEvents.map((event) => (
+                    <li key={event.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          openEditEventDialog(event.id);
+                          setSidebarView("calendar");
+                          setCalendarDialogOpen(true);
+                        }}
+                      >
+                        <strong>{event.title}</strong>
+                        <small>{formatCalendarTimeRange(event)}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="home-empty">No upcoming events</p>
+              )}
+            </section>
+            <section className="home-panel">
+              <header>
+                <h2>Notebooks</h2>
+                <small>{notebookList.length}</small>
+              </header>
+              <div className="home-chip-list">
+                {notebookList.map((notebook) => (
+                  <button
+                    key={notebook}
+                    type="button"
+                    onClick={() => {
+                      setBrowseMode("all");
+                      setSelectedNotebook(notebook);
+                      setTagFilters([]);
+                    }}
+                  >
+                    {notebook}
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section className="home-panel">
+              <header>
+                <h2>Tags</h2>
+                <small>{homeTagSuggestions.length}</small>
+              </header>
+              {homeTagSuggestions.length ? (
+                <div className="home-chip-list">
+                  {homeTagSuggestions.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        setBrowseMode("all");
+                        setSelectedNotebook("All Notes");
+                        setTagFilters([tag]);
                       }}
                     >
-                      ...
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="home-empty">No tags yet</p>
+              )}
+            </section>
+          </div>
+        ) : (
+          <>
+            {tagFilters.length ? (
+              <div className="active-filters">
+                <span>Filters:</span>
+                {tagFilters.map((tag) => (
+                  <button key={tag} type="button" onClick={() => toggleTagFilter(tag)}>
+                    #{tag} ×
+                  </button>
+                ))}
+                <button type="button" className="clear" onClick={() => setTagFilters([])}>
+                  Clear
+                </button>
+              </div>
+            ) : null}
+
+            <div
+              className={viewMode === "list" ? `note-grid list-mode ${noteDensity}` : `note-grid ${noteDensity}`}
+              aria-label="Notes list"
+            >
+              {visibleNotes.map((note) => {
+                const isSelected = selectedIds.has(note.id);
+                const showQuickAction = hoveredCardId === note.id || isSelected;
+                const homePinned = homePinnedSet.has(note.id);
+                const notebookPinned = notebookPinnedSet.has(note.id);
+                return (
+                  <button
+                    key={note.id}
+                    type="button"
+                    draggable
+                    onMouseEnter={() => setHoveredCardId(note.id)}
+                    onMouseLeave={() => setHoveredCardId((previous) => (previous === note.id ? null : previous))}
+                    onDragStart={() => setDraggingNoteId(note.id)}
+                    onDragEnd={() => {
+                      setDraggingNoteId(null);
+                      setDropNotebook(null);
+                    }}
+                    className={isSelected ? "note-card selected" : "note-card"}
+                    onClick={(event) => onCardClick(note.id, event)}
+                    onDoubleClick={() => focusNote(note.id)}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      openCardMenu(note.id, event.clientX, event.clientY);
+                    }}
+                  >
+                    <span className="note-card-actions">
+                      {showQuickAction ? (
+                        <span
+                          className="note-card-menu"
+                          role="button"
+                          tabIndex={0}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openCardMenu(note.id, event.clientX, event.clientY);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              const target = event.currentTarget.getBoundingClientRect();
+                              openCardMenu(note.id, target.left, target.bottom + 6);
+                            }
+                          }}
+                        >
+                          ...
+                        </span>
+                      ) : null}
                     </span>
-                  ) : null}
-                </span>
-                <strong>{note.title}</strong>
-                <p>{note.snippet || "Untitled"}</p>
-                <footer>
-                  <span>{formatRelativeTime(note.updatedAt)}</span>
-                  {note.isTemplate ? <span className="note-pin">Template</span> : null}
-                  {homePinned ? <span className="note-pin">Home pin</span> : null}
-                  {notebookPinned ? <span className="note-pin">Notebook pin</span> : null}
-                  {viewMode === "list" ? <span>{note.notebook}</span> : null}
-                  {isSelected ? <em>{selectedIds.size > 1 ? "Multi" : "Selected"}</em> : null}
-                </footer>
-              </button>
-            );
-          })}
-        </div>
+                    <strong>{note.title}</strong>
+                    <p>{note.snippet || "Untitled"}</p>
+                    <footer>
+                      <span>{formatRelativeTime(note.updatedAt)}</span>
+                      {note.isTemplate ? <span className="note-pin">Template</span> : null}
+                      {homePinned ? <span className="note-pin">Home pin</span> : null}
+                      {notebookPinned ? <span className="note-pin">Notebook pin</span> : null}
+                      {viewMode === "list" ? <span>{note.notebook}</span> : null}
+                      {isSelected ? <em>{selectedIds.size > 1 ? "Multi" : "Selected"}</em> : null}
+                    </footer>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </section>
 
       <div

@@ -84,6 +84,8 @@ button {
   display: grid;
   grid-template-columns: auto 8px auto 8px minmax(0, 1fr);
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: var(--bg-shell);
 }
 
@@ -124,6 +126,7 @@ body.is-resizing {
 }
 
 .left-sidebar {
+  min-height: 0;
   border-right: 1px solid var(--border);
   padding: 10px 8px 12px;
   background: var(--bg-sidebar);
@@ -411,6 +414,7 @@ body.is-resizing {
 }
 
 .note-column {
+  min-height: 0;
   border-right: 1px solid var(--border);
   background: var(--bg-panel);
   overflow: auto;

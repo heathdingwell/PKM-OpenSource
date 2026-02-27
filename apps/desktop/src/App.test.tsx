@@ -40,6 +40,12 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "New from template", level: 3 })).toBeInTheDocument();
   });
 
+  it("opens template picker from note header action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "From template" }));
+    expect(screen.getByRole("heading", { name: "New from template", level: 3 })).toBeInTheDocument();
+  });
+
   it("creates a note from template picker", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "New from template" }));

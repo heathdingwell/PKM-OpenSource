@@ -6059,6 +6059,13 @@ export default function App() {
               >
                 Filter
               </button>
+              <button
+                type="button"
+                onClick={() => openTemplateDialog(activeNote?.isTemplate ? activeNote.id : undefined)}
+                disabled={!templateNotes.length}
+              >
+                From template
+              </button>
               {browseMode === "trash" ? (
                 <button type="button" className="danger" onClick={emptyTrash} disabled={!trashedNotes.length}>
                   Empty Trash

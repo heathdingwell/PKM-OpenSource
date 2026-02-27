@@ -650,6 +650,39 @@ body.is-resizing {
   grid-template-columns: 1fr;
 }
 
+.note-grid-empty {
+  grid-column: 1 / -1;
+  min-height: 180px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  border: 1px dashed #c9d8ef;
+  border-radius: 12px;
+  color: #5f78a6;
+  background: #f8fbff;
+  text-align: center;
+  padding: 16px;
+}
+
+.note-grid-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.note-grid-empty button {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #9db8ec;
+  border-radius: 999px;
+  color: #1e4fa6;
+  background: #eef4ff;
+}
+
+.note-grid-empty button:hover {
+  background: #e5efff;
+}
+
 .note-grid.compact {
   gap: 6px;
   padding: 8px;

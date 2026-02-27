@@ -595,6 +595,30 @@ body.is-resizing {
   font-size: 13px;
 }
 
+.home-scratchpad-wrap {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 10px 10px;
+}
+
+.home-scratchpad {
+  width: 100%;
+  min-height: 150px;
+  height: 100%;
+  resize: vertical;
+  border: 1px solid #c9d8ef;
+  border-radius: 9px;
+  padding: 8px 10px;
+  color: #1f2937;
+  background: #ffffff;
+  font: 14px/1.4 var(--font-editor);
+}
+
+.home-scratchpad:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
 .note-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));

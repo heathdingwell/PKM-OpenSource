@@ -256,6 +256,7 @@ interface ResizeState {
 const NOTES_STORAGE_KEY = "pkm-os.desktop.notes.v2";
 const PREFS_STORAGE_KEY = "pkm-os.desktop.prefs.v1";
 const SEARCH_RECENTS_KEY = "pkm-os.desktop.search-recents.v1";
+const SCRATCHPAD_STORAGE_KEY = "pkm-os.desktop.home-scratchpad.v1";
 const HISTORY_STORAGE_KEY = "pkm-os.desktop.history.v1";
 const CALENDAR_STORAGE_KEY = "pkm-os.desktop.calendar.v1";
 const AI_SETTINGS_STORAGE_KEY = "pkm-os.desktop.ai-settings.v1";
@@ -1123,6 +1124,19 @@ function loadRecentSearches(): string[] {
   }
 }
 
+function loadScratchPad(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SCRATCHPAD_STORAGE_KEY);
+    return typeof raw === "string" ? raw : "";
+  } catch {
+    return "";
+  }
+}
+
 function loadNoteHistory(): Record<string, NoteHistoryEntry[]> {
   if (typeof window === "undefined") {
     return {};
@@ -1298,6 +1312,7 @@ export default function App() {
   const [aiModels, setAiModels] = useState<string[]>([]);
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [homeScratchPad, setHomeScratchPad] = useState<string>(() => loadScratchPad());
   const [vaultReady, setVaultReady] = useState(false);
   const [queryNoteHandled, setQueryNoteHandled] = useState(false);
   const [noteHistory, setNoteHistory] = useState<Record<string, NoteHistoryEntry[]>>(() => loadNoteHistory());
@@ -2024,6 +2039,13 @@ export default function App() {
     }
     window.localStorage.setItem(AI_SETTINGS_STORAGE_KEY, JSON.stringify(aiSettings));
   }, [aiSettings]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(SCRATCHPAD_STORAGE_KEY, homeScratchPad);
+  }, [homeScratchPad]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -5377,6 +5399,20 @@ export default function App() {
         </header>
         {browseMode === "home" ? (
           <div className="home-dashboard" aria-label="Home dashboard">
+            <section className="home-panel">
+              <header>
+                <h2>Scratch pad</h2>
+                <small>{homeScratchPad.trim().length ? "Unsaved" : "Empty"}</small>
+              </header>
+              <div className="home-scratchpad-wrap">
+                <textarea
+                  className="home-scratchpad"
+                  placeholder="Capture quick thoughts, todos, or links..."
+                  value={homeScratchPad}
+                  onChange={(event) => setHomeScratchPad(event.target.value)}
+                />
+              </div>
+            </section>
             <section className="home-panel">
               <header>
                 <h2>Pinned to Home</h2>

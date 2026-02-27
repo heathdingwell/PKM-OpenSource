@@ -3443,6 +3443,48 @@ export default function App() {
     setToastMessage(`Notebook "${notebook}" created`);
   }
 
+  function createNoteFromScratchPad(): void {
+    const content = homeScratchPad.trim();
+    if (!content) {
+      setToastMessage("Scratch pad is empty");
+      return;
+    }
+
+    const suggestedTitle = content.split(/\r?\n/)[0]?.replace(/^#+\s*/, "").trim() || "Scratch note";
+    const rawTitle = window.prompt("New note title", suggestedTitle);
+    const title = rawTitle?.trim();
+    if (!title) {
+      return;
+    }
+
+    const notebook = selectedNotebook === "All Notes" ? notebooks[1] || "Inbox" : selectedNotebook;
+    const now = new Date().toISOString();
+    const markdown = `# ${title}\n\n${content}`;
+    const created = noteFromMarkdown(
+      {
+        id: crypto.randomUUID(),
+        title,
+        snippet: "",
+        tags: [],
+        linksOut: [],
+        createdAt: now,
+        updatedAt: now,
+        path: `${notebook}/${toFileName(title)}`,
+        notebook,
+        markdown
+      },
+      markdown,
+      now
+    );
+
+    setNotes((previous) => [created, ...previous]);
+    setHomeScratchPad("");
+    setBrowseMode("all");
+    setSelectedNotebook(notebook);
+    focusNote(created.id);
+    setToastMessage(`Created note "${title}"`);
+  }
+
   function toggleShortcutNotes(noteIds: string[]): { added: number; removed: number } {
     const validIds = new Set(notes.map((note) => note.id));
     let added = 0;
@@ -5429,7 +5471,12 @@ export default function App() {
             <section className="home-panel">
               <header>
                 <h2>Scratch pad</h2>
-                <small>{homeScratchPad.trim().length ? "Unsaved" : "Empty"}</small>
+                <div className="home-panel-actions">
+                  <small>{homeScratchPad.trim().length ? "Unsaved" : "Empty"}</small>
+                  <button type="button" onClick={createNoteFromScratchPad}>
+                    Save to note
+                  </button>
+                </div>
               </header>
               <div className="home-scratchpad-wrap">
                 <textarea

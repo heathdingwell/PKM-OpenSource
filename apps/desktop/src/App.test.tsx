@@ -7,5 +7,7 @@ describe("App", () => {
     expect(screen.getByRole("application", { name: "PKM OpenSource Shell" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "+ Note" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Daily Notes" })).toBeInTheDocument();
+    expect(screen.getByRole("separator", { name: "Resize sidebar" })).toBeInTheDocument();
+    expect(screen.getByRole("separator", { name: "Resize note list" })).toBeInTheDocument();
   });
 });

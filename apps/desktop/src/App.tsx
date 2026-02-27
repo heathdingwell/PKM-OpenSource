@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { SearchIndex } from "@pkm-os/indexer";
-import { createDefaultLayout } from "@pkm-os/ui-features";
 import { type NoteRecord, VaultService } from "@pkm-os/vault-core";
 import RichMarkdownEditor, { type RichMarkdownEditorHandle } from "./RichMarkdownEditor";
 
@@ -126,6 +125,8 @@ interface EventDialogState {
 interface AppPrefs {
   selectedNotebook: string;
   activeId: string;
+  sidebarWidth?: number;
+  listWidth?: number;
   browseMode?: NoteBrowseMode;
   viewMode?: NoteViewMode;
   sortMode?: NoteSortMode;
@@ -192,11 +193,22 @@ interface ShellNotesPayload {
   length: number;
 }
 
+interface ResizeState {
+  kind: "sidebar" | "list";
+  startX: number;
+  startSidebarWidth: number;
+  startListWidth: number;
+}
+
 const NOTES_STORAGE_KEY = "pkm-os.desktop.notes.v2";
 const PREFS_STORAGE_KEY = "pkm-os.desktop.prefs.v1";
 const SEARCH_RECENTS_KEY = "pkm-os.desktop.search-recents.v1";
 const HISTORY_STORAGE_KEY = "pkm-os.desktop.history.v1";
 const CALENDAR_STORAGE_KEY = "pkm-os.desktop.calendar.v1";
+const MIN_SIDEBAR_WIDTH = 210;
+const MAX_SIDEBAR_WIDTH = 420;
+const MIN_LIST_WIDTH = 320;
+const MAX_LIST_WIDTH = 960;
 
 const seedNotes: SeedNote[] = [
   {
@@ -379,6 +391,10 @@ function clampMenuPosition(x: number, y: number): { x: number; y: number } {
   const maxX = window.innerWidth - 260;
   const maxY = window.innerHeight - 420;
   return { x: Math.max(16, Math.min(x, maxX)), y: Math.max(16, Math.min(y, maxY)) };
+}
+
+function clampPaneWidth(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 function parseForPreview(markdown: string): { title: string; body: string[] } {
@@ -699,49 +715,47 @@ function loadInitialNotes(): AppNote[] {
   }
 }
 
+function defaultPrefs(): AppPrefs {
+  return {
+    selectedNotebook: "Daily Notes",
+    activeId: "",
+    sidebarWidth: 240,
+    listWidth: 520,
+    browseMode: "all",
+    viewMode: "cards",
+    sortMode: "updated-desc",
+    tagFilters: [],
+    recentNoteIds: [],
+    shortcutNoteIds: [],
+    homePinnedNoteIds: [],
+    notebookPinnedNoteIds: [],
+    savedSearches: [],
+    notebookStacks: {},
+    collapsedStacks: []
+  };
+}
+
 function loadPrefs(): AppPrefs {
   if (typeof window === "undefined") {
-    return {
-      selectedNotebook: "Daily Notes",
-      activeId: "",
-      browseMode: "all",
-      viewMode: "cards",
-      sortMode: "updated-desc",
-      tagFilters: [],
-      recentNoteIds: [],
-      shortcutNoteIds: [],
-      homePinnedNoteIds: [],
-      notebookPinnedNoteIds: [],
-      savedSearches: [],
-      notebookStacks: {},
-      collapsedStacks: []
-    };
+    return defaultPrefs();
   }
 
   try {
     const raw = window.localStorage.getItem(PREFS_STORAGE_KEY);
     if (!raw) {
-      return {
-        selectedNotebook: "Daily Notes",
-        activeId: "",
-        browseMode: "all",
-        viewMode: "cards",
-        sortMode: "updated-desc",
-        tagFilters: [],
-        recentNoteIds: [],
-        shortcutNoteIds: [],
-        homePinnedNoteIds: [],
-        notebookPinnedNoteIds: [],
-        savedSearches: [],
-        notebookStacks: {},
-        collapsedStacks: []
-      };
+      return defaultPrefs();
     }
 
     const parsed = JSON.parse(raw) as Partial<AppPrefs>;
     return {
       selectedNotebook: parsed.selectedNotebook || "Daily Notes",
       activeId: parsed.activeId || "",
+      sidebarWidth:
+        typeof parsed.sidebarWidth === "number"
+          ? clampPaneWidth(parsed.sidebarWidth, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH)
+          : 240,
+      listWidth:
+        typeof parsed.listWidth === "number" ? clampPaneWidth(parsed.listWidth, MIN_LIST_WIDTH, MAX_LIST_WIDTH) : 520,
       browseMode: parsed.browseMode === "templates" ? "templates" : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
@@ -784,21 +798,7 @@ function loadPrefs(): AppPrefs {
         : []
     };
   } catch {
-    return {
-      selectedNotebook: "Daily Notes",
-      activeId: "",
-      browseMode: "all",
-      viewMode: "cards",
-      sortMode: "updated-desc",
-      tagFilters: [],
-      recentNoteIds: [],
-      shortcutNoteIds: [],
-      homePinnedNoteIds: [],
-      notebookPinnedNoteIds: [],
-      savedSearches: [],
-      notebookStacks: {},
-      collapsedStacks: []
-    };
+    return defaultPrefs();
   }
 }
 
@@ -922,7 +922,12 @@ function loadCalendarEvents(): CalendarEvent[] {
 export default function App() {
   const initialPrefs = useMemo(() => loadPrefs(), []);
 
-  const [layout] = useState(() => ({ ...createDefaultLayout(), sidebarWidth: 240, listWidth: 520 }));
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() =>
+    clampPaneWidth(initialPrefs.sidebarWidth ?? 240, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH)
+  );
+  const [listWidth, setListWidth] = useState<number>(() =>
+    clampPaneWidth(initialPrefs.listWidth ?? 520, MIN_LIST_WIDTH, MAX_LIST_WIDTH)
+  );
   const [notes, setNotes] = useState<AppNote[]>(() => loadInitialNotes());
   const [selectedNotebook, setSelectedNotebook] = useState<string>(initialPrefs.selectedNotebook);
   const [activeId, setActiveId] = useState<string>(initialPrefs.activeId);
@@ -992,6 +997,7 @@ export default function App() {
   const editorMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const markdownEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
+  const activeResizeRef = useRef<ResizeState | null>(null);
 
   const notebooks = useMemo(() => {
     const names = Array.from(new Set(notes.map((note) => note.notebook))).sort((left, right) =>
@@ -1596,6 +1602,8 @@ export default function App() {
     const prefs: AppPrefs = {
       selectedNotebook,
       activeId,
+      sidebarWidth,
+      listWidth,
       browseMode,
       viewMode,
       sortMode,
@@ -1612,6 +1620,8 @@ export default function App() {
   }, [
     selectedNotebook,
     activeId,
+    sidebarWidth,
+    listWidth,
     browseMode,
     viewMode,
     sortMode,
@@ -1707,6 +1717,8 @@ export default function App() {
       }
 
       if (event.key === "Escape") {
+        activeResizeRef.current = null;
+        document.body.classList.remove("is-resizing");
         setContextMenu(null);
         setNoteListMenu(null);
         setNotebookMenu(null);
@@ -1781,6 +1793,73 @@ export default function App() {
       );
     }
   }, [slashMenu, slashResults]);
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      const activeResize = activeResizeRef.current;
+      if (!activeResize) {
+        return;
+      }
+
+      const delta = event.clientX - activeResize.startX;
+      if (activeResize.kind === "sidebar") {
+        const nextSidebar = clampPaneWidth(
+          activeResize.startSidebarWidth + delta,
+          MIN_SIDEBAR_WIDTH,
+          MAX_SIDEBAR_WIDTH
+        );
+        setSidebarWidth(nextSidebar);
+        return;
+      }
+
+      const nextList = clampPaneWidth(activeResize.startListWidth + delta, MIN_LIST_WIDTH, MAX_LIST_WIDTH);
+      setListWidth(nextList);
+    };
+
+    const handleMouseUp = () => {
+      if (!activeResizeRef.current) {
+        return;
+      }
+      activeResizeRef.current = null;
+      document.body.classList.remove("is-resizing");
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleWindowResize = () => {
+      setSidebarWidth((previous) => clampPaneWidth(previous, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH));
+      setListWidth((previous) => clampPaneWidth(previous, MIN_LIST_WIDTH, MAX_LIST_WIDTH));
+    };
+
+    window.addEventListener("resize", handleWindowResize);
+    return () => window.removeEventListener("resize", handleWindowResize);
+  }, []);
+
+  function startPaneResize(kind: "sidebar" | "list", startX: number): void {
+    activeResizeRef.current = {
+      kind,
+      startX,
+      startSidebarWidth: sidebarWidth,
+      startListWidth: listWidth
+    };
+    document.body.classList.add("is-resizing");
+  }
+
+  function nudgePaneWidth(kind: "sidebar" | "list", direction: "decrease" | "increase"): void {
+    const delta = direction === "increase" ? 16 : -16;
+    if (kind === "sidebar") {
+      setSidebarWidth((previous) => clampPaneWidth(previous + delta, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH));
+      return;
+    }
+    setListWidth((previous) => clampPaneWidth(previous + delta, MIN_LIST_WIDTH, MAX_LIST_WIDTH));
+  }
 
   function flushActiveDraft(): void {
     if (!activeNote || draftMarkdown === activeNote.markdown) {
@@ -3919,7 +3998,7 @@ export default function App() {
         setSlashMenu(null);
       }}
     >
-      <aside className="left-sidebar" style={{ width: layout.sidebarWidth }}>
+      <aside className="left-sidebar" style={{ width: sidebarWidth }}>
         <div className="sidebar-search" onClick={() => setSearchOpen(true)}>
           <span>Search</span>
           <kbd>cmd+k</kbd>
@@ -4208,7 +4287,30 @@ export default function App() {
         </section>
       </aside>
 
-      <section className="note-column" style={{ width: layout.listWidth }}>
+      <div
+        className="pane-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+        aria-valuemin={MIN_SIDEBAR_WIDTH}
+        aria-valuemax={MAX_SIDEBAR_WIDTH}
+        aria-valuenow={sidebarWidth}
+        tabIndex={0}
+        onMouseDown={(event) => startPaneResize("sidebar", event.clientX)}
+        onDoubleClick={() => setSidebarWidth(240)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            nudgePaneWidth("sidebar", "decrease");
+          }
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            nudgePaneWidth("sidebar", "increase");
+          }
+        }}
+      />
+
+      <section className="note-column" style={{ width: listWidth }}>
         <header className="note-column-header">
           <div>
             <h1>{browseMode === "templates" ? "Templates" : selectedNotebook}</h1>
@@ -4321,6 +4423,29 @@ export default function App() {
           })}
         </div>
       </section>
+
+      <div
+        className="pane-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize note list"
+        aria-valuemin={MIN_LIST_WIDTH}
+        aria-valuemax={MAX_LIST_WIDTH}
+        aria-valuenow={listWidth}
+        tabIndex={0}
+        onMouseDown={(event) => startPaneResize("list", event.clientX)}
+        onDoubleClick={() => setListWidth(520)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            nudgePaneWidth("list", "decrease");
+          }
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            nudgePaneWidth("list", "increase");
+          }
+        }}
+      />
 
       <main className="editor-shell">
         {activeNote ? (

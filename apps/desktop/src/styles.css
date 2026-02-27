@@ -39,9 +39,45 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: auto 8px auto 8px minmax(0, 1fr);
   height: 100%;
   background: var(--bg-shell);
+}
+
+.pane-resizer {
+  position: relative;
+  width: 8px;
+  border-left: 1px solid #d6cad8;
+  border-right: 1px solid #d6cad8;
+  background: linear-gradient(180deg, #ece2f1 0%, #e4d8eb 100%);
+  cursor: col-resize;
+}
+
+.pane-resizer:hover {
+  border-color: #7ca8e8;
+  background: linear-gradient(180deg, #d8e8ff 0%, #c7dcfa 100%);
+}
+
+.pane-resizer:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.45);
+  outline-offset: -2px;
+}
+
+.pane-resizer::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  width: 1px;
+  height: 56px;
+  border-radius: 1px;
+  transform: translateY(-50%);
+  background: rgba(79, 98, 133, 0.55);
+}
+
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .left-sidebar {
@@ -1677,6 +1713,14 @@ button {
 }
 
 @media (max-width: 1220px) {
+  .app-shell {
+    grid-template-columns: auto auto 1fr;
+  }
+
+  .pane-resizer {
+    display: none;
+  }
+
   .note-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -79,6 +79,7 @@ interface AppPrefs {
   shortcutNoteIds?: string[];
   homePinnedNoteIds?: string[];
   notebookPinnedNoteIds?: string[];
+  savedSearches?: SavedSearch[];
   notebookStacks?: Record<string, string>;
   collapsedStacks?: string[];
 }
@@ -119,6 +120,13 @@ interface NoteListMenuState {
   x: number;
   y: number;
   kind: "sort" | "filter";
+}
+
+interface SavedSearch {
+  id: string;
+  label: string;
+  query: string;
+  scope: "everywhere" | "current";
 }
 
 interface ShellNotesPayload {
@@ -442,6 +450,7 @@ function loadPrefs(): AppPrefs {
       shortcutNoteIds: [],
       homePinnedNoteIds: [],
       notebookPinnedNoteIds: [],
+      savedSearches: [],
       notebookStacks: {},
       collapsedStacks: []
     };
@@ -460,6 +469,7 @@ function loadPrefs(): AppPrefs {
         shortcutNoteIds: [],
         homePinnedNoteIds: [],
         notebookPinnedNoteIds: [],
+        savedSearches: [],
         notebookStacks: {},
         collapsedStacks: []
       };
@@ -486,6 +496,17 @@ function loadPrefs(): AppPrefs {
       notebookPinnedNoteIds: Array.isArray(parsed.notebookPinnedNoteIds)
         ? parsed.notebookPinnedNoteIds.filter((noteId): noteId is string => typeof noteId === "string")
         : [],
+      savedSearches: Array.isArray(parsed.savedSearches)
+        ? parsed.savedSearches.filter(
+            (entry): entry is SavedSearch =>
+              Boolean(entry) &&
+              typeof entry === "object" &&
+              typeof (entry as SavedSearch).id === "string" &&
+              typeof (entry as SavedSearch).label === "string" &&
+              typeof (entry as SavedSearch).query === "string" &&
+              ((entry as SavedSearch).scope === "everywhere" || (entry as SavedSearch).scope === "current")
+          )
+        : [],
       notebookStacks:
         parsed.notebookStacks && typeof parsed.notebookStacks === "object"
           ? Object.fromEntries(
@@ -509,6 +530,7 @@ function loadPrefs(): AppPrefs {
       shortcutNoteIds: [],
       homePinnedNoteIds: [],
       notebookPinnedNoteIds: [],
+      savedSearches: [],
       notebookStacks: {},
       collapsedStacks: []
     };
@@ -616,6 +638,7 @@ export default function App() {
   const [notebookPinnedNoteIds, setNotebookPinnedNoteIds] = useState<string[]>(
     initialPrefs.notebookPinnedNoteIds ?? []
   );
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(initialPrefs.savedSearches ?? []);
   const [notebookStacks, setNotebookStacks] = useState<Record<string, string>>(initialPrefs.notebookStacks ?? {});
   const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(
     () => new Set(initialPrefs.collapsedStacks ?? [])
@@ -1183,6 +1206,7 @@ export default function App() {
       shortcutNoteIds,
       homePinnedNoteIds,
       notebookPinnedNoteIds,
+      savedSearches,
       notebookStacks,
       collapsedStacks: Array.from(collapsedStacks)
     };
@@ -1197,6 +1221,7 @@ export default function App() {
     shortcutNoteIds,
     homePinnedNoteIds,
     notebookPinnedNoteIds,
+    savedSearches,
     notebookStacks,
     collapsedStacksKey
   ]);
@@ -1584,6 +1609,51 @@ export default function App() {
       return;
     }
     setRecentSearches((previous) => [value, ...previous.filter((entry) => entry !== value)].slice(0, 8));
+  }
+
+  function saveCurrentSearch(): void {
+    const query = quickQuery.trim();
+    if (!query) {
+      setToastMessage("Enter a query to save");
+      return;
+    }
+
+    const defaultLabel = query.length > 28 ? `${query.slice(0, 28)}...` : query;
+    const input = window.prompt("Saved search name", defaultLabel);
+    const label = input?.trim();
+    if (!label) {
+      return;
+    }
+
+    setSavedSearches((previous) => {
+      const existing = previous.find(
+        (entry) => entry.query === query && entry.scope === searchScope && entry.label.toLowerCase() === label.toLowerCase()
+      );
+      if (existing) {
+        return previous;
+      }
+
+      return [
+        {
+          id: crypto.randomUUID(),
+          label,
+          query,
+          scope: searchScope
+        },
+        ...previous
+      ].slice(0, 40);
+    });
+    setToastMessage(`Saved search "${label}"`);
+  }
+
+  function openSavedSearch(saved: SavedSearch): void {
+    setSearchScope(saved.scope);
+    setQuickQuery(saved.query);
+    setSearchOpen(true);
+  }
+
+  function removeSavedSearch(id: string): void {
+    setSavedSearches((previous) => previous.filter((entry) => entry.id !== id));
   }
 
   function openSearchResult(note: AppNote, mode: "open" | "copy-link" | "open-window" = "open"): void {
@@ -2907,6 +2977,32 @@ export default function App() {
         </section>
 
         <section className="sidebar-section">
+          <h2>Saved Searches</h2>
+          {savedSearches.length ? (
+            <ul className="shortcut-list">
+              {savedSearches.map((saved) => (
+                <li key={saved.id} className="shortcut-row">
+                  <button type="button" className="shortcut-item" onClick={() => openSavedSearch(saved)}>
+                    <span>{saved.label}</span>
+                    <small>{saved.scope === "current" ? `In ${selectedNotebook}` : "Everywhere"}</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="shortcut-remove"
+                    aria-label={`Remove saved search ${saved.label}`}
+                    onClick={() => removeSavedSearch(saved.id)}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="shortcut-empty">No saved searches yet</p>
+          )}
+        </section>
+
+        <section className="sidebar-section">
           <h2>Pinned to Home</h2>
           {homePinnedNotes.length ? (
             <ul className="shortcut-list">
@@ -3854,6 +3950,9 @@ export default function App() {
                 }}
               >
                 Open in New Window
+              </button>
+              <button type="button" disabled={!quickQuery.trim()} onClick={saveCurrentSearch}>
+                Save Search
               </button>
             </footer>
           </section>

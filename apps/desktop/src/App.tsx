@@ -59,6 +59,16 @@ interface LastMoveState {
   previousById: Record<string, { notebook: string; path: string }>;
 }
 
+interface NoteHistoryEntry {
+  at: string;
+  title: string;
+  markdown: string;
+}
+
+interface NoteHistoryDialogState {
+  noteId: string;
+}
+
 interface AppPrefs {
   selectedNotebook: string;
   activeId: string;
@@ -117,6 +127,7 @@ interface ShellNotesPayload {
 const NOTES_STORAGE_KEY = "pkm-os.desktop.notes.v2";
 const PREFS_STORAGE_KEY = "pkm-os.desktop.prefs.v1";
 const SEARCH_RECENTS_KEY = "pkm-os.desktop.search-recents.v1";
+const HISTORY_STORAGE_KEY = "pkm-os.desktop.history.v1";
 
 const seedNotes: SeedNote[] = [
   {
@@ -510,6 +521,47 @@ function loadRecentSearches(): string[] {
   }
 }
 
+function loadNoteHistory(): Record<string, NoteHistoryEntry[]> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem(HISTORY_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") {
+      return {};
+    }
+
+    const entries = Object.entries(parsed as Record<string, unknown>).map(([noteId, snapshots]) => {
+      if (!Array.isArray(snapshots)) {
+        return [noteId, []] as const;
+      }
+
+      const safe = snapshots
+        .filter(
+          (entry): entry is NoteHistoryEntry =>
+            Boolean(entry) &&
+            typeof entry === "object" &&
+            typeof (entry as NoteHistoryEntry).at === "string" &&
+            typeof (entry as NoteHistoryEntry).title === "string" &&
+            typeof (entry as NoteHistoryEntry).markdown === "string"
+        )
+        .slice(0, 30);
+
+      return [noteId, safe] as const;
+    });
+
+    return Object.fromEntries(entries);
+  } catch {
+    return {};
+  }
+}
+
 export default function App() {
   const initialPrefs = useMemo(() => loadPrefs(), []);
 
@@ -526,6 +578,7 @@ export default function App() {
   const [moveDialog, setMoveDialog] = useState<MoveDialogState | null>(null);
   const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
   const [noteRenameDialog, setNoteRenameDialog] = useState<NoteRenameDialogState | null>(null);
+  const [noteHistoryDialog, setNoteHistoryDialog] = useState<NoteHistoryDialogState | null>(null);
   const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<"everywhere" | "current">("everywhere");
@@ -554,6 +607,7 @@ export default function App() {
   const [tagInput, setTagInput] = useState("");
   const [vaultReady, setVaultReady] = useState(false);
   const [queryNoteHandled, setQueryNoteHandled] = useState(false);
+  const [noteHistory, setNoteHistory] = useState<Record<string, NoteHistoryEntry[]>>(() => loadNoteHistory());
   const [vaultMode] = useState<"local" | "desktop">(() =>
     typeof window !== "undefined" && window.pkmShell?.saveVaultState ? "desktop" : "local"
   );
@@ -561,6 +615,7 @@ export default function App() {
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
 
   const autosaveTimerRef = useRef<number | null>(null);
+  const previousNotesRef = useRef<AppNote[] | null>(null);
   const editorMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const markdownEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
@@ -655,6 +710,8 @@ export default function App() {
   const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
 
   const activeNote = notes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
+  const noteHistoryNote = noteHistoryDialog ? notes.find((note) => note.id === noteHistoryDialog.noteId) ?? null : null;
+  const noteHistoryEntries = noteHistoryDialog ? noteHistory[noteHistoryDialog.noteId] ?? [] : [];
 
   const draftPreview = useMemo(
     () => parseForPreview(draftMarkdown || activeNote?.markdown || "# Untitled\n"),
@@ -994,6 +1051,74 @@ export default function App() {
   }, [notes, vaultReady]);
 
   useEffect(() => {
+    const previous = previousNotesRef.current;
+    if (!previous) {
+      previousNotesRef.current = notes;
+      return;
+    }
+
+    const previousById = new Map(previous.map((note) => [note.id, note]));
+    const updates: Array<{ noteId: string; snapshot: NoteHistoryEntry }> = [];
+
+    for (const note of notes) {
+      const prior = previousById.get(note.id);
+      if (!prior) {
+        continue;
+      }
+      if (prior.markdown === note.markdown) {
+        continue;
+      }
+      updates.push({
+        noteId: note.id,
+        snapshot: {
+          at: new Date().toISOString(),
+          title: prior.title,
+          markdown: prior.markdown
+        }
+      });
+    }
+
+    if (updates.length) {
+      setNoteHistory((previousHistory) => {
+        const nextHistory = { ...previousHistory };
+        for (const { noteId, snapshot } of updates) {
+          const existing = nextHistory[noteId] ?? [];
+          if (existing[0]?.markdown === snapshot.markdown) {
+            continue;
+          }
+          nextHistory[noteId] = [snapshot, ...existing].slice(0, 30);
+        }
+        return nextHistory;
+      });
+    }
+
+    previousNotesRef.current = notes;
+  }, [notes]);
+
+  useEffect(() => {
+    const validIds = new Set(notes.map((note) => note.id));
+    setNoteHistory((previous) => {
+      let changed = false;
+      const next: Record<string, NoteHistoryEntry[]> = {};
+      for (const [noteId, snapshots] of Object.entries(previous)) {
+        if (!validIds.has(noteId)) {
+          changed = true;
+          continue;
+        }
+        next[noteId] = snapshots;
+      }
+      return changed ? next : previous;
+    });
+  }, [notes]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(noteHistory));
+  }, [noteHistory]);
+
+  useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
@@ -1108,6 +1233,7 @@ export default function App() {
         setNotebookMenu(null);
         setEditorContextMenu(null);
         setStackDialog(null);
+        setNoteHistoryDialog(null);
         setSearchOpen(false);
         setSlashMenu(null);
       }
@@ -1524,6 +1650,38 @@ export default function App() {
     setShortcutNoteIds((previous) => previous.filter((entry) => entry !== noteId));
   }
 
+  function restoreNoteSnapshot(noteId: string, index: number): void {
+    const snapshot = noteHistory[noteId]?.[index];
+    if (!snapshot) {
+      return;
+    }
+
+    setNotes((previous) =>
+      previous.map((note) => {
+        if (note.id !== noteId) {
+          return note;
+        }
+
+        return noteFromMarkdown(
+          {
+            ...note,
+            title: snapshot.title,
+            path: `${note.notebook}/${toFileName(snapshot.title)}`
+          },
+          snapshot.markdown,
+          new Date().toISOString()
+        );
+      })
+    );
+
+    if (activeId === noteId) {
+      setDraftMarkdown(snapshot.markdown);
+    }
+
+    setNoteHistoryDialog(null);
+    setToastMessage(`Restored ${new Date(snapshot.at).toLocaleString()}`);
+  }
+
   function confirmStackAssignment(): void {
     if (!stackDialog) {
       return;
@@ -1889,6 +2047,12 @@ export default function App() {
       return;
     }
 
+    if (action === "note-history") {
+      setNoteHistoryDialog({ noteId: targetId });
+      setContextMenu(null);
+      return;
+    }
+
     if (action === "export") {
       exportNote(targetId);
       setContextMenu(null);
@@ -1909,8 +2073,7 @@ export default function App() {
 
     if (
       action === "pin-notebook" ||
-      action === "pin-home" ||
-      action === "note-history"
+      action === "pin-home"
     ) {
       setToastMessage(`"${action.replace(/-/g, " ")}" is planned`);
       setContextMenu(null);
@@ -2537,6 +2700,7 @@ export default function App() {
         setNoteListMenu(null);
         setNotebookMenu(null);
         setEditorContextMenu(null);
+        setNoteHistoryDialog(null);
         setSlashMenu(null);
       }}
     >
@@ -3533,6 +3697,36 @@ export default function App() {
                 onClick={() => renameNote(noteRenameDialog.noteId, noteRenameDialog.newTitle)}
               >
                 Save
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {noteHistoryDialog ? (
+        <div className="overlay" onClick={() => setNoteHistoryDialog(null)}>
+          <section className="move-modal history-modal" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <h3>History · {noteHistoryNote?.title ?? "Note"}</h3>
+              <small>{noteHistoryEntries.length} snapshots</small>
+            </header>
+            {noteHistoryEntries.length ? (
+              <ul>
+                {noteHistoryEntries.map((entry, index) => (
+                  <li key={`${entry.at}-${index}`}>
+                    <button type="button" onClick={() => restoreNoteSnapshot(noteHistoryDialog.noteId, index)}>
+                      <strong>{new Date(entry.at).toLocaleString()}</strong>
+                      <small>{entry.title}</small>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="history-empty">No history yet</p>
+            )}
+            <footer>
+              <button type="button" onClick={() => setNoteHistoryDialog(null)}>
+                Close
               </button>
             </footer>
           </section>

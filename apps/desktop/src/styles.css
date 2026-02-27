@@ -1325,6 +1325,30 @@ button {
   background: var(--blue);
 }
 
+.history-modal ul {
+  margin-bottom: 10px;
+}
+
+.history-modal li button {
+  display: grid;
+  gap: 1px;
+}
+
+.history-modal li button strong {
+  font-size: 13px;
+}
+
+.history-modal li button small {
+  font-size: 11px;
+  color: #8f7f6a;
+}
+
+.history-empty {
+  margin: 6px 0 12px;
+  color: #7f6b54;
+  font-size: 13px;
+}
+
 .stack-modal ul {
   max-height: 180px;
   margin: 0;

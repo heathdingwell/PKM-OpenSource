@@ -2013,18 +2013,38 @@ export default function App() {
     );
   }
 
-  function copyNotes(noteIds: string[], destination: string): void {
+  async function cloneNoteAttachmentsForCopy(
+    sourceNotePath: string,
+    targetNotePath: string,
+    markdown: string
+  ): Promise<string> {
+    if (!window.pkmShell?.cloneAttachmentLinks) {
+      return markdown;
+    }
+
+    const result = await window.pkmShell.cloneAttachmentLinks({
+      sourceNotePath,
+      targetNotePath,
+      markdown
+    });
+
+    return result?.markdown ?? markdown;
+  }
+
+  async function copyNotes(noteIds: string[], destination: string): Promise<void> {
     const selected = notes.filter((note) => noteIds.includes(note.id));
     if (!selected.length) {
       return;
     }
 
     const now = new Date().toISOString();
-    const copies = selected.map((source, index) => {
+    const copies = await Promise.all(selected.map(async (source, index) => {
       const suffix = selected.length > 1 ? ` copy ${index + 1}` : " copy";
       const draft = parseForPreview(source.markdown);
       const copyTitle = `${draft.title}${suffix}`;
-      const rewritten = source.markdown.replace(/^#\s+.*$/m, `# ${copyTitle}`);
+      const copyPath = `${destination}/${toFileName(copyTitle)}`;
+      const rewrittenHeading = source.markdown.replace(/^#\s+.*$/m, `# ${copyTitle}`);
+      const rewritten = await cloneNoteAttachmentsForCopy(source.path, copyPath, rewrittenHeading);
       const copy: AppNote = {
         ...source,
         id: crypto.randomUUID(),
@@ -2032,11 +2052,11 @@ export default function App() {
         markdown: rewritten,
         createdAt: now,
         updatedAt: now,
-        path: `${destination}/${toFileName(copyTitle)}`,
+        path: copyPath,
         title: copyTitle
       };
       return noteFromMarkdown(copy, rewritten, now);
-    });
+    }));
 
     setNotes((previous) => [...copies, ...previous]);
     setToastMessage(
@@ -2069,13 +2089,16 @@ export default function App() {
     setLastMove(null);
   }
 
-  function duplicateNotes(noteIds: string[]): void {
+  async function duplicateNotes(noteIds: string[]): Promise<void> {
     const now = new Date().toISOString();
-    const duplicates = notes
-      .filter((note) => noteIds.includes(note.id))
-      .map((note) => {
+    const duplicates = await Promise.all(
+      notes
+        .filter((note) => noteIds.includes(note.id))
+        .map(async (note) => {
         const title = `${note.title} copy`;
-        const markdown = note.markdown.replace(/^#\s+.*$/m, `# ${title}`);
+        const path = `${note.notebook}/${toFileName(title)}`;
+        const rewrittenHeading = note.markdown.replace(/^#\s+.*$/m, `# ${title}`);
+        const markdown = await cloneNoteAttachmentsForCopy(note.path, path, rewrittenHeading);
         const copy: AppNote = {
           ...note,
           id: crypto.randomUUID(),
@@ -2083,11 +2106,12 @@ export default function App() {
           markdown,
           createdAt: now,
           updatedAt: now,
-          path: `${note.notebook}/${toFileName(title)}`
+          path
         };
 
         return noteFromMarkdown(copy, markdown, now);
-      });
+      })
+    );
 
     if (!duplicates.length) {
       return;
@@ -2225,7 +2249,7 @@ export default function App() {
     }
 
     if (action === "duplicate") {
-      duplicateNotes(contextMenu.noteIds);
+      void duplicateNotes(contextMenu.noteIds);
       setContextMenu(null);
       return;
     }
@@ -4513,7 +4537,7 @@ export default function App() {
                 disabled={!moveDialog.destination.trim()}
                 onClick={() => {
                   if (moveDialog.mode === "copy") {
-                    copyNotes(moveDialog.noteIds, moveDialog.destination.trim());
+                    void copyNotes(moveDialog.noteIds, moveDialog.destination.trim());
                   } else {
                     moveNotes(moveDialog.noteIds, moveDialog.destination.trim());
                   }

@@ -435,6 +435,92 @@ async function saveVaultAttachment(payload) {
   };
 }
 
+function isExternalReference(value) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return true;
+  }
+  if (trimmed.startsWith("#")) {
+    return true;
+  }
+  return /^[a-z][a-z0-9+.-]*:/i.test(trimmed);
+}
+
+function normalizeLinkTarget(value) {
+  return value.trim().replace(/^<|>$/g, "");
+}
+
+async function cloneAttachmentLinks(payload) {
+  if (!isObject(payload)) {
+    return null;
+  }
+
+  const sourceNotePath = sanitizeNotePath(payload.sourceNotePath);
+  const targetNotePath = sanitizeNotePath(payload.targetNotePath);
+  const markdown = typeof payload.markdown === "string" ? payload.markdown : "";
+
+  if (!sourceNotePath || !targetNotePath || !markdown.trim()) {
+    return { markdown };
+  }
+
+  const rootDir = vaultRootPath();
+  const sourceDir = path.posix.dirname(sourceNotePath);
+  const targetDir = path.posix.dirname(targetNotePath);
+  const targetAttachmentsRelative =
+    targetDir === "." ? "attachments" : path.posix.join(targetDir, "attachments");
+  const targetAttachmentsAbsolute = path.join(rootDir, ...targetAttachmentsRelative.split("/"));
+  await fs.mkdir(targetAttachmentsAbsolute, { recursive: true });
+
+  const copiedMap = new Map();
+  const linkPattern = /(!?\[[^\]]*\])\(([^)]+)\)/g;
+  const rewritten = [];
+  let cursor = 0;
+  let match;
+
+  while ((match = linkPattern.exec(markdown)) !== null) {
+    const [full, label, rawTarget] = match;
+    rewritten.push(markdown.slice(cursor, match.index));
+    cursor = match.index + full.length;
+
+    const cleanedTarget = normalizeLinkTarget(rawTarget);
+    if (isExternalReference(cleanedTarget)) {
+      rewritten.push(full);
+      continue;
+    }
+
+    const sourceCandidate = cleanedTarget.replace(/^\.\/+/, "");
+    const sourceRelative = path.posix.normalize(path.posix.join(sourceDir === "." ? "" : sourceDir, sourceCandidate));
+    if (!sourceRelative || sourceRelative.startsWith("..")) {
+      rewritten.push(full);
+      continue;
+    }
+
+    let nextRelative = copiedMap.get(sourceRelative);
+    if (!nextRelative) {
+      const sourceAbsolute = path.join(rootDir, ...sourceRelative.split("/"));
+      if (!(await pathExists(sourceAbsolute))) {
+        rewritten.push(full);
+        continue;
+      }
+
+      const safeName = sanitizeAttachmentName(path.posix.basename(sourceRelative));
+      const uniqueName = await uniqueFileNameInDir(targetAttachmentsAbsolute, safeName);
+      const targetRelative = path.posix.join(targetAttachmentsRelative, uniqueName);
+      const targetAbsolute = path.join(rootDir, ...targetRelative.split("/"));
+
+      await fs.copyFile(sourceAbsolute, targetAbsolute);
+      const relativeFromTargetDir = path.posix.relative(targetDir === "." ? "" : targetDir, targetRelative);
+      nextRelative = relativeFromTargetDir.startsWith(".") ? relativeFromTargetDir : `./${relativeFromTargetDir}`;
+      copiedMap.set(sourceRelative, nextRelative);
+    }
+
+    rewritten.push(`${label}(${nextRelative})`);
+  }
+
+  rewritten.push(markdown.slice(cursor));
+  return { markdown: rewritten.join(""), copied: copiedMap.size };
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1440,
@@ -481,6 +567,15 @@ app.whenReady().then(() => {
       return await saveVaultAttachment(payload);
     } catch (error) {
       console.error("Failed to save vault attachment", error);
+      return null;
+    }
+  });
+
+  ipcMain.handle("vault:clone-attachments", async (_event, payload) => {
+    try {
+      return await cloneAttachmentLinks(payload);
+    } catch (error) {
+      console.error("Failed to clone note attachments", error);
       return null;
     }
   });

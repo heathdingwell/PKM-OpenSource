@@ -15,6 +15,14 @@ declare global {
         storedPath: string;
         sizeBytes: number;
       } | null>;
+      cloneAttachmentLinks?: (payload: {
+        sourceNotePath: string;
+        targetNotePath: string;
+        markdown: string;
+      }) => Promise<{
+        markdown: string;
+        copied?: number;
+      } | null>;
     };
   }
 }

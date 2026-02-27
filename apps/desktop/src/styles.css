@@ -557,7 +557,7 @@ body.is-resizing {
   align-items: flex-start;
   gap: 8px;
   padding: 10px;
-  border: 1px solid #d9cdbd;
+  border: 1px solid var(--border);
   border-radius: 10px;
   text-align: left;
   background: var(--bg-card);
@@ -582,7 +582,7 @@ body.is-resizing {
 
 .note-card p {
   margin: 0;
-  color: #725f49;
+  color: var(--muted);
   line-height: 1.4;
   font-size: 13px;
 }
@@ -593,7 +593,7 @@ body.is-resizing {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #6f5f4e;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -759,8 +759,8 @@ body.is-resizing {
 }
 
 .save-pill.dirty {
-  color: #9a3412;
-  background: #fbe6d8;
+  color: #1e4fa6;
+  background: #e2ecff;
 }
 
 .save-pill.saving {
@@ -774,14 +774,14 @@ body.is-resizing {
   justify-content: space-between;
   align-items: center;
   padding: 0 16px;
-  border-bottom: 1px solid #bccff4;
+  border-bottom: 1px solid var(--border);
   color: #1e4fa6;
-  background: #e5edff;
+  background: #eef4ff;
 }
 
 .template-banner button {
   padding: 7px 11px;
-  border: 1px solid #6e8fd6;
+  border: 1px solid #9db8ec;
   border-radius: 10px;
   color: #1e4fa6;
   background: transparent;
@@ -1335,7 +1335,7 @@ body.is-resizing {
   justify-self: end;
   height: 30px;
   padding: 0 10px;
-  border: 1px solid #6e8fd6;
+  border: 1px solid #9db8ec;
   border-radius: 8px;
   color: #1e4fa6;
   background: #eaf1ff;
@@ -1370,7 +1370,7 @@ body.is-resizing {
 
 .preview-document p {
   margin: 0;
-  color: #6f5e49;
+  color: var(--muted);
   font-size: 22px;
   line-height: 1.4;
 }
@@ -1691,7 +1691,7 @@ body.is-resizing {
 
 .search-group h5 {
   margin: 10px 0 4px;
-  color: #7e6951;
+  color: #5f78a6;
   font-size: 11px;
   font-weight: 600;
 }
@@ -1701,8 +1701,8 @@ body.is-resizing {
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  color: #584835;
-  border-bottom: 1px solid #f1e6d8;
+  color: #395478;
+  border-bottom: 1px solid #e2eaf6;
   font-size: 14px;
 }
 
@@ -1721,16 +1721,16 @@ body.is-resizing {
   flex-wrap: wrap;
   gap: 6px;
   padding: 8px 12px 12px;
-  border-top: 1px solid #ede1d0;
+  border-top: 1px solid var(--border);
 }
 
 .search-actions button {
   height: 28px;
   padding: 0 10px;
-  border: 1px solid #dac9b2;
+  border: 1px solid #c9d8ef;
   border-radius: 7px;
-  color: #5f4f3a;
-  background: #f9efdf;
+  color: #395478;
+  background: #f4f8ff;
   font-size: 12px;
 }
 
@@ -1743,8 +1743,8 @@ body.is-resizing {
   margin-left: 4px;
   padding: 1px 5px;
   border-radius: 4px;
-  border: 1px solid #ccbca5;
-  background: #fffaf1;
+  border: 1px solid #c9d8ef;
+  background: #f7fbff;
   font-size: 11px;
 }
 
@@ -1757,7 +1757,7 @@ body.is-resizing {
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: var(--shadow);
-  background: #fffaf3;
+  background: #ffffff;
 }
 
 .move-modal header,
@@ -1778,9 +1778,9 @@ body.is-resizing {
   height: 38px;
   margin-bottom: 10px;
   padding: 0 10px;
-  border: 1px solid #d8cab5;
+  border: 1px solid #c9d8ef;
   border-radius: 8px;
-  background: #fffdf9;
+  background: #ffffff;
 }
 
 .move-modal ul {
@@ -1797,12 +1797,12 @@ body.is-resizing {
   border: 0;
   border-radius: 7px;
   text-align: left;
-  color: #5d4a35;
+  color: #395478;
   background: transparent;
 }
 
 .move-modal li button:hover {
-  background: #f5e7d5;
+  background: #eaf1ff;
 }
 
 .move-modal li button.active {
@@ -1825,12 +1825,12 @@ body.is-resizing {
 
 .history-modal li button small {
   font-size: 11px;
-  color: #8f7f6a;
+  color: #6b7f9e;
 }
 
 .history-empty {
   margin: 6px 0 12px;
-  color: #7f6b54;
+  color: #6b7f9e;
   font-size: 13px;
 }
 
@@ -1859,7 +1859,7 @@ body.is-resizing {
 
 .tasks-modal li button small {
   font-size: 11px;
-  color: #8f7f6a;
+  color: #6b7f9e;
 }
 
 .files-modal li button {
@@ -1877,7 +1877,7 @@ body.is-resizing {
 
 .files-modal li button small {
   font-size: 11px;
-  color: #8f7f6a;
+  color: #6b7f9e;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1894,7 +1894,7 @@ body.is-resizing {
 .calendar-new-btn {
   height: 32px;
   padding: 0 10px;
-  border: 1px solid #6e8fd6;
+  border: 1px solid #9db8ec;
   border-radius: 8px;
   color: #1e4fa6;
   background: #eaf1ff;
@@ -1913,7 +1913,7 @@ body.is-resizing {
 
 .calendar-group h4 {
   margin: 0 0 6px;
-  color: #6f5e49;
+  color: #4f6b93;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -1939,13 +1939,13 @@ body.is-resizing {
   padding: 7px 8px;
   border: 0;
   border-radius: 7px;
-  color: #5d4a35;
+  color: #395478;
   text-align: left;
   background: transparent;
 }
 
 .calendar-row .task-open:hover {
-  background: #f5e7d5;
+  background: #eaf1ff;
 }
 
 .calendar-row .task-open strong {
@@ -1957,7 +1957,7 @@ body.is-resizing {
 
 .calendar-row .task-open small {
   font-size: 11px;
-  color: #8f7f6a;
+  color: #6b7f9e;
 }
 
 .event-modal {
@@ -1977,7 +1977,7 @@ body.is-resizing {
 }
 
 .event-grid span {
-  color: #7a654e;
+  color: #5f78a6;
   font-size: 12px;
 }
 
@@ -1991,28 +1991,28 @@ body.is-resizing {
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  color: #5f4d38;
+  color: #4f6b93;
   font-size: 13px;
 }
 
 .event-linked-note {
   margin: 0;
-  color: #6f5f4a;
+  color: #5f78a6;
   font-size: 12px;
 }
 
 .task-complete {
   height: 30px;
   padding: 0 10px;
-  border: 1px solid #c8b79f;
+  border: 1px solid #9db8ec;
   border-radius: 7px;
-  color: #5a4a37;
-  background: #f8efdf;
+  color: #1e4fa6;
+  background: #eef4ff;
   font-size: 12px;
 }
 
 .task-complete:hover {
-  background: #efe3cf;
+  background: #e5efff;
 }
 
 .stack-modal ul {
@@ -2028,13 +2028,13 @@ body.is-resizing {
   padding: 6px 8px;
   border: 0;
   border-radius: 7px;
-  color: #5d4a35;
+  color: #395478;
   text-align: left;
   background: transparent;
 }
 
 .stack-modal li button:hover {
-  background: #f5e7d5;
+  background: #eaf1ff;
 }
 
 .stack-modal li button.active {
@@ -2044,7 +2044,7 @@ body.is-resizing {
 
 .stack-empty {
   padding: 6px 8px;
-  color: #87735c;
+  color: #6b7f9e;
   font-size: 13px;
 }
 
@@ -2062,18 +2062,18 @@ body.is-resizing {
 .info-modal footer button {
   height: 34px;
   padding: 0 14px;
-  border: 1px solid #dac9b0;
+  border: 1px solid #c9d8ef;
   border-radius: 8px;
-  color: #634e38;
-  background: #f7ecdb;
+  color: #395478;
+  background: #f4f8ff;
 }
 
 .move-modal footer button.primary,
 .rename-modal footer button.primary,
 .info-modal footer button.primary {
-  border-color: #b45309;
+  border-color: var(--primary-strong);
   color: #fff;
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
 }
 
 .move-modal footer button:disabled {
@@ -2100,12 +2100,12 @@ body.is-resizing {
 }
 
 .info-modal dt {
-  color: #7a674f;
+  color: #5f78a6;
 }
 
 .info-modal dd {
   margin: 0;
-  color: #3f2f1d;
+  color: #1f2937;
   word-break: break-word;
 }
 

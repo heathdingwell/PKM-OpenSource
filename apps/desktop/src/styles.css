@@ -1230,6 +1230,12 @@ body.is-resizing {
   padding: 10px 14px 2px;
 }
 
+.search-hint {
+  margin: 2px 14px 0;
+  color: #806d55;
+  font-size: 11px;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;

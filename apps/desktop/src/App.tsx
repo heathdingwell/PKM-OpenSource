@@ -159,6 +159,15 @@ type NoteSortMode =
   | "title-desc";
 type SearchFilterKind = "attachments" | "tasks";
 
+interface ParsedSearchQuery {
+  text: string;
+  tags: string[];
+  notebook: string | null;
+  afterDate: string | null;
+  beforeDate: string | null;
+  hasKinds: string[];
+}
+
 interface SlashMenuState {
   editor: EditorMode;
   source: "typed" | "insert";
@@ -569,6 +578,84 @@ function noteHasAttachmentLink(markdown: string): boolean {
 
 function noteHasOpenTasks(markdown: string): boolean {
   return /^\s*-\s\[\s\]\s+/m.test(markdown);
+}
+
+function noteHasAttachmentKind(markdown: string, kind: string): boolean {
+  const normalized = kind.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  if (normalized === "attachment" || normalized === "file") {
+    return noteHasAttachmentLink(markdown);
+  }
+  if (normalized === "task" || normalized === "todo") {
+    return noteHasOpenTasks(markdown);
+  }
+  if (normalized === "image") {
+    return /!\[[^\]]*\]\(([^)]+)\)/i.test(markdown);
+  }
+
+  const extPattern = normalized.startsWith(".") ? normalized : `.${normalized}`;
+  const escaped = extPattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\[[^\\]]+\\]\\([^)]*${escaped}(?:$|[?#)])`, "i").test(markdown);
+}
+
+function parseSearchQuery(rawQuery: string): ParsedSearchQuery {
+  const tokens: ParsedSearchQuery = {
+    text: rawQuery,
+    tags: [],
+    notebook: null,
+    afterDate: null,
+    beforeDate: null,
+    hasKinds: []
+  };
+
+  const extracted: string[] = [];
+  const tokenPattern = /\b(tag|notebook|folder|after|before|has):(?:"([^"]+)"|(\S+))/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = tokenPattern.exec(rawQuery)) !== null) {
+    const key = match[1]?.toLowerCase() ?? "";
+    const value = (match[2] ?? match[3] ?? "").trim();
+    if (!value) {
+      continue;
+    }
+
+    extracted.push(match[0]);
+
+    if (key === "tag") {
+      tokens.tags.push(value.replace(/^#/, "").toLowerCase());
+      continue;
+    }
+
+    if (key === "notebook" || key === "folder") {
+      tokens.notebook = value;
+      continue;
+    }
+
+    if (key === "after") {
+      tokens.afterDate = value;
+      continue;
+    }
+
+    if (key === "before") {
+      tokens.beforeDate = value;
+      continue;
+    }
+
+    if (key === "has") {
+      tokens.hasKinds.push(value.toLowerCase());
+    }
+  }
+
+  let text = rawQuery;
+  for (const token of extracted) {
+    text = text.replace(token, " ");
+  }
+  tokens.text = text.replace(/\s+/g, " ").trim();
+
+  return tokens;
 }
 
 function extractAttachments(notes: AppNote[]): AttachmentItem[] {
@@ -1134,11 +1221,18 @@ export default function App() {
     return index;
   }, [notes]);
 
+  const parsedQuickQuery = useMemo(() => parseSearchQuery(quickQuery), [quickQuery]);
+
   const quickResults = useMemo(() => {
     const scopedNotes =
       searchScope === "current" && selectedNotebook !== "All Notes"
         ? notes.filter((note) => note.notebook === selectedNotebook)
         : notes;
+
+    const filterAfter = parsedQuickQuery.afterDate ? new Date(`${parsedQuickQuery.afterDate}T00:00:00`) : null;
+    const filterBefore = parsedQuickQuery.beforeDate ? new Date(`${parsedQuickQuery.beforeDate}T23:59:59`) : null;
+    const notebookFilter = parsedQuickQuery.notebook?.toLowerCase() ?? null;
+
     const filteredScope = scopedNotes.filter((note) => {
       if (searchFilters.includes("attachments") && !noteHasAttachmentLink(note.markdown)) {
         return false;
@@ -1146,19 +1240,38 @@ export default function App() {
       if (searchFilters.includes("tasks") && !noteHasOpenTasks(note.markdown)) {
         return false;
       }
+      if (notebookFilter && !note.notebook.toLowerCase().includes(notebookFilter)) {
+        return false;
+      }
+      if (parsedQuickQuery.tags.length && !parsedQuickQuery.tags.every((tag) => note.tags.includes(tag))) {
+        return false;
+      }
+      if (parsedQuickQuery.hasKinds.length && !parsedQuickQuery.hasKinds.every((kind) => noteHasAttachmentKind(note.markdown, kind))) {
+        return false;
+      }
+      if (filterAfter || filterBefore) {
+        const updated = new Date(note.updatedAt);
+        if (filterAfter && updated < filterAfter) {
+          return false;
+        }
+        if (filterBefore && updated > filterBefore) {
+          return false;
+        }
+      }
       return true;
     });
     const scopedIds = new Set(filteredScope.map((note) => note.id));
+    const queryText = parsedQuickQuery.text;
 
-    if (!quickQuery.trim()) {
+    if (!queryText) {
       return filteredScope
         .slice()
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-        .slice(0, 6);
+        .slice(0, 8);
     }
 
     return searchIndex
-      .search(quickQuery)
+      .search(queryText)
       .map((result) => notes.find((note) => note.id === result.noteId))
       .filter((note): note is AppNote => {
         if (!note) {
@@ -1167,7 +1280,7 @@ export default function App() {
         return scopedIds.has(note.id);
       })
       .slice(0, 8);
-  }, [notes, quickQuery, searchIndex, searchScope, selectedNotebook, searchFilters]);
+  }, [notes, parsedQuickQuery, searchIndex, searchScope, selectedNotebook, searchFilters]);
 
   const selectedSearchResult = quickResults[searchSelected] ?? null;
   const quickResultGroups = useMemo(() => {
@@ -1704,7 +1817,7 @@ export default function App() {
         }
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      if ((event.metaKey || event.ctrlKey) && ["k", "p"].includes(event.key.toLowerCase())) {
         event.preventDefault();
         setSearchOpen(true);
         return;
@@ -4001,7 +4114,7 @@ export default function App() {
       <aside className="left-sidebar" style={{ width: sidebarWidth }}>
         <div className="sidebar-search" onClick={() => setSearchOpen(true)}>
           <span>Search</span>
-          <kbd>cmd+k</kbd>
+          <kbd>cmd+k/p</kbd>
         </div>
 
         <div className="sidebar-actions">
@@ -5211,6 +5324,7 @@ export default function App() {
                 </button>
               ) : null}
             </div>
+            <p className="search-hint">Filters: tag:, notebook:, after:, before:, has:attachment|task|image|pdf</p>
             <div className="search-results">
               <h4>Recent searches</h4>
               <ul>

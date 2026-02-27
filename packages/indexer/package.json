@@ -1,5 +1,5 @@
 {
-  "name": "@evernote-os/indexer",
+  "name": "@pkm-os/indexer",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",

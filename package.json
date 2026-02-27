@@ -1,5 +1,5 @@
 {
-  "name": "evernote-opensource",
+  "name": "pkm-opensource",
   "private": true,
   "version": "0.1.0",
   "workspaces": [
@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run -w @evernote-os/desktop dev",
+    "dev": "npm run -w @pkm-os/desktop dev",
     "build": "npm run -ws build",
     "typecheck": "npm run -ws typecheck",
     "test": "npm run -ws test"

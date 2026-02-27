@@ -1,7 +1,7 @@
 # UI Behavior Contract
 
 ## Product principle
-The UI should feel as scannable and structured as Evernote while preserving a Markdown-native workflow under the hood.
+The UI should feel as scannable and structured as PKM while preserving a Markdown-native workflow under the hood.
 
 ## Layout model
 - Primary shell: sidebar + note list + note editor.

@@ -1,5 +1,5 @@
 {
-  "name": "@evernote-os/desktop",
+  "name": "@pkm-os/desktop",
   "private": true,
   "version": "0.1.0",
   "main": "electron/main.cjs",
@@ -12,10 +12,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@evernote-os/doc-engine": "0.1.0",
-    "@evernote-os/indexer": "0.1.0",
-    "@evernote-os/ui-features": "0.1.0",
-    "@evernote-os/vault-core": "0.1.0",
+    "@pkm-os/doc-engine": "0.1.0",
+    "@pkm-os/indexer": "0.1.0",
+    "@pkm-os/ui-features": "0.1.0",
+    "@pkm-os/vault-core": "0.1.0",
     "@tiptap/extension-link": "^3.20.0",
     "@tiptap/extension-placeholder": "^3.20.0",
     "@tiptap/extension-task-item": "^3.20.0",

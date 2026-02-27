@@ -2,7 +2,7 @@
 
 declare global {
   interface Window {
-    evernoteShell?: {
+    pkmShell?: {
       getPlatform: () => string;
       loadVaultState?: () => Promise<unknown>;
       saveVaultState?: (notes: unknown) => Promise<boolean>;

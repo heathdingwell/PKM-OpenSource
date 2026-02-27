@@ -1,6 +1,6 @@
-# Evernote-OpenSource
+# PKM-OpenSource
 
-Open source notes app with Markdown-first storage and an Evernote-like experience layer.
+Open source notes app with Markdown-first storage and an high-density experience layer.
 
 ## Workspace layout
 - `apps/desktop`: Electron + React desktop shell

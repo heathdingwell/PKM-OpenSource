@@ -1,5 +1,5 @@
 {
-  "name": "@evernote-os/ui-features",
+  "name": "@pkm-os/ui-features",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",

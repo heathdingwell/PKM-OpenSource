@@ -1,7 +1,7 @@
-# Evernote UX Parity Matrix
+# PKM UX Parity Matrix
 
 ## Scope and intent
-This matrix defines how the app should behave so the user experience feels like Evernote while keeping Markdown files as the source of truth.
+This matrix defines how the app should behave so the user experience feels like PKM while keeping Markdown files as the source of truth.
 
 Legend:
 - `P0`: must match for MVP
@@ -66,5 +66,5 @@ Legend:
 
 ## Non-goals (initially)
 - Real-time multi-user collaboration.
-- Full Evernote account import parity beyond ENEX basics.
+- Full PKM account import parity beyond ENEX basics.
 - AI features.

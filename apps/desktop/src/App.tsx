@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { SearchIndex } from "@evernote-os/indexer";
-import { createDefaultLayout } from "@evernote-os/ui-features";
-import { type NoteRecord, VaultService } from "@evernote-os/vault-core";
+import { SearchIndex } from "@pkm-os/indexer";
+import { createDefaultLayout } from "@pkm-os/ui-features";
+import { type NoteRecord, VaultService } from "@pkm-os/vault-core";
 import RichMarkdownEditor, { type RichMarkdownEditorHandle } from "./RichMarkdownEditor";
 
 interface SeedNote {
@@ -88,19 +88,13 @@ interface SlashCommand {
   keywords: string[];
 }
 
-interface NoteListMenuState {
-  x: number;
-  y: number;
-  kind: "sort" | "filter";
-}
-
 interface ShellNotesPayload {
   [index: number]: unknown;
   length: number;
 }
 
-const NOTES_STORAGE_KEY = "evernote-os.desktop.notes.v2";
-const PREFS_STORAGE_KEY = "evernote-os.desktop.prefs.v1";
+const NOTES_STORAGE_KEY = "pkm-os.desktop.notes.v2";
+const PREFS_STORAGE_KEY = "pkm-os.desktop.prefs.v1";
 
 const seedNotes: SeedNote[] = [
   {
@@ -400,7 +394,7 @@ export default function App() {
   const [tagInput, setTagInput] = useState("");
   const [vaultReady, setVaultReady] = useState(false);
   const [vaultMode] = useState<"local" | "desktop">(() =>
-    typeof window !== "undefined" && window.evernoteShell?.saveVaultState ? "desktop" : "local"
+    typeof window !== "undefined" && window.pkmShell?.saveVaultState ? "desktop" : "local"
   );
   const [linkSuggestion, setLinkSuggestion] = useState<LinkSuggestionState | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
@@ -527,13 +521,13 @@ export default function App() {
     let cancelled = false;
 
     async function hydrateVault() {
-      if (typeof window === "undefined" || !window.evernoteShell?.loadVaultState) {
+      if (typeof window === "undefined" || !window.pkmShell?.loadVaultState) {
         setVaultReady(true);
         return;
       }
 
       try {
-        const payload = (await window.evernoteShell.loadVaultState()) as ShellNotesPayload | null;
+        const payload = (await window.pkmShell.loadVaultState()) as ShellNotesPayload | null;
         if (cancelled || !payload || !Array.isArray(payload)) {
           setVaultReady(true);
           return;
@@ -646,11 +640,11 @@ export default function App() {
 
     window.localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
 
-    if (!vaultReady || !window.evernoteShell?.saveVaultState) {
+    if (!vaultReady || !window.pkmShell?.saveVaultState) {
       return;
     }
 
-    void window.evernoteShell.saveVaultState(notes);
+    void window.pkmShell.saveVaultState(notes);
   }, [notes, vaultReady]);
 
   useEffect(() => {
@@ -1121,7 +1115,7 @@ export default function App() {
     }
 
     const encoded = encodeURIComponent(note.path);
-    const link = `evernote-os://note/${encoded}`;
+    const link = `pkm-os://note/${encoded}`;
 
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(link);
@@ -1746,7 +1740,7 @@ export default function App() {
     <div
       className="app-shell"
       role="application"
-      aria-label="Evernote OpenSource Shell"
+      aria-label="PKM OpenSource Shell"
       onClick={() => {
         setContextMenu(null);
         setNotebookMenu(null);

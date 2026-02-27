@@ -1,5 +1,5 @@
 {
-  "name": "@evernote-os/vault-core",
+  "name": "@pkm-os/vault-core",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",

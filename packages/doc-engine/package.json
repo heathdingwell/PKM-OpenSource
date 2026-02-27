@@ -1,5 +1,5 @@
 {
-  "name": "@evernote-os/doc-engine",
+  "name": "@pkm-os/doc-engine",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",

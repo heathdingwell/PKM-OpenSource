@@ -1,8 +1,8 @@
-# Architecture (Markdown-first + Evernote-like UX)
+# Architecture (Markdown-first + high-density UX)
 
 ## Goals
 - Plain Markdown files remain the source of truth.
-- UI and interaction model target Evernote-like usability.
+- UI and interaction model target high-density usability.
 - Local-first performance with deterministic behavior.
 - Extensible core for plugins and future sync.
 

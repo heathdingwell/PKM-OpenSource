@@ -485,7 +485,7 @@ body.is-resizing {
 
 .note-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 8px;
   padding: 10px;
 }
@@ -2056,10 +2056,6 @@ body.is-resizing {
 
   .pane-resizer {
     display: none;
-  }
-
-  .note-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .editor-workbench {

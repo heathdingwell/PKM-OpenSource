@@ -6309,6 +6309,40 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
+                    const { added, removed } = toggleShortcutNotes(selectedVisibleNoteIds);
+                    if (added && removed) {
+                      setToastMessage(`Shortcuts updated (+${added}/-${removed})`);
+                    } else if (added) {
+                      setToastMessage(`${added} added to shortcuts`);
+                    } else if (removed) {
+                      setToastMessage(`${removed} removed from shortcuts`);
+                    } else {
+                      setToastMessage("No shortcut changes");
+                    }
+                  }}
+                >
+                  {selectedVisibleNoteIds.every((noteId) => shortcutSet.has(noteId)) ? "Remove Shortcuts" : "Add Shortcuts"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const { pinned, unpinned } = togglePinnedNotes(selectedVisibleNoteIds, "home");
+                    if (pinned && unpinned) {
+                      setToastMessage(`Home pins updated (+${pinned}/-${unpinned})`);
+                    } else if (pinned) {
+                      setToastMessage(`${pinned} pinned to Home`);
+                    } else if (unpinned) {
+                      setToastMessage(`${unpinned} unpinned from Home`);
+                    } else {
+                      setToastMessage("No pin changes");
+                    }
+                  }}
+                >
+                  {selectedVisibleNoteIds.every((noteId) => homePinnedSet.has(noteId)) ? "Unpin Home" : "Pin Home"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     const { marked, unmarked } = toggleTemplateNotes(selectedVisibleNoteIds);
                     if (marked && unmarked) {
                       setToastMessage(`Templates updated (+${marked}/-${unmarked})`);

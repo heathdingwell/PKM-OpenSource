@@ -109,6 +109,19 @@ describe("App", () => {
     expect(trashedCards.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("toggles shortcuts from bulk actions", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Shortcuts" }));
+    expect(screen.getByRole("button", { name: "Remove Shortcuts" })).toBeInTheDocument();
+  });
+
   it("moves the active note to trash with cmd+backspace", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

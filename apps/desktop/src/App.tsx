@@ -891,6 +891,39 @@ export default function App() {
         }
       }
 
+      if (!searchOpen && activeNote && (event.metaKey || event.ctrlKey)) {
+        const key = event.key.toLowerCase();
+        if (key === "b") {
+          event.preventDefault();
+          if (editorMode === "rich") {
+            richEditorRef.current?.toggleBold();
+          } else {
+            applyMarkdownInlineFormat("**", "**", "bold text");
+          }
+          return;
+        }
+
+        if (key === "i") {
+          event.preventDefault();
+          if (editorMode === "rich") {
+            richEditorRef.current?.toggleItalic();
+          } else {
+            applyMarkdownInlineFormat("*", "*", "italic text");
+          }
+          return;
+        }
+
+        if (key === "u") {
+          event.preventDefault();
+          if (editorMode === "rich") {
+            richEditorRef.current?.toggleUnderline();
+          } else {
+            applyMarkdownInlineFormat("<u>", "</u>", "underlined text");
+          }
+          return;
+        }
+      }
+
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setSearchOpen(true);
@@ -916,7 +949,7 @@ export default function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [draftMarkdown, activeNote?.id, activeNote?.markdown, slashMenu, slashResults]);
+  }, [draftMarkdown, activeNote?.id, activeNote?.markdown, slashMenu, slashResults, searchOpen, editorMode]);
 
   useEffect(() => {
     if (!toastMessage) {

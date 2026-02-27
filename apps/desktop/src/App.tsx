@@ -1309,6 +1309,7 @@ export default function App() {
   const editorMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const markdownEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
+  const editorMainRef = useRef<HTMLDivElement | null>(null);
   const activeResizeRef = useRef<ResizeState | null>(null);
 
   const notebooks = useMemo(() => {
@@ -2291,18 +2292,20 @@ export default function App() {
 
   function startTagPanePointerResize(event: React.PointerEvent<HTMLButtonElement>): void {
     event.preventDefault();
-    const startY = event.clientY;
-    const startHeight = tagPaneHeight;
     const target = event.currentTarget;
+    const pointerId = event.pointerId;
+    const editorBottom = editorMainRef.current?.getBoundingClientRect().bottom ?? target.getBoundingClientRect().bottom;
     document.body.classList.add("is-resizing");
-    target.setPointerCapture(event.pointerId);
+    target.setPointerCapture(pointerId);
 
     const onPointerMove = (moveEvent: PointerEvent) => {
-      const deltaY = moveEvent.clientY - startY;
-      setTagPaneHeight(clampTagPaneHeight(startHeight - deltaY));
+      setTagPaneHeight(clampTagPaneHeight(editorBottom - moveEvent.clientY));
     };
 
     const stop = () => {
+      if (target.hasPointerCapture(pointerId)) {
+        target.releasePointerCapture(pointerId);
+      }
       target.removeEventListener("pointermove", onPointerMove);
       target.removeEventListener("pointerup", stop);
       target.removeEventListener("pointercancel", stop);
@@ -5483,7 +5486,7 @@ export default function App() {
               </div>
             ) : null}
 
-            <div className="editor-main" style={editorMainStyle}>
+            <div ref={editorMainRef} className="editor-main" style={editorMainStyle}>
               <article className={metadataOpen || aiPanelOpen ? "editor-content with-metadata" : "editor-content"}>
               <div className="editor-workbench">
                 {editorMode === "markdown" ? (

@@ -1152,6 +1152,27 @@ body.is-resizing {
   font-size: 12px;
 }
 
+.ai-settings-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ai-settings-actions button {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #c7d8f4;
+  border-radius: 8px;
+  color: #1b4f99;
+  background: #ebf2ff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-settings-actions button:disabled {
+  opacity: 0.55;
+}
+
 .ai-settings input,
 .ai-settings select,
 .ai-settings textarea {
@@ -1175,6 +1196,19 @@ body.is-resizing {
   gap: 8px;
   color: #5f4d38;
   font-size: 12px;
+}
+
+.ai-connection {
+  margin: 0;
+  font-size: 12px;
+}
+
+.ai-connection.success {
+  color: #1b4f99;
+}
+
+.ai-connection.error {
+  color: #be123c;
 }
 
 .ai-chat-log {

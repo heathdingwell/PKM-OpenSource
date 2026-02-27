@@ -577,13 +577,187 @@ function normalizeOpenAiMessage(content) {
   return "";
 }
 
+function normalizeProvider(payload) {
+  return asString(payload?.provider).trim() || "openai";
+}
+
+function providerRequiresApiKey(provider) {
+  return ["openai", "perplexity", "anthropic", "gemini"].includes(provider);
+}
+
+function providerBaseUrl(provider, providedBaseUrl) {
+  const given = asString(providedBaseUrl).trim();
+  if (given) {
+    return given.replace(/\/+$/, "");
+  }
+
+  if (provider === "openai") {
+    return "https://api.openai.com/v1";
+  }
+  if (provider === "perplexity") {
+    return "https://api.perplexity.ai";
+  }
+  if (provider === "anthropic") {
+    return "https://api.anthropic.com";
+  }
+  if (provider === "gemini") {
+    return "https://generativelanguage.googleapis.com";
+  }
+  if (provider === "ollama") {
+    return "http://localhost:11434";
+  }
+  return "http://localhost:1234/v1";
+}
+
+function openAiStyleModelsEndpoint(baseUrl) {
+  return baseUrl.endsWith("/v1") ? `${baseUrl}/models` : `${baseUrl}/v1/models`;
+}
+
+function openAiStyleChatEndpoint(baseUrl) {
+  return baseUrl.endsWith("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
+}
+
+function uniqueStrings(values) {
+  const seen = new Set();
+  const out = [];
+  for (const value of values) {
+    const next = asString(value).trim();
+    if (!next || seen.has(next.toLowerCase())) {
+      continue;
+    }
+    seen.add(next.toLowerCase());
+    out.push(next);
+  }
+  return out;
+}
+
+async function listLlmModels(payload) {
+  if (!isObject(payload)) {
+    return { error: "Invalid payload" };
+  }
+
+  const provider = normalizeProvider(payload);
+  const apiKey = asString(payload.apiKey).trim();
+  if (providerRequiresApiKey(provider) && !apiKey) {
+    return { error: "API key is required for this provider" };
+  }
+
+  const baseUrl = providerBaseUrl(provider, payload.baseUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+
+  try {
+    if (["openai", "perplexity", "openai-compatible"].includes(provider)) {
+      const endpoint = openAiStyleModelsEndpoint(baseUrl);
+      const headers = { "content-type": "application/json" };
+      if (apiKey) {
+        headers.authorization = `Bearer ${apiKey}`;
+      }
+
+      const { response, raw, data } = await fetchJson(endpoint, {
+        method: "GET",
+        headers,
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        return { error: responseErrorMessage(response, raw, data) };
+      }
+      const models = uniqueStrings(
+        Array.isArray(data?.data) ? data.data.map((entry) => asString(entry?.id)) : []
+      );
+      return { models };
+    }
+
+    if (provider === "anthropic") {
+      const endpoint = `${baseUrl}/v1/models`;
+      const { response, raw, data } = await fetchJson(endpoint, {
+        method: "GET",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01"
+        },
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        return { error: responseErrorMessage(response, raw, data) };
+      }
+      const models = uniqueStrings(
+        Array.isArray(data?.data) ? data.data.map((entry) => asString(entry?.id)) : []
+      );
+      return { models };
+    }
+
+    if (provider === "gemini") {
+      const endpoint = `${baseUrl}/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+      const { response, raw, data } = await fetchJson(endpoint, {
+        method: "GET",
+        headers: {
+          "content-type": "application/json"
+        },
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        return { error: responseErrorMessage(response, raw, data) };
+      }
+      const models = uniqueStrings(
+        Array.isArray(data?.models)
+          ? data.models.map((entry) => asString(entry?.name).replace(/^models\//, ""))
+          : []
+      );
+      return { models };
+    }
+
+    if (provider === "ollama") {
+      const endpoint = `${baseUrl}/api/tags`;
+      const { response, raw, data } = await fetchJson(endpoint, {
+        method: "GET",
+        headers: {
+          "content-type": "application/json"
+        },
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        return { error: responseErrorMessage(response, raw, data) };
+      }
+      const models = uniqueStrings(
+        Array.isArray(data?.models)
+          ? data.models.map((entry) => asString(entry?.name) || asString(entry?.model))
+          : []
+      );
+      return { models };
+    }
+
+    return { error: `Unsupported provider "${provider}"` };
+  } catch (error) {
+    if (error && typeof error === "object" && error.name === "AbortError") {
+      return { error: "Model discovery timed out after 30 seconds" };
+    }
+    return { error: asString(error?.message) || "Failed to list models" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function testLlmConnection(payload) {
+  const listed = await listLlmModels(payload);
+  if (listed.error) {
+    return { ok: false, error: listed.error };
+  }
+  const count = Array.isArray(listed.models) ? listed.models.length : 0;
+  return {
+    ok: true,
+    detail: count ? `Connected (${count} models detected)` : "Connected (no models returned)"
+  };
+}
+
 async function callLlmProvider(payload) {
   if (!isObject(payload)) {
     return { error: "Invalid payload" };
   }
 
-  const provider = asString(payload.provider).trim() || "openai";
-  const baseUrl = asString(payload.baseUrl).trim();
+  const provider = normalizeProvider(payload);
+  const baseUrl = providerBaseUrl(provider, payload.baseUrl);
   const model = asString(payload.model).trim();
   const apiKey = asString(payload.apiKey).trim();
   const temperature = typeof payload.temperature === "number" ? payload.temperature : 0.2;
@@ -596,8 +770,7 @@ async function callLlmProvider(payload) {
     return { error: "At least one message is required" };
   }
 
-  const requiresKey = ["openai", "perplexity", "anthropic", "gemini"].includes(provider);
-  if (requiresKey && !apiKey) {
+  if (providerRequiresApiKey(provider) && !apiKey) {
     return { error: "API key is required for this provider" };
   }
 
@@ -606,16 +779,7 @@ async function callLlmProvider(payload) {
 
   try {
     if (["openai", "perplexity", "openai-compatible"].includes(provider)) {
-      const fallbackBase =
-        provider === "openai"
-          ? "https://api.openai.com/v1"
-          : provider === "perplexity"
-            ? "https://api.perplexity.ai"
-            : "http://localhost:1234/v1";
-      const normalizedBase = (baseUrl || fallbackBase).replace(/\/+$/, "");
-      const endpoint = normalizedBase.endsWith("/v1")
-        ? `${normalizedBase}/chat/completions`
-        : `${normalizedBase}/v1/chat/completions`;
+      const endpoint = openAiStyleChatEndpoint(baseUrl);
       const headers = { "content-type": "application/json" };
       if (apiKey) {
         headers.authorization = `Bearer ${apiKey}`;
@@ -641,8 +805,7 @@ async function callLlmProvider(payload) {
     }
 
     if (provider === "anthropic") {
-      const normalizedBase = (baseUrl || "https://api.anthropic.com").replace(/\/+$/, "");
-      const endpoint = `${normalizedBase}/v1/messages`;
+      const endpoint = `${baseUrl}/v1/messages`;
       const system = messages
         .filter((entry) => entry.role === "system")
         .map((entry) => entry.content)
@@ -685,8 +848,7 @@ async function callLlmProvider(payload) {
     }
 
     if (provider === "gemini") {
-      const normalizedBase = (baseUrl || "https://generativelanguage.googleapis.com").replace(/\/+$/, "");
-      const endpoint = `${normalizedBase}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const endpoint = `${baseUrl}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
       const system = messages
         .filter((entry) => entry.role === "system")
         .map((entry) => entry.content)
@@ -725,8 +887,7 @@ async function callLlmProvider(payload) {
     }
 
     if (provider === "ollama") {
-      const normalizedBase = (baseUrl || "http://localhost:11434").replace(/\/+$/, "");
-      const endpoint = `${normalizedBase}/api/chat`;
+      const endpoint = `${baseUrl}/api/chat`;
       const ollamaMessages = messages
         .filter((entry) => entry.role !== "system")
         .map((entry) => ({
@@ -839,6 +1000,24 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error("Failed to query llm provider", error);
       return { error: "LLM request failed" };
+    }
+  });
+
+  ipcMain.handle("llm:test-connection", async (_event, payload) => {
+    try {
+      return await testLlmConnection(payload);
+    } catch (error) {
+      console.error("Failed to test llm provider connection", error);
+      return { ok: false, error: "LLM connection test failed" };
+    }
+  });
+
+  ipcMain.handle("llm:list-models", async (_event, payload) => {
+    try {
+      return await listLlmModels(payload);
+    } catch (error) {
+      console.error("Failed to list llm models", error);
+      return { error: "LLM model discovery failed" };
     }
   });
 

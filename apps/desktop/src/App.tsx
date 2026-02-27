@@ -233,6 +233,11 @@ interface AiChatMessage {
   at: string;
 }
 
+interface AiConnectionState {
+  tone: "success" | "error";
+  message: string;
+}
+
 interface ShellNotesPayload {
   [index: number]: unknown;
   length: number;
@@ -1264,6 +1269,10 @@ export default function App() {
   const [aiInput, setAiInput] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiConnectionBusy, setAiConnectionBusy] = useState(false);
+  const [aiModelFetchBusy, setAiModelFetchBusy] = useState(false);
+  const [aiConnectionState, setAiConnectionState] = useState<AiConnectionState | null>(null);
+  const [aiModels, setAiModels] = useState<string[]>([]);
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [vaultReady, setVaultReady] = useState(false);
@@ -2283,11 +2292,101 @@ export default function App() {
       model: defaults.model,
       apiKey: provider === "ollama" ? "" : previous.apiKey
     }));
+    setAiModels([]);
+    setAiConnectionState(null);
   }
 
   function clearAiChat(): void {
     setAiMessages([]);
     setAiError(null);
+  }
+
+  async function testAiConnection(): Promise<void> {
+    if (aiBusy || aiConnectionBusy || aiModelFetchBusy) {
+      return;
+    }
+
+    try {
+      setAiConnectionBusy(true);
+      setAiConnectionState(null);
+      if (!window.pkmShell?.testLlmConnection) {
+        throw new Error("Connection test is unavailable in this build.");
+      }
+
+      const result = await window.pkmShell.testLlmConnection({
+        provider: aiSettings.provider,
+        baseUrl: aiSettings.baseUrl,
+        apiKey: aiSettings.apiKey
+      });
+
+      const error = result?.error?.trim();
+      if (!result?.ok) {
+        throw new Error(error || "Connection test failed");
+      }
+
+      setAiConnectionState({
+        tone: "success",
+        message: result?.detail?.trim() || "Connected"
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Connection test failed";
+      setAiConnectionState({
+        tone: "error",
+        message
+      });
+    } finally {
+      setAiConnectionBusy(false);
+    }
+  }
+
+  async function fetchAiModels(): Promise<void> {
+    if (aiBusy || aiConnectionBusy || aiModelFetchBusy) {
+      return;
+    }
+
+    try {
+      setAiModelFetchBusy(true);
+      setAiConnectionState(null);
+      if (!window.pkmShell?.listLlmModels) {
+        throw new Error("Model discovery is unavailable in this build.");
+      }
+
+      const result = await window.pkmShell.listLlmModels({
+        provider: aiSettings.provider,
+        baseUrl: aiSettings.baseUrl,
+        apiKey: aiSettings.apiKey
+      });
+
+      const error = result?.error?.trim();
+      if (error) {
+        throw new Error(error);
+      }
+
+      const models = Array.isArray(result?.models)
+        ? result.models.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+        : [];
+
+      setAiModels(models);
+      if (models.length && !models.includes(aiSettings.model)) {
+        setAiSettings((previous) => ({
+          ...previous,
+          model: models[0]
+        }));
+      }
+      setAiConnectionState({
+        tone: "success",
+        message: models.length ? `Loaded ${models.length} models` : "Connected, but no models were returned"
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Model discovery failed";
+      setAiModels([]);
+      setAiConnectionState({
+        tone: "error",
+        message
+      });
+    } finally {
+      setAiModelFetchBusy(false);
+    }
   }
 
   function buildAiContext(question: string): string {
@@ -5754,16 +5853,16 @@ export default function App() {
                             </select>
                             <button
                               type="button"
-                              onClick={() =>
-                                setAiSettings((previous) => {
-                                  const defaults = aiProviderDefaults(previous.provider);
-                                  return {
-                                    ...previous,
-                                    baseUrl: defaults.baseUrl,
-                                    model: defaults.model
-                                  };
-                                })
-                              }
+                              onClick={() => {
+                                const defaults = aiProviderDefaults(aiSettings.provider);
+                                setAiSettings((previous) => ({
+                                  ...previous,
+                                  baseUrl: defaults.baseUrl,
+                                  model: defaults.model
+                                }));
+                                setAiModels([]);
+                                setAiConnectionState(null);
+                              }}
                             >
                               Reset
                             </button>
@@ -5775,16 +5874,30 @@ export default function App() {
                           <input
                             value={aiSettings.baseUrl}
                             placeholder={currentAiProviderDefaults.baseUrl}
-                            onChange={(event) => setAiSettings({ ...aiSettings, baseUrl: event.target.value })}
+                            onChange={(event) => {
+                              setAiSettings({ ...aiSettings, baseUrl: event.target.value });
+                              setAiConnectionState(null);
+                            }}
                           />
                         </label>
                         <label>
                           <span>Model</span>
                           <input
+                            list={aiModels.length ? "ai-model-options" : undefined}
                             value={aiSettings.model}
                             placeholder={currentAiProviderDefaults.model}
-                            onChange={(event) => setAiSettings({ ...aiSettings, model: event.target.value })}
+                            onChange={(event) => {
+                              setAiSettings({ ...aiSettings, model: event.target.value });
+                              setAiConnectionState(null);
+                            }}
                           />
+                          {aiModels.length ? (
+                            <datalist id="ai-model-options">
+                              {aiModels.map((model) => (
+                                <option key={model} value={model} />
+                              ))}
+                            </datalist>
+                          ) : null}
                         </label>
                         <label>
                           <span>API key {aiKeyOptional ? "(optional)" : ""}</span>
@@ -5792,9 +5905,31 @@ export default function App() {
                             type="password"
                             value={aiSettings.apiKey}
                             placeholder={currentAiProviderDefaults.apiKeyPlaceholder}
-                            onChange={(event) => setAiSettings({ ...aiSettings, apiKey: event.target.value })}
+                            onChange={(event) => {
+                              setAiSettings({ ...aiSettings, apiKey: event.target.value });
+                              setAiConnectionState(null);
+                            }}
                           />
                         </label>
+                        <div className="ai-settings-actions">
+                          <button
+                            type="button"
+                            onClick={() => void testAiConnection()}
+                            disabled={aiBusy || aiConnectionBusy || aiModelFetchBusy}
+                          >
+                            {aiConnectionBusy ? "Testing..." : "Test connection"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void fetchAiModels()}
+                            disabled={aiBusy || aiConnectionBusy || aiModelFetchBusy}
+                          >
+                            {aiModelFetchBusy ? "Fetching..." : "Fetch models"}
+                          </button>
+                        </div>
+                        {aiConnectionState ? (
+                          <p className={`ai-connection ${aiConnectionState.tone}`}>{aiConnectionState.message}</p>
+                        ) : null}
                         <label>
                           <span>Temperature</span>
                           <input

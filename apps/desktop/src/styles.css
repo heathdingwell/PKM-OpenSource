@@ -825,6 +825,33 @@ body.is-resizing {
   font-weight: 600;
 }
 
+.mention-suggest {
+  border-top: 1px solid #e7dbca;
+  background: #fff7eb;
+}
+
+.mention-suggest button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 12px;
+  border: 0;
+  color: #5a4836;
+  text-align: left;
+  background: transparent;
+}
+
+.mention-suggest button:hover,
+.mention-suggest button.active {
+  background: #eef3ff;
+}
+
+.mention-suggest button small {
+  color: #8a7964;
+  font-size: 11px;
+}
+
 .slash-menu {
   position: absolute;
   left: 32px;

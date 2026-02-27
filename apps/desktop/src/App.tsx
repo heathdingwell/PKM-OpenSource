@@ -146,6 +146,14 @@ interface LinkSuggestionState {
   selected: number;
 }
 
+interface MentionSuggestionState {
+  kind: "tag" | "date";
+  start: number;
+  end: number;
+  query: string;
+  selected: number;
+}
+
 type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
 type SidebarView = "notes" | "tasks" | "calendar";
@@ -1077,6 +1085,7 @@ export default function App() {
     typeof window !== "undefined" && window.pkmShell?.saveVaultState ? "desktop" : "local"
   );
   const [linkSuggestion, setLinkSuggestion] = useState<LinkSuggestionState | null>(null);
+  const [mentionSuggestion, setMentionSuggestion] = useState<MentionSuggestionState | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
 
   const autosaveTimerRef = useRef<number | null>(null);
@@ -1337,6 +1346,40 @@ export default function App() {
       .slice(0, 8);
   }, [notes, linkSuggestion, activeNote?.id]);
 
+  const mentionResults = useMemo(() => {
+    if (!mentionSuggestion) {
+      return [];
+    }
+
+    if (mentionSuggestion.kind === "tag") {
+      const lower = mentionSuggestion.query.toLowerCase();
+      return availableTags
+        .filter((tag) => (lower ? tag.toLowerCase().includes(lower) : true))
+        .slice(0, 8)
+        .map((tag) => ({
+          id: `tag:${tag}`,
+          label: `#${tag}`,
+          value: `#${tag}`
+        }));
+    }
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+
+    const entries = [
+      { id: "today", label: "@today", value: `@${toDateInputValue(today)}` },
+      { id: "tomorrow", label: "@tomorrow", value: `@${toDateInputValue(tomorrow)}` },
+      { id: "next-week", label: "@next-week", value: `@${toDateInputValue(nextWeek)}` }
+    ];
+
+    const lower = mentionSuggestion.query.toLowerCase();
+    return entries.filter((entry) => (lower ? entry.label.toLowerCase().includes(`@${lower}`) : true));
+  }, [mentionSuggestion, availableTags]);
+
   const slashResults = useMemo(() => {
     if (!slashMenu) {
       return [];
@@ -1544,6 +1587,7 @@ export default function App() {
       setSaveState("saved");
       setTagEditorOpen(false);
       setTagInput("");
+      setMentionSuggestion(null);
       return;
     }
 
@@ -1551,13 +1595,17 @@ export default function App() {
     setSaveState("saved");
     setTagEditorOpen(false);
     setTagInput("");
+    setMentionSuggestion(null);
   }, [activeNote?.id]);
 
   useEffect(() => {
     if (editorMode === "rich" && linkSuggestion) {
       setLinkSuggestion(null);
     }
-  }, [editorMode, linkSuggestion]);
+    if (editorMode === "rich" && mentionSuggestion) {
+      setMentionSuggestion(null);
+    }
+  }, [editorMode, linkSuggestion, mentionSuggestion]);
 
   useEffect(() => {
     if (!slashMenu) {
@@ -1848,6 +1896,7 @@ export default function App() {
         setSidebarView("notes");
         setSearchOpen(false);
         setSlashMenu(null);
+        setMentionSuggestion(null);
       }
     };
 
@@ -2021,6 +2070,7 @@ export default function App() {
       markdownRange: { start, end: caret }
     }));
     setLinkSuggestion(null);
+    setMentionSuggestion(null);
   }
 
   function syncRichSlashSuggestion(state: { query: string; from: number; to: number } | null): void {
@@ -2061,9 +2111,82 @@ export default function App() {
       query,
       selected: previous ? Math.min(previous.selected, suggestions.length) : 0
     }));
+    setMentionSuggestion(null);
+  }
+
+  function syncMentionSuggestion(markdown: string, caret: number): void {
+    const head = markdown.slice(0, caret);
+    if (/\[\[[^\]\n]*$/.test(head)) {
+      setMentionSuggestion(null);
+      return;
+    }
+    const tagMatch = head.match(/(?:^|\s)#([a-z0-9/_-]*)$/i);
+    if (tagMatch) {
+      const token = tagMatch[0];
+      const leadingSpace = token.startsWith(" ") ? 1 : 0;
+      const start = caret - token.length + leadingSpace;
+      setMentionSuggestion((previous) => ({
+        kind: "tag",
+        start,
+        end: caret,
+        query: tagMatch[1] ?? "",
+        selected:
+          previous && previous.kind === "tag" ? Math.min(previous.selected, Math.max(0, mentionResults.length - 1)) : 0
+      }));
+      return;
+    }
+
+    const dateMatch = head.match(/(?:^|\s)@([a-z0-9-]*)$/i);
+    if (dateMatch) {
+      const token = dateMatch[0];
+      const leadingSpace = token.startsWith(" ") ? 1 : 0;
+      const start = caret - token.length + leadingSpace;
+      setMentionSuggestion((previous) => ({
+        kind: "date",
+        start,
+        end: caret,
+        query: dateMatch[1] ?? "",
+        selected:
+          previous && previous.kind === "date"
+            ? Math.min(previous.selected, Math.max(0, mentionResults.length - 1))
+            : 0
+      }));
+      return;
+    }
+
+    setMentionSuggestion(null);
+  }
+
+  function commitMentionSuggestion(index: number): void {
+    const editor = markdownEditorRef.current;
+    if (!editor || !mentionSuggestion) {
+      return;
+    }
+
+    const picked = mentionResults[index];
+    const fallbackQuery = mentionSuggestion.query.trim().replace(/^[@#]/, "");
+    const replacement =
+      picked?.value ??
+      (mentionSuggestion.kind === "tag" ? `#${fallbackQuery}` : fallbackQuery ? `@${fallbackQuery}` : "");
+
+    if (!replacement) {
+      setMentionSuggestion(null);
+      return;
+    }
+
+    const next = `${draftMarkdown.slice(0, mentionSuggestion.start)}${replacement}${draftMarkdown.slice(mentionSuggestion.end)}`;
+    setDraftMarkdown(next);
+    setMentionSuggestion(null);
+
+    window.requestAnimationFrame(() => {
+      const position = mentionSuggestion.start + replacement.length;
+      editor.focus();
+      editor.setSelectionRange(position, position);
+    });
   }
 
   function openSlashMenuFromInsert(): void {
+    setMentionSuggestion(null);
     if (editorMode === "markdown") {
       const editor = markdownEditorRef.current;
       const position = editor?.selectionStart ?? draftMarkdown.length;
@@ -2167,6 +2290,7 @@ export default function App() {
     setLastSelectedId(noteId);
     touchRecent(noteId);
     setLinkSuggestion(null);
+    setMentionSuggestion(null);
     setSlashMenu(null);
   }
 
@@ -4109,6 +4233,7 @@ export default function App() {
         setEventDialog(null);
         setAttachmentDropTarget(null);
         setSlashMenu(null);
+        setMentionSuggestion(null);
       }}
     >
       <aside className="left-sidebar" style={{ width: sidebarWidth }}>
@@ -4680,16 +4805,19 @@ export default function App() {
                       onChange={(event) => {
                         setDraftMarkdown(event.target.value);
                         syncLinkSuggestion(event.target.value, event.target.selectionStart);
+                        syncMentionSuggestion(event.target.value, event.target.selectionStart);
                         syncSlashSuggestion(event.target.value, event.target.selectionStart);
                       }}
                       onClick={(event) => {
                         const target = event.currentTarget;
                         syncLinkSuggestion(target.value, target.selectionStart);
+                        syncMentionSuggestion(target.value, target.selectionStart);
                         syncSlashSuggestion(target.value, target.selectionStart);
                       }}
                       onKeyUp={(event) => {
                         const target = event.currentTarget;
                         syncLinkSuggestion(target.value, target.selectionStart);
+                        syncMentionSuggestion(target.value, target.selectionStart);
                         syncSlashSuggestion(target.value, target.selectionStart);
                       }}
                       onContextMenu={(event) => {
@@ -4753,39 +4881,71 @@ export default function App() {
                           }
                         }
 
-                        if (!linkSuggestion) {
-                          return;
+                        if (linkSuggestion) {
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            setLinkSuggestion(null);
+                            return;
+                          }
+
+                          if (event.key === "ArrowDown") {
+                            event.preventDefault();
+                            setLinkSuggestion((previous) => {
+                              if (!previous) {
+                                return previous;
+                              }
+                              const limit = Math.max(0, suggestions.length - 1);
+                              return { ...previous, selected: Math.min(previous.selected + 1, limit) };
+                            });
+                            return;
+                          }
+
+                          if (event.key === "ArrowUp") {
+                            event.preventDefault();
+                            setLinkSuggestion((previous) =>
+                              previous ? { ...previous, selected: Math.max(previous.selected - 1, 0) } : previous
+                            );
+                            return;
+                          }
+
+                          if (event.key === "Tab" || event.key === "Enter") {
+                            event.preventDefault();
+                            commitLinkSuggestion(linkSuggestion.selected);
+                            return;
+                          }
                         }
 
-                        if (event.key === "Escape") {
-                          event.preventDefault();
-                          setLinkSuggestion(null);
-                          return;
-                        }
+                        if (mentionSuggestion) {
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            setMentionSuggestion(null);
+                            return;
+                          }
 
-                        if (event.key === "ArrowDown") {
-                          event.preventDefault();
-                          setLinkSuggestion((previous) => {
-                            if (!previous) {
-                              return previous;
-                            }
-                            const limit = Math.max(0, suggestions.length - 1);
-                            return { ...previous, selected: Math.min(previous.selected + 1, limit) };
-                          });
-                          return;
-                        }
+                          if (event.key === "ArrowDown") {
+                            event.preventDefault();
+                            setMentionSuggestion((previous) => {
+                              if (!previous) {
+                                return previous;
+                              }
+                              const max = Math.max(0, mentionResults.length - 1);
+                              return { ...previous, selected: Math.min(previous.selected + 1, max) };
+                            });
+                            return;
+                          }
 
-                        if (event.key === "ArrowUp") {
-                          event.preventDefault();
-                          setLinkSuggestion((previous) =>
-                            previous ? { ...previous, selected: Math.max(previous.selected - 1, 0) } : previous
-                          );
-                          return;
-                        }
+                          if (event.key === "ArrowUp") {
+                            event.preventDefault();
+                            setMentionSuggestion((previous) =>
+                              previous ? { ...previous, selected: Math.max(previous.selected - 1, 0) } : previous
+                            );
+                            return;
+                          }
 
-                        if (event.key === "Tab" || event.key === "Enter") {
-                          event.preventDefault();
-                          commitLinkSuggestion(linkSuggestion.selected);
+                          if (event.key === "Tab" || event.key === "Enter") {
+                            event.preventDefault();
+                            commitMentionSuggestion(mentionSuggestion.selected);
+                          }
                         }
                       }}
                     />
@@ -4815,6 +4975,36 @@ export default function App() {
                             }}
                           >
                             Create "{linkSuggestion.query.trim()}"
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {!linkSuggestion && mentionSuggestion ? (
+                      <div className="mention-suggest" role="listbox" aria-label="Mention suggestions">
+                        {mentionResults.map((entry, index) => (
+                          <button
+                            key={entry.id}
+                            type="button"
+                            className={index === mentionSuggestion.selected ? "active" : ""}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              commitMentionSuggestion(index);
+                            }}
+                          >
+                            <span>{entry.label}</span>
+                            <small>{mentionSuggestion.kind === "tag" ? "Tag" : "Date"}</small>
+                          </button>
+                        ))}
+                        {mentionSuggestion.kind === "tag" && mentionSuggestion.query.trim() && !mentionResults.length ? (
+                          <button
+                            type="button"
+                            className="create-link"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              commitMentionSuggestion(0);
+                            }}
+                          >
+                            Create #{mentionSuggestion.query.trim().replace(/^#/, "")}
                           </button>
                         ) : null}
                       </div>

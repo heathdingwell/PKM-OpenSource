@@ -1498,6 +1498,22 @@ export default function App() {
       return;
     }
 
+    if (action === "share") {
+      void copyNoteLink(targetId);
+      setToastMessage("Share link copied");
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-window") {
+      const target = notes.find((note) => note.id === targetId);
+      if (target) {
+        setToastMessage(`Open in new window planned for "${target.title}"`);
+      }
+      setContextMenu(null);
+      return;
+    }
+
     if (action === "note-info") {
       if (targetId && targetId !== activeId) {
         focusNote(targetId);
@@ -1509,6 +1525,52 @@ export default function App() {
 
     if (action === "move-trash") {
       setNotes((previous) => previous.filter((note) => !contextMenu.noteIds.includes(note.id)));
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "edit-tags") {
+      setTagEditorOpen(true);
+      setContextMenu(null);
+      window.requestAnimationFrame(() => {
+        const input = document.getElementById("tag-input");
+        if (input instanceof HTMLInputElement) {
+          input.focus();
+        }
+      });
+      return;
+    }
+
+    if (action === "find") {
+      setSearchScope("current");
+      setQuickQuery(activeNote?.title ?? "");
+      setSearchOpen(true);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "export") {
+      const target = notes.find((note) => note.id === targetId);
+      if (target) {
+        setToastMessage(`Export planned for "${target.title}"`);
+      }
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "print") {
+      window.print();
+      setContextMenu(null);
+      return;
+    }
+
+    if (
+      action === "add-shortcuts" ||
+      action === "pin-notebook" ||
+      action === "pin-home" ||
+      action === "note-history"
+    ) {
+      setToastMessage(`"${action.replace(/-/g, " ")}" is planned`);
       setContextMenu(null);
       return;
     }

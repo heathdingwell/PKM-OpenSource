@@ -34,6 +34,21 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Command palette", level: 4 })).toBeInTheDocument();
   });
 
+  it("opens template picker from sidebar action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "New from template" }));
+    expect(screen.getByRole("heading", { name: "New from template", level: 3 })).toBeInTheDocument();
+  });
+
+  it("creates a note from template picker", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "New from template" }));
+    fireEvent.change(screen.getByPlaceholderText("New note title"), { target: { value: "Template Result Note" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create note" }));
+
+    expect(await screen.findByRole("heading", { name: "Template Result Note", level: 2 })).toBeInTheDocument();
+  });
+
   it("opens tasks panel from create task button", () => {
     render(<App />);
     const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("Quick task");

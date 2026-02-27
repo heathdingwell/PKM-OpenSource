@@ -57,6 +57,12 @@ interface StackDialogState {
   newStackName: string;
 }
 
+interface TemplateDialogState {
+  templateId: string;
+  title: string;
+  notebook: string;
+}
+
 interface LastMoveState {
   previousById: Record<string, { notebook: string; path: string }>;
 }
@@ -349,6 +355,7 @@ const seedNotes: SeedNote[] = [
 const sidePinned = ["Home", "Shortcuts", "Notes", "Trash", "Tasks", "Files", "Calendar", "Templates"];
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
+  { id: "new-from-template", label: "New from template", keywords: ["template", "clone"] },
   { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
   { id: "open-home", label: "Open home", keywords: ["home", "dashboard"] },
   { id: "open-notes", label: "Open notes", keywords: ["notes", "sidebar"] },
@@ -1294,6 +1301,7 @@ export default function App() {
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
   const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
+  const [templateDialog, setTemplateDialog] = useState<TemplateDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<"everywhere" | "current">("everywhere");
   const [searchFilters, setSearchFilters] = useState<SearchFilterKind[]>([]);
@@ -1362,6 +1370,13 @@ export default function App() {
 
   const activeNotes = useMemo(() => notes.filter((note) => !note.trashedAt), [notes]);
   const trashedNotes = useMemo(() => notes.filter((note) => Boolean(note.trashedAt)), [notes]);
+  const templateNotes = useMemo(
+    () =>
+      activeNotes
+        .filter((note) => Boolean(note.isTemplate))
+        .sort((left, right) => left.title.localeCompare(right.title)),
+    [activeNotes]
+  );
 
   const autosaveTimerRef = useRef<number | null>(null);
   const previousNotesRef = useRef<AppNote[] | null>(null);
@@ -3464,6 +3479,12 @@ export default function App() {
       return;
     }
 
+    if (actionId === "new-from-template") {
+      setSearchOpen(false);
+      openTemplateDialog(activeNote?.isTemplate ? activeNote.id : undefined);
+      return;
+    }
+
     if (actionId === "new-notebook") {
       setSearchOpen(false);
       createNotebook();
@@ -3983,23 +4004,28 @@ export default function App() {
     return result?.markdown ?? markdown;
   }
 
-  async function useTemplateNote(note: AppNote): Promise<void> {
-    const defaultTitle = note.title === "Untitled" ? "New note" : `${note.title} copy`;
-    const rawTitle = window.prompt("New note title", defaultTitle);
-    const nextTitle = rawTitle?.trim();
-    if (!nextTitle) {
-      return;
+  function defaultTemplateTitle(note: AppNote): string {
+    return note.title === "Untitled" ? "New note" : `${note.title} copy`;
+  }
+
+  async function createNoteFromTemplate(templateId: string, nextTitle: string, notebook: string): Promise<boolean> {
+    const note = notes.find((entry) => entry.id === templateId);
+    const safeTitle = nextTitle.trim();
+    const safeNotebook = notebook.trim();
+    if (!note || !note.isTemplate || !safeTitle || !safeNotebook) {
+      return false;
     }
 
     const now = new Date().toISOString();
-    const path = `${note.notebook}/${toFileName(nextTitle)}`;
-    const rewrittenHeading = rewriteHeading(note.markdown, nextTitle);
+    const path = `${safeNotebook}/${toFileName(safeTitle)}`;
+    const rewrittenHeading = rewriteHeading(note.markdown, safeTitle);
     const markdown = await cloneNoteAttachmentsForCopy(note.path, path, rewrittenHeading);
     const created = noteFromMarkdown(
       {
         ...note,
         id: crypto.randomUUID(),
-        title: nextTitle,
+        title: safeTitle,
+        notebook: safeNotebook,
         path,
         markdown,
         isTemplate: false,
@@ -4015,6 +4041,44 @@ export default function App() {
     setBrowseMode("all");
     focusNote(created.id);
     setToastMessage(`Created note from template "${note.title}"`);
+    return true;
+  }
+
+  function openTemplateDialog(preselectedTemplateId?: string): void {
+    if (!templateNotes.length) {
+      setToastMessage("No templates available yet");
+      return;
+    }
+
+    const chosen =
+      templateNotes.find((note) => note.id === preselectedTemplateId) ??
+      templateNotes.find((note) => note.notebook === selectedNotebook) ??
+      templateNotes[0];
+    const notebook = selectedNotebook === "All Notes" ? chosen.notebook : selectedNotebook;
+    setTemplateDialog({
+      templateId: chosen.id,
+      title: defaultTemplateTitle(chosen),
+      notebook
+    });
+  }
+
+  async function confirmTemplateDialog(): Promise<void> {
+    if (!templateDialog) {
+      return;
+    }
+
+    const created = await createNoteFromTemplate(
+      templateDialog.templateId,
+      templateDialog.title,
+      templateDialog.notebook
+    );
+    if (created) {
+      setTemplateDialog(null);
+    }
+  }
+
+  function useTemplateNote(note: AppNote): void {
+    openTemplateDialog(note.id);
   }
 
   async function copyNotes(noteIds: string[], destination: string): Promise<void> {
@@ -5477,6 +5541,14 @@ export default function App() {
         <div className="sidebar-actions">
           <button type="button" className="new-note" onClick={createNewNote}>
             + Note
+          </button>
+          <button
+            type="button"
+            className="round-action"
+            aria-label="New from template"
+            onClick={() => openTemplateDialog(activeNote?.isTemplate ? activeNote.id : undefined)}
+          >
+            ⧉
           </button>
           <button type="button" className="round-action" aria-label="Quick actions" onClick={openCommandPalette}>
             +
@@ -7933,6 +8005,77 @@ export default function App() {
             <footer>
               <button type="button" onClick={() => setNoteHistoryDialog(null)}>
                 Close
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {templateDialog ? (
+        <div className="overlay" onClick={() => setTemplateDialog(null)}>
+          <section className="move-modal template-modal" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <h3>New from template</h3>
+              <small>{templateNotes.length} templates</small>
+            </header>
+            <label className="template-field">
+              <span>Template</span>
+              <select
+                value={templateDialog.templateId}
+                onChange={(event) => {
+                  const picked = templateNotes.find((note) => note.id === event.target.value);
+                  if (!picked) {
+                    return;
+                  }
+                  setTemplateDialog({
+                    templateId: picked.id,
+                    title: defaultTemplateTitle(picked),
+                    notebook: templateDialog.notebook
+                  });
+                }}
+              >
+                {templateNotes.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.title} · {template.notebook}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="template-field">
+              <span>Title</span>
+              <input
+                autoFocus
+                placeholder="New note title"
+                value={templateDialog.title}
+                onChange={(event) => setTemplateDialog({ ...templateDialog, title: event.target.value })}
+              />
+            </label>
+            <label className="template-field">
+              <span>Notebook</span>
+              <select
+                value={templateDialog.notebook}
+                onChange={(event) => setTemplateDialog({ ...templateDialog, notebook: event.target.value })}
+              >
+                {notebooks
+                  .filter((notebook) => notebook !== "All Notes")
+                  .map((notebook) => (
+                    <option key={notebook} value={notebook}>
+                      {notebook}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <footer>
+              <button type="button" onClick={() => setTemplateDialog(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={!templateDialog.title.trim() || !templateDialog.notebook.trim()}
+                onClick={() => void confirmTemplateDialog()}
+              >
+                Create note
               </button>
             </footer>
           </section>

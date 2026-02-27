@@ -167,6 +167,35 @@ button {
   background: #d0def9;
 }
 
+.recent-item {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  color: #2f4b78;
+  text-align: left;
+  background: transparent;
+}
+
+.recent-item:hover {
+  background: #d0def9;
+}
+
+.recent-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.recent-item small {
+  color: #5570a2;
+  font-size: 11px;
+}
+
 .shortcut-item span {
   overflow: hidden;
   text-overflow: ellipsis;

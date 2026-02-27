@@ -65,6 +65,7 @@ interface AppPrefs {
   viewMode?: NoteViewMode;
   sortMode?: NoteSortMode;
   tagFilters?: string[];
+  recentNoteIds?: string[];
   shortcutNoteIds?: string[];
   notebookStacks?: Record<string, string>;
   collapsedStacks?: string[];
@@ -407,6 +408,7 @@ function loadPrefs(): AppPrefs {
       viewMode: "cards",
       sortMode: "updated-desc",
       tagFilters: [],
+      recentNoteIds: [],
       shortcutNoteIds: [],
       notebookStacks: {},
       collapsedStacks: []
@@ -422,6 +424,7 @@ function loadPrefs(): AppPrefs {
         viewMode: "cards",
         sortMode: "updated-desc",
         tagFilters: [],
+        recentNoteIds: [],
         shortcutNoteIds: [],
         notebookStacks: {},
         collapsedStacks: []
@@ -436,6 +439,9 @@ function loadPrefs(): AppPrefs {
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
       tagFilters: Array.isArray(parsed.tagFilters)
         ? parsed.tagFilters.filter((tag): tag is string => typeof tag === "string")
+        : [],
+      recentNoteIds: Array.isArray(parsed.recentNoteIds)
+        ? parsed.recentNoteIds.filter((noteId): noteId is string => typeof noteId === "string")
         : [],
       shortcutNoteIds: Array.isArray(parsed.shortcutNoteIds)
         ? parsed.shortcutNoteIds.filter((noteId): noteId is string => typeof noteId === "string")
@@ -459,6 +465,7 @@ function loadPrefs(): AppPrefs {
       viewMode: "cards",
       sortMode: "updated-desc",
       tagFilters: [],
+      recentNoteIds: [],
       shortcutNoteIds: [],
       notebookStacks: {},
       collapsedStacks: []
@@ -519,6 +526,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [sortMode, setSortMode] = useState<NoteSortMode>(initialPrefs.sortMode ?? "updated-desc");
   const [tagFilters, setTagFilters] = useState<string[]>(initialPrefs.tagFilters ?? []);
+  const [recentNoteIds, setRecentNoteIds] = useState<string[]>(initialPrefs.recentNoteIds ?? []);
   const [shortcutNoteIds, setShortcutNoteIds] = useState<string[]>(initialPrefs.shortcutNoteIds ?? []);
   const [notebookStacks, setNotebookStacks] = useState<Record<string, string>>(initialPrefs.notebookStacks ?? {});
   const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(
@@ -612,6 +620,13 @@ export default function App() {
     const source = selectedNotebook === "All Notes" ? notes : notes.filter((note) => note.notebook === selectedNotebook);
     return Array.from(new Set(source.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
   }, [notes, selectedNotebook]);
+
+  const recentNotes = useMemo(() => {
+    return recentNoteIds
+      .map((noteId) => notes.find((note) => note.id === noteId))
+      .filter((note): note is AppNote => Boolean(note))
+      .slice(0, 8);
+  }, [recentNoteIds, notes]);
 
   const shortcutNotes = useMemo(() => {
     return shortcutNoteIds
@@ -798,6 +813,10 @@ export default function App() {
 
   useEffect(() => {
     const validIds = new Set(notes.map((note) => note.id));
+    setRecentNoteIds((previous) => {
+      const next = previous.filter((noteId) => validIds.has(noteId));
+      return next.length === previous.length ? previous : next;
+    });
     setShortcutNoteIds((previous) => {
       const next = previous.filter((noteId) => validIds.has(noteId));
       return next.length === previous.length ? previous : next;
@@ -890,6 +909,7 @@ export default function App() {
         previous.map((note) => (note.id === activeNote.id ? noteFromMarkdown(note, draftMarkdown) : note))
       );
       setSaveState("saved");
+      touchRecent(activeNote.id);
       autosaveTimerRef.current = null;
     }, 650);
 
@@ -924,12 +944,23 @@ export default function App() {
       viewMode,
       sortMode,
       tagFilters,
+      recentNoteIds,
       shortcutNoteIds,
       notebookStacks,
       collapsedStacks: Array.from(collapsedStacks)
     };
     window.localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
-  }, [selectedNotebook, activeId, viewMode, sortMode, tagFilters, shortcutNoteIds, notebookStacks, collapsedStacksKey]);
+  }, [
+    selectedNotebook,
+    activeId,
+    viewMode,
+    sortMode,
+    tagFilters,
+    recentNoteIds,
+    shortcutNoteIds,
+    notebookStacks,
+    collapsedStacksKey
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1093,6 +1124,11 @@ export default function App() {
       previous.map((note) => (note.id === activeNote.id ? noteFromMarkdown(note, draftMarkdown) : note))
     );
     setSaveState("saved");
+    touchRecent(activeNote.id);
+  }
+
+  function touchRecent(noteId: string): void {
+    setRecentNoteIds((previous) => [noteId, ...previous.filter((entry) => entry !== noteId)].slice(0, 24));
   }
 
   function syncSlashSuggestion(markdown: string, caret: number): void {
@@ -1261,6 +1297,7 @@ export default function App() {
     setActiveId(noteId);
     setSelectedIds(new Set([noteId]));
     setLastSelectedId(noteId);
+    touchRecent(noteId);
     setLinkSuggestion(null);
     setSlashMenu(null);
   }
@@ -2447,6 +2484,31 @@ export default function App() {
         </nav>
 
         <section className="sidebar-section">
+          <h2>Recent notes</h2>
+          {recentNotes.length ? (
+            <ul className="shortcut-list">
+              {recentNotes.map((note) => (
+                <li key={note.id}>
+                  <button
+                    type="button"
+                    className="recent-item"
+                    onClick={() => {
+                      setSelectedNotebook(note.notebook);
+                      focusNote(note.id);
+                    }}
+                  >
+                    <span>{note.title}</span>
+                    <small>{formatRelativeTime(note.updatedAt)}</small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="shortcut-empty">No recent notes yet</p>
+          )}
+        </section>
+
+        <section className="sidebar-section">
           <h2>Shortcuts</h2>
           {shortcutNotes.length ? (
             <ul className="shortcut-list">
@@ -2456,7 +2518,6 @@ export default function App() {
                     type="button"
                     className="shortcut-item"
                     onClick={() => {
-                      flushActiveDraft();
                       setSelectedNotebook(note.notebook);
                       focusNote(note.id);
                     }}

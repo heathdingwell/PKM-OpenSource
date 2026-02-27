@@ -15,9 +15,12 @@
   --grad-b: #f7fbff;
   --grad-c: #edf4ff;
   --shadow: 0 10px 30px rgba(20, 36, 70, 0.14);
+  --font-ui: "Gill Sans", "Trebuchet MS", "Segoe UI", sans-serif;
+  --font-editor: "Gill Sans", "Trebuchet MS", "Segoe UI", sans-serif;
+  --font-code: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
 
   color: var(--text);
-  font-family: "SF Pro Text", "Avenir Next", "Helvetica Neue", sans-serif;
+  font-family: var(--font-ui);
 }
 
 :root[data-theme="sky"] {
@@ -791,7 +794,7 @@ body.is-resizing {
   border: 0;
   color: #1f2937;
   background: #ffffff;
-  font: 500 16px/1.45 "SF Mono", "Menlo", "Consolas", monospace;
+  font: 500 16px/1.45 var(--font-code);
   resize: vertical;
 }
 
@@ -851,7 +854,7 @@ body.is-resizing {
   min-height: 100%;
   padding: 14px;
   color: #1f2937;
-  font: 500 16px/1.45 "SF Pro Text", "Avenir Next", "Helvetica Neue", sans-serif;
+  font: 500 16px/1.45 var(--font-editor);
 }
 
 .rich-editor-content:focus {

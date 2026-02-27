@@ -22,6 +22,10 @@ function normalizeSegment(segment) {
   return segment.replace(/[<>:"|?*\u0000-\u001F]/g, "-").replace(/\s+/g, " ").trim();
 }
 
+function asString(value) {
+  return typeof value === "string" ? value : "";
+}
+
 function sanitizeNotePath(input) {
   const normalized = typeof input === "string" ? input : "";
   const segments = normalized
@@ -524,6 +528,98 @@ async function cloneAttachmentLinks(payload) {
   return { markdown: rewritten.join(""), copied: copiedMap.size };
 }
 
+async function callOpenAiCompatibleChat(payload) {
+  if (!isObject(payload)) {
+    return { error: "Invalid payload" };
+  }
+
+  const baseUrl = asString(payload.baseUrl).trim() || "https://api.openai.com/v1";
+  const model = asString(payload.model).trim();
+  const apiKey = asString(payload.apiKey).trim();
+  const messages = Array.isArray(payload.messages)
+    ? payload.messages
+        .filter((entry) => isObject(entry))
+        .map((entry) => ({
+          role: ["system", "user", "assistant"].includes(asString(entry.role).trim()) ? asString(entry.role).trim() : "",
+          content: asString(entry.content)
+        }))
+        .filter((entry) => entry.role && entry.content.trim())
+    : [];
+
+  if (!model) {
+    return { error: "Model is required" };
+  }
+  if (!apiKey) {
+    return { error: "API key is required" };
+  }
+  if (!messages.length) {
+    return { error: "At least one message is required" };
+  }
+
+  const normalizedBase = baseUrl.replace(/\/+$/, "");
+  const endpoint = normalizedBase.endsWith("/v1") ? `${normalizedBase}/chat/completions` : `${normalizedBase}/v1/chat/completions`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: typeof payload.temperature === "number" ? payload.temperature : 0.2
+      }),
+      signal: controller.signal
+    });
+
+    const raw = await response.text();
+    let data = null;
+    try {
+      data = raw ? JSON.parse(raw) : null;
+    } catch {
+      data = null;
+    }
+
+    if (!response.ok) {
+      const errorMessage = asString(data?.error?.message).trim() || raw.slice(0, 300) || `${response.status} ${response.statusText}`;
+      return { error: errorMessage };
+    }
+
+    const message = data?.choices?.[0]?.message?.content;
+    if (typeof message === "string" && message.trim()) {
+      return { message };
+    }
+
+    if (Array.isArray(message)) {
+      const combined = message
+        .map((part) => {
+          if (typeof part === "string") {
+            return part;
+          }
+          return asString(part?.text);
+        })
+        .join("")
+        .trim();
+      if (combined) {
+        return { message: combined };
+      }
+    }
+
+    return { error: "No assistant response received" };
+  } catch (error) {
+    if (error && typeof error === "object" && error.name === "AbortError") {
+      return { error: "LLM request timed out after 60 seconds" };
+    }
+    return { error: asString(error?.message) || "Failed to reach LLM provider" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1440,
@@ -580,6 +676,15 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error("Failed to clone note attachments", error);
       return null;
+    }
+  });
+
+  ipcMain.handle("llm:chat", async (_event, payload) => {
+    try {
+      return await callOpenAiCompatibleChat(payload);
+    } catch (error) {
+      console.error("Failed to query llm provider", error);
+      return { error: "LLM request failed" };
     }
   });
 

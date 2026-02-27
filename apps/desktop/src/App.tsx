@@ -213,6 +213,24 @@ interface CommandPaletteAction {
   keywords: string[];
 }
 
+interface AiSettings {
+  baseUrl: string;
+  model: string;
+  apiKey: string;
+  temperature: number;
+  includeActiveNote: boolean;
+  includeRelatedNotes: boolean;
+  relatedCount: number;
+  systemPrompt: string;
+}
+
+interface AiChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  at: string;
+}
+
 interface ShellNotesPayload {
   [index: number]: unknown;
   length: number;
@@ -230,6 +248,7 @@ const PREFS_STORAGE_KEY = "pkm-os.desktop.prefs.v1";
 const SEARCH_RECENTS_KEY = "pkm-os.desktop.search-recents.v1";
 const HISTORY_STORAGE_KEY = "pkm-os.desktop.history.v1";
 const CALENDAR_STORAGE_KEY = "pkm-os.desktop.calendar.v1";
+const AI_SETTINGS_STORAGE_KEY = "pkm-os.desktop.ai-settings.v1";
 const MIN_SIDEBAR_WIDTH = 210;
 const MAX_SIDEBAR_WIDTH = 420;
 const MIN_LIST_WIDTH = 320;
@@ -297,6 +316,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
+  { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
@@ -921,6 +941,53 @@ function loadPrefs(): AppPrefs {
   }
 }
 
+function defaultAiSettings(): AiSettings {
+  return {
+    baseUrl: "https://api.openai.com/v1",
+    model: "gpt-4o-mini",
+    apiKey: "",
+    temperature: 0.2,
+    includeActiveNote: true,
+    includeRelatedNotes: true,
+    relatedCount: 4,
+    systemPrompt:
+      "You are a note-taking copilot. Be concise and practical. Use note context when relevant and cite note titles in brackets."
+  };
+}
+
+function loadAiSettings(): AiSettings {
+  if (typeof window === "undefined") {
+    return defaultAiSettings();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(AI_SETTINGS_STORAGE_KEY);
+    if (!raw) {
+      return defaultAiSettings();
+    }
+
+    const parsed = JSON.parse(raw) as Partial<AiSettings>;
+    const defaults = defaultAiSettings();
+    return {
+      baseUrl: typeof parsed.baseUrl === "string" && parsed.baseUrl.trim() ? parsed.baseUrl : defaults.baseUrl,
+      model: typeof parsed.model === "string" && parsed.model.trim() ? parsed.model : defaults.model,
+      apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : defaults.apiKey,
+      temperature:
+        typeof parsed.temperature === "number" ? Math.max(0, Math.min(parsed.temperature, 1.5)) : defaults.temperature,
+      includeActiveNote:
+        typeof parsed.includeActiveNote === "boolean" ? parsed.includeActiveNote : defaults.includeActiveNote,
+      includeRelatedNotes:
+        typeof parsed.includeRelatedNotes === "boolean" ? parsed.includeRelatedNotes : defaults.includeRelatedNotes,
+      relatedCount:
+        typeof parsed.relatedCount === "number" ? Math.max(1, Math.min(Math.round(parsed.relatedCount), 8)) : defaults.relatedCount,
+      systemPrompt:
+        typeof parsed.systemPrompt === "string" && parsed.systemPrompt.trim() ? parsed.systemPrompt : defaults.systemPrompt
+    };
+  } catch {
+    return defaultAiSettings();
+  }
+}
+
 function loadRecentSearches(): string[] {
   if (typeof window === "undefined") {
     return [];
@@ -1040,6 +1107,7 @@ function loadCalendarEvents(): CalendarEvent[] {
 
 export default function App() {
   const initialPrefs = useMemo(() => loadPrefs(), []);
+  const initialAiSettings = useMemo(() => loadAiSettings(), []);
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(() =>
     clampPaneWidth(initialPrefs.sidebarWidth ?? 240, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH)
@@ -1100,6 +1168,13 @@ export default function App() {
     () => new Set(initialPrefs.collapsedStacks ?? [])
   );
   const [metadataOpen, setMetadataOpen] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiShowSettings, setAiShowSettings] = useState(false);
+  const [aiSettings, setAiSettings] = useState<AiSettings>(initialAiSettings);
+  const [aiMessages, setAiMessages] = useState<AiChatMessage[]>([]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [vaultReady, setVaultReady] = useState(false);
@@ -1787,6 +1862,13 @@ export default function App() {
   }, [calendarEvents]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(AI_SETTINGS_STORAGE_KEY, JSON.stringify(aiSettings));
+  }, [aiSettings]);
+
+  useEffect(() => {
     if (typeof document === "undefined") {
       return;
     }
@@ -2089,6 +2171,129 @@ export default function App() {
       setToastMessage(`Theme switched to ${next}`);
       return next;
     });
+  }
+
+  function toggleAiPanel(): void {
+    setAiPanelOpen((previous) => {
+      const next = !previous;
+      if (next) {
+        setMetadataOpen(false);
+      }
+      return next;
+    });
+  }
+
+  function clearAiChat(): void {
+    setAiMessages([]);
+    setAiError(null);
+  }
+
+  function buildAiContext(question: string): string {
+    const sections: string[] = [];
+
+    if (aiSettings.includeActiveNote && activeNote) {
+      const truncated = activeNote.markdown.slice(0, 12000);
+      sections.push(
+        `Active note:\nTitle: ${activeNote.title}\nNotebook: ${activeNote.notebook}\nPath: ${activeNote.path}\nContent:\n${truncated}`
+      );
+    }
+
+    if (aiSettings.includeRelatedNotes) {
+      const related = searchIndex
+        .search(question)
+        .map((result) => notes.find((note) => note.id === result.noteId))
+        .filter((note): note is AppNote => Boolean(note))
+        .filter((note) => note.id !== activeNote?.id)
+        .slice(0, aiSettings.relatedCount);
+
+      if (related.length) {
+        const parts = related.map((note, index) => {
+          const content = note.markdown.slice(0, 2600);
+          return `${index + 1}. ${note.title} (${note.notebook})\n${content}`;
+        });
+        sections.push(`Related notes:\n${parts.join("\n\n")}`);
+      }
+    }
+
+    return sections.join("\n\n---\n\n");
+  }
+
+  async function submitAiPrompt(): Promise<void> {
+    const prompt = aiInput.trim();
+    if (!prompt || aiBusy) {
+      return;
+    }
+
+    const userMessage: AiChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: prompt,
+      at: new Date().toISOString()
+    };
+
+    setAiMessages((previous) => [...previous, userMessage]);
+    setAiInput("");
+    setAiBusy(true);
+    setAiError(null);
+
+    const context = buildAiContext(prompt);
+    const history = [...aiMessages, userMessage]
+      .slice(-10)
+      .map((entry) => ({ role: entry.role as "user" | "assistant", content: entry.content }));
+
+    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      {
+        role: "system",
+        content: aiSettings.systemPrompt
+      }
+    ];
+    if (context) {
+      messages.push({
+        role: "system",
+        content: `Vault context (use only if relevant):\n${context}`
+      });
+    }
+    messages.push(...history);
+
+    try {
+      if (!window.pkmShell?.chatWithLlm) {
+        throw new Error("LLM bridge is unavailable in this build.");
+      }
+
+      const result = await window.pkmShell.chatWithLlm({
+        baseUrl: aiSettings.baseUrl,
+        apiKey: aiSettings.apiKey,
+        model: aiSettings.model,
+        temperature: aiSettings.temperature,
+        messages
+      });
+
+      const content = result?.message?.trim();
+      const error = result?.error?.trim();
+      if (!content) {
+        throw new Error(error || "No response returned by provider.");
+      }
+
+      const assistantMessage: AiChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content,
+        at: new Date().toISOString()
+      };
+      setAiMessages((previous) => [...previous, assistantMessage]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "LLM request failed";
+      setAiError(message);
+      const assistantMessage: AiChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `Error: ${message}`,
+        at: new Date().toISOString()
+      };
+      setAiMessages((previous) => [...previous, assistantMessage]);
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   function flushActiveDraft(): void {
@@ -2703,6 +2908,7 @@ export default function App() {
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
       setSearchOpen(false);
       return;
     }
@@ -2712,6 +2918,7 @@ export default function App() {
       setTasksDialogOpen(true);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
       setSearchOpen(false);
       return;
     }
@@ -2721,6 +2928,7 @@ export default function App() {
       setTasksDialogOpen(false);
       setFilesDialogOpen(true);
       setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
       setSearchOpen(false);
       return;
     }
@@ -2730,6 +2938,14 @@ export default function App() {
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(true);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-ai") {
+      setAiPanelOpen(true);
+      setMetadataOpen(false);
       setSearchOpen(false);
       return;
     }
@@ -2741,6 +2957,7 @@ export default function App() {
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
       setSearchOpen(false);
       return;
     }
@@ -3387,6 +3604,7 @@ export default function App() {
         focusNote(targetId);
       }
       setMetadataOpen(true);
+      setAiPanelOpen(false);
       setContextMenu(null);
       return;
     }
@@ -4884,7 +5102,14 @@ export default function App() {
                 <span>{draftPreview.title}</span>
               </div>
               <div className="editor-top-actions">
-                <button type="button" className="link-btn" onClick={() => setMetadataOpen((previous) => !previous)}>
+                <button
+                  type="button"
+                  className={metadataOpen ? "link-btn active" : "link-btn"}
+                  onClick={() => {
+                    setMetadataOpen((previous) => !previous);
+                    setAiPanelOpen(false);
+                  }}
+                >
                   Info
                 </button>
                 <button type="button" className="share-btn">
@@ -4892,6 +5117,9 @@ export default function App() {
                 </button>
                 <button type="button" className="link-btn">
                   Link
+                </button>
+                <button type="button" className={aiPanelOpen ? "link-btn active" : "link-btn"} onClick={toggleAiPanel}>
+                  AI
                 </button>
                 <button type="button" className="link-btn" onClick={cycleTheme}>
                   Theme
@@ -4983,7 +5211,7 @@ export default function App() {
               </div>
             ) : null}
 
-            <article className={metadataOpen ? "editor-content with-metadata" : "editor-content"}>
+            <article className={metadataOpen || aiPanelOpen ? "editor-content with-metadata" : "editor-content"}>
               <div className="editor-workbench">
                 {editorMode === "markdown" ? (
                   <section
@@ -5387,6 +5615,149 @@ export default function App() {
                     )}
                   </div>
                 </section>
+              ) : null}
+
+              {aiPanelOpen ? (
+                <aside className="metadata-panel ai-panel">
+                  <header>
+                    <h4>AI Copilot</h4>
+                    <button type="button" onClick={() => setAiPanelOpen(false)}>
+                      Close
+                    </button>
+                  </header>
+                  <div className="ai-body">
+                    <div className="ai-toolbar">
+                      <button type="button" onClick={() => setAiShowSettings((previous) => !previous)}>
+                        {aiShowSettings ? "Hide settings" : "Settings"}
+                      </button>
+                      <button type="button" onClick={clearAiChat}>
+                        Clear chat
+                      </button>
+                    </div>
+                    {aiShowSettings ? (
+                      <section className="ai-settings">
+                        <label>
+                          <span>Base URL</span>
+                          <input
+                            value={aiSettings.baseUrl}
+                            placeholder="https://api.openai.com/v1"
+                            onChange={(event) => setAiSettings({ ...aiSettings, baseUrl: event.target.value })}
+                          />
+                        </label>
+                        <label>
+                          <span>Model</span>
+                          <input
+                            value={aiSettings.model}
+                            placeholder="gpt-4o-mini"
+                            onChange={(event) => setAiSettings({ ...aiSettings, model: event.target.value })}
+                          />
+                        </label>
+                        <label>
+                          <span>API key</span>
+                          <input
+                            type="password"
+                            value={aiSettings.apiKey}
+                            placeholder="sk-..."
+                            onChange={(event) => setAiSettings({ ...aiSettings, apiKey: event.target.value })}
+                          />
+                        </label>
+                        <label>
+                          <span>Temperature</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={1.5}
+                            step={0.1}
+                            value={aiSettings.temperature}
+                            onChange={(event) =>
+                              setAiSettings({
+                                ...aiSettings,
+                                temperature: Number.parseFloat(event.target.value) || 0
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>Related notes</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={8}
+                            value={aiSettings.relatedCount}
+                            onChange={(event) =>
+                              setAiSettings({
+                                ...aiSettings,
+                                relatedCount: Math.max(1, Math.min(8, Number.parseInt(event.target.value || "1", 10)))
+                              })
+                            }
+                          />
+                        </label>
+                        <label className="ai-toggle">
+                          <input
+                            type="checkbox"
+                            checked={aiSettings.includeActiveNote}
+                            onChange={(event) =>
+                              setAiSettings({ ...aiSettings, includeActiveNote: event.target.checked })
+                            }
+                          />
+                          Include active note
+                        </label>
+                        <label className="ai-toggle">
+                          <input
+                            type="checkbox"
+                            checked={aiSettings.includeRelatedNotes}
+                            onChange={(event) =>
+                              setAiSettings({ ...aiSettings, includeRelatedNotes: event.target.checked })
+                            }
+                          />
+                          Include related notes
+                        </label>
+                        <label>
+                          <span>System prompt</span>
+                          <textarea
+                            value={aiSettings.systemPrompt}
+                            onChange={(event) => setAiSettings({ ...aiSettings, systemPrompt: event.target.value })}
+                          />
+                        </label>
+                      </section>
+                    ) : null}
+                    <div className="ai-chat-log">
+                      {aiMessages.length ? (
+                        aiMessages.map((message) => (
+                          <article key={message.id} className={message.role === "user" ? "ai-msg user" : "ai-msg assistant"}>
+                            <strong>{message.role === "user" ? "You" : "Copilot"}</strong>
+                            <p>{message.content}</p>
+                          </article>
+                        ))
+                      ) : (
+                        <p className="history-empty">Ask questions about your notes.</p>
+                      )}
+                      {aiError ? <p className="ai-error">{aiError}</p> : null}
+                    </div>
+                    <form
+                      className="ai-input"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void submitAiPrompt();
+                      }}
+                    >
+                      <textarea
+                        value={aiInput}
+                        placeholder="Ask about this note or your vault..."
+                        onChange={(event) => setAiInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            void submitAiPrompt();
+                          }
+                        }}
+                      />
+                      <button type="submit" disabled={aiBusy || !aiInput.trim()}>
+                        {aiBusy ? "Thinking..." : "Send"}
+                      </button>
+                    </form>
+                  </div>
+                </aside>
               ) : null}
 
               {metadataOpen && activeNote ? (

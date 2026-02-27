@@ -23,6 +23,19 @@ declare global {
         markdown: string;
         copied?: number;
       } | null>;
+      chatWithLlm?: (payload: {
+        baseUrl: string;
+        apiKey: string;
+        model: string;
+        temperature?: number;
+        messages: Array<{
+          role: "system" | "user" | "assistant";
+          content: string;
+        }>;
+      }) => Promise<{
+        message?: string;
+        error?: string;
+      } | null>;
     };
   }
 }

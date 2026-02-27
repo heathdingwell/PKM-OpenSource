@@ -161,7 +161,7 @@ type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
 type NoteDensityMode = "comfortable" | "compact";
 type SidebarView = "notes" | "tasks" | "calendar";
-type NoteBrowseMode = "all" | "templates";
+type NoteBrowseMode = "all" | "templates" | "shortcuts";
 type ThemeId = "cobalt" | "sky" | "slate";
 type AiProvider = "openai" | "anthropic" | "gemini" | "perplexity" | "openai-compatible" | "ollama";
 type NoteSortMode =
@@ -331,6 +331,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
   { id: "open-notes", label: "Open notes", keywords: ["notes", "sidebar"] },
+  { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
@@ -918,7 +919,8 @@ function loadPrefs(): AppPrefs {
       tagPaneHeight:
         typeof parsed.tagPaneHeight === "number" ? clampTagPaneHeight(parsed.tagPaneHeight) : DEFAULT_TAG_PANE_HEIGHT,
       themeId: themeIds.includes(parsed.themeId as ThemeId) ? (parsed.themeId as ThemeId) : "cobalt",
-      browseMode: parsed.browseMode === "templates" ? "templates" : "all",
+      browseMode:
+        parsed.browseMode === "templates" || parsed.browseMode === "shortcuts" ? parsed.browseMode : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
       noteDensity: parsed.noteDensity === "compact" ? "compact" : "comfortable",
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
@@ -1354,12 +1356,19 @@ export default function App() {
         ? notes
         : notes.filter((note) => note.notebook === selectedNotebook);
 
-    const templateScoped =
-      browseMode === "templates" ? scoped.filter((note) => Boolean(note.isTemplate)) : scoped;
+    const modeScoped =
+      browseMode === "templates"
+        ? scoped.filter((note) => Boolean(note.isTemplate))
+        : browseMode === "shortcuts"
+          ? (() => {
+              const shortcutIds = new Set(shortcutNoteIds);
+              return scoped.filter((note) => shortcutIds.has(note.id));
+            })()
+          : scoped;
 
     const filtered = tagFilters.length
-      ? templateScoped.filter((note) => tagFilters.every((tag) => note.tags.includes(tag)))
-      : templateScoped;
+      ? modeScoped.filter((note) => tagFilters.every((tag) => note.tags.includes(tag)))
+      : modeScoped;
 
     const sorted = [...filtered];
     sorted.sort((left, right) => {
@@ -1382,12 +1391,24 @@ export default function App() {
     });
 
     return sorted;
-  }, [notes, selectedNotebook, browseMode, tagFilters, sortMode]);
+  }, [notes, selectedNotebook, browseMode, tagFilters, sortMode, shortcutNoteIds]);
 
   const availableTags = useMemo(() => {
-    const source = selectedNotebook === "All Notes" ? notes : notes.filter((note) => note.notebook === selectedNotebook);
+    const scoped =
+      selectedNotebook === "All Notes"
+        ? notes
+        : notes.filter((note) => note.notebook === selectedNotebook);
+    const source =
+      browseMode === "templates"
+        ? scoped.filter((note) => Boolean(note.isTemplate))
+        : browseMode === "shortcuts"
+          ? (() => {
+              const shortcutIds = new Set(shortcutNoteIds);
+              return scoped.filter((note) => shortcutIds.has(note.id));
+            })()
+          : scoped;
     return Array.from(new Set(source.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
-  }, [notes, selectedNotebook]);
+  }, [notes, selectedNotebook, browseMode, shortcutNoteIds]);
 
   const recentNotes = useMemo(() => {
     return recentNoteIds
@@ -2294,12 +2315,14 @@ export default function App() {
     event.preventDefault();
     const target = event.currentTarget;
     const pointerId = event.pointerId;
-    const editorBottom = editorMainRef.current?.getBoundingClientRect().bottom ?? target.getBoundingClientRect().bottom;
+    const startY = event.clientY;
+    const startHeight = tagPaneHeight;
     document.body.classList.add("is-resizing");
     target.setPointerCapture(pointerId);
 
     const onPointerMove = (moveEvent: PointerEvent) => {
-      setTagPaneHeight(clampTagPaneHeight(editorBottom - moveEvent.clientY));
+      const delta = moveEvent.clientY - startY;
+      setTagPaneHeight(clampTagPaneHeight(startHeight - delta));
     };
 
     const stop = () => {
@@ -2813,6 +2836,9 @@ export default function App() {
     if (browseMode === "templates" && target && !target.isTemplate) {
       setBrowseMode("all");
     }
+    if (browseMode === "shortcuts" && target && !shortcutSet.has(target.id)) {
+      setBrowseMode("all");
+    }
     setActiveId(noteId);
     setSelectedIds(new Set([noteId]));
     setLastSelectedId(noteId);
@@ -3160,6 +3186,18 @@ export default function App() {
     if (actionId === "open-notes") {
       setSidebarView("notes");
       setBrowseMode("all");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-shortcuts") {
+      setSidebarView("notes");
+      setBrowseMode("shortcuts");
+      setSelectedNotebook("All Notes");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);
@@ -4932,6 +4970,12 @@ export default function App() {
                   !tasksDialogOpen &&
                   !filesDialogOpen &&
                   !calendarDialogOpen) ||
+                (item === "Shortcuts" &&
+                  sidebarView === "notes" &&
+                  browseMode === "shortcuts" &&
+                  !tasksDialogOpen &&
+                  !filesDialogOpen &&
+                  !calendarDialogOpen) ||
                 (item === "Tasks" && sidebarView === "tasks") ||
                 (item === "Files" && filesDialogOpen) ||
                 (item === "Calendar" && calendarDialogOpen) ||
@@ -4955,6 +4999,15 @@ export default function App() {
                 if (item === "Tasks") {
                   setSidebarView("tasks");
                   setTasksDialogOpen(true);
+                  setFilesDialogOpen(false);
+                  setCalendarDialogOpen(false);
+                  return;
+                }
+                if (item === "Shortcuts") {
+                  setSidebarView("notes");
+                  setBrowseMode("shortcuts");
+                  setSelectedNotebook("All Notes");
+                  setTasksDialogOpen(false);
                   setFilesDialogOpen(false);
                   setCalendarDialogOpen(false);
                   return;
@@ -5224,7 +5277,9 @@ export default function App() {
       <section className="note-column" style={{ width: listWidth }}>
         <header className="note-column-header">
           <div>
-            <h1>{browseMode === "templates" ? "Templates" : selectedNotebook}</h1>
+            <h1>
+              {browseMode === "templates" ? "Templates" : browseMode === "shortcuts" ? "Shortcuts" : selectedNotebook}
+            </h1>
             <small>{visibleNotes.length}</small>
           </div>
           <div className="header-actions">

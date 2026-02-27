@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import App from "./App";
 
 describe("App", () => {
@@ -9,5 +9,11 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Daily Notes" })).toBeInTheDocument();
     expect(screen.getByRole("separator", { name: "Resize sidebar" })).toBeInTheDocument();
     expect(screen.getByRole("separator", { name: "Resize note list" })).toBeInTheDocument();
+  });
+
+  it("opens shortcuts browse mode from the sidebar", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));
+    expect(screen.getByRole("heading", { name: "Shortcuts", level: 1 })).toBeInTheDocument();
   });
 });

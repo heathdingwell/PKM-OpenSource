@@ -40,6 +40,16 @@ function sanitizeNotePath(input) {
   return [...segments, fileName].join("/");
 }
 
+function sanitizeAttachmentName(input) {
+  const raw = typeof input === "string" ? input : "";
+  const baseName = path.basename(raw).replace(/[\\/]/g, "");
+  const ext = path.extname(baseName);
+  const stem = ext ? baseName.slice(0, -ext.length) : baseName;
+  const normalizedStem = normalizeSegment(stem) || "attachment";
+  const normalizedExt = ext ? normalizeSegment(ext) : "";
+  return `${normalizedStem}${normalizedExt}`;
+}
+
 function uniqueRelativePath(basePath, used) {
   const ext = path.extname(basePath) || ".md";
   const stem = basePath.slice(0, -ext.length);
@@ -52,6 +62,20 @@ function uniqueRelativePath(basePath, used) {
   }
 
   used.add(candidate.toLowerCase());
+  return candidate;
+}
+
+async function uniqueFileNameInDir(dirPath, fileName) {
+  const ext = path.extname(fileName);
+  const stem = ext ? fileName.slice(0, -ext.length) : fileName;
+  let candidate = fileName;
+  let counter = 2;
+
+  while (await pathExists(path.join(dirPath, candidate))) {
+    candidate = `${stem} ${counter}${ext}`;
+    counter += 1;
+  }
+
   return candidate;
 }
 
@@ -367,6 +391,50 @@ async function saveVaultNotes(payload) {
   return true;
 }
 
+async function saveVaultAttachment(payload) {
+  if (!isObject(payload)) {
+    return null;
+  }
+
+  const notePath = sanitizeNotePath(payload.notePath);
+  if (!notePath) {
+    return null;
+  }
+
+  const base64 = typeof payload.base64 === "string" ? payload.base64 : "";
+  if (!base64.trim()) {
+    return null;
+  }
+
+  const rawName = typeof payload.fileName === "string" ? payload.fileName : "attachment.bin";
+  const fileName = sanitizeAttachmentName(rawName);
+  const rootDir = vaultRootPath();
+  const noteDir = path.posix.dirname(notePath);
+  const attachmentsDirRelative =
+    noteDir === "." ? "attachments" : path.posix.join(noteDir, "attachments");
+  const attachmentsDirAbsolute = path.join(rootDir, ...attachmentsDirRelative.split("/"));
+
+  await fs.mkdir(attachmentsDirAbsolute, { recursive: true });
+
+  const uniqueFileName = await uniqueFileNameInDir(attachmentsDirAbsolute, fileName);
+  const attachmentRelativePath = path.posix.join(attachmentsDirRelative, uniqueFileName);
+  const attachmentAbsolutePath = path.join(rootDir, ...attachmentRelativePath.split("/"));
+  const buffer = Buffer.from(base64, "base64");
+
+  await fs.writeFile(attachmentAbsolutePath, buffer);
+
+  const relativeFromNote = path.posix.relative(
+    noteDir === "." ? "" : noteDir,
+    attachmentRelativePath
+  );
+
+  return {
+    relativePath: relativeFromNote.startsWith(".") ? relativeFromNote : `./${relativeFromNote}`,
+    storedPath: attachmentRelativePath,
+    sizeBytes: buffer.length
+  };
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1440,
@@ -405,6 +473,15 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error("Failed to save vault state", error);
       return false;
+    }
+  });
+
+  ipcMain.handle("vault:attach", async (_event, payload) => {
+    try {
+      return await saveVaultAttachment(payload);
+    } catch (error) {
+      console.error("Failed to save vault attachment", error);
+      return null;
     }
   });
 

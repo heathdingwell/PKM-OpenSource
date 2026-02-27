@@ -662,6 +662,7 @@ export default function App() {
   const [searchSelected, setSearchSelected] = useState(0);
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
+  const [attachmentDropTarget, setAttachmentDropTarget] = useState<"markdown" | "rich" | null>(null);
   const [dropNotebook, setDropNotebook] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<LastMoveState | null>(null);
@@ -1357,6 +1358,7 @@ export default function App() {
         setStackDialog(null);
         setNoteHistoryDialog(null);
         setTasksDialogOpen(false);
+        setAttachmentDropTarget(null);
         setSidebarView("notes");
         setSearchOpen(false);
         setSlashMenu(null);
@@ -2538,6 +2540,106 @@ export default function App() {
     );
   }
 
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === "string" ? reader.result : "";
+        const comma = result.indexOf(",");
+        resolve(comma >= 0 ? result.slice(comma + 1) : result);
+      };
+      reader.onerror = () => reject(reader.error ?? new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function isImageAttachment(file: File): boolean {
+    if (file.type.startsWith("image/")) {
+      return true;
+    }
+    return /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(file.name);
+  }
+
+  function toAttachmentMarkdown(file: File, targetPath: string): string {
+    if (isImageAttachment(file)) {
+      return `![${file.name}](${targetPath})`;
+    }
+    return `[${file.name}](${targetPath})`;
+  }
+
+  function sanitizeAttachmentFallback(fileName: string): string {
+    const cleaned = fileName.replace(/[\\/]/g, "-").trim();
+    return cleaned || `attachment-${Date.now()}.bin`;
+  }
+
+  async function saveAttachmentForActiveNote(file: File): Promise<string> {
+    if (!window.pkmShell?.saveAttachment || !activeNote) {
+      return `./attachments/${sanitizeAttachmentFallback(file.name)}`;
+    }
+
+    const base64 = await fileToBase64(file);
+    const saved = await window.pkmShell.saveAttachment({
+      notePath: activeNote.path,
+      fileName: file.name,
+      base64
+    });
+
+    if (!saved?.relativePath) {
+      return `./attachments/${sanitizeAttachmentFallback(file.name)}`;
+    }
+    return saved.relativePath;
+  }
+
+  function insertMarkdownAtSelection(content: string): void {
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      setDraftMarkdown((previous) => `${previous}\n${content}`);
+      return;
+    }
+
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const next = `${draftMarkdown.slice(0, start)}${content}${draftMarkdown.slice(end)}`;
+    setDraftMarkdown(next);
+
+    window.requestAnimationFrame(() => {
+      const current = markdownEditorRef.current;
+      if (!current) {
+        return;
+      }
+      const cursor = start + content.length;
+      current.focus();
+      current.setSelectionRange(cursor, cursor);
+    });
+  }
+
+  async function insertAttachmentFiles(files: File[], target: "markdown" | "rich"): Promise<void> {
+    if (!activeNote) {
+      setToastMessage("Select a note before adding attachments");
+      return;
+    }
+
+    const candidates = files.filter((file) => file.size > 0);
+    if (!candidates.length) {
+      return;
+    }
+
+    const links: string[] = [];
+    for (const file of candidates) {
+      const path = await saveAttachmentForActiveNote(file);
+      links.push(toAttachmentMarkdown(file, path));
+    }
+
+    const block = links.join("\n");
+    if (target === "markdown") {
+      insertMarkdownAtSelection(block);
+    } else {
+      richEditorRef.current?.insertContent(block);
+    }
+
+    setToastMessage(`${links.length} attachment${links.length > 1 ? "s" : ""} inserted`);
+  }
+
   function runRichToolbarAction(action: "bold" | "italic" | "underline" | "bullet" | "link"): void {
     if (editorMode !== "rich") {
       return;
@@ -3069,6 +3171,7 @@ export default function App() {
         setNotebookMenu(null);
         setEditorContextMenu(null);
         setNoteHistoryDialog(null);
+        setAttachmentDropTarget(null);
         setSlashMenu(null);
       }}
     >
@@ -3519,7 +3622,10 @@ export default function App() {
             <article className={metadataOpen ? "editor-content with-metadata" : "editor-content"}>
               <div className="editor-workbench">
                 {editorMode === "markdown" ? (
-                  <section className="markdown-pane" aria-label="Markdown editor">
+                  <section
+                    className={attachmentDropTarget === "markdown" ? "markdown-pane drop-active" : "markdown-pane"}
+                    aria-label="Markdown editor"
+                  >
                     <h3>Markdown</h3>
                     <textarea
                       ref={markdownEditorRef}
@@ -3543,6 +3649,28 @@ export default function App() {
                       onContextMenu={(event) => {
                         event.preventDefault();
                         openEditorContextMenu(event.clientX, event.clientY);
+                      }}
+                      onDragOver={(event) => {
+                        if (!event.dataTransfer?.files?.length) {
+                          return;
+                        }
+                        event.preventDefault();
+                        setAttachmentDropTarget("markdown");
+                      }}
+                      onDragLeave={() => setAttachmentDropTarget((previous) => (previous === "markdown" ? null : previous))}
+                      onDrop={async (event) => {
+                        event.preventDefault();
+                        setAttachmentDropTarget(null);
+                        const files = event.dataTransfer?.files ? Array.from(event.dataTransfer.files) : [];
+                        await insertAttachmentFiles(files, "markdown");
+                      }}
+                      onPaste={async (event) => {
+                        const files = event.clipboardData?.files ? Array.from(event.clipboardData.files) : [];
+                        if (!files.length) {
+                          return;
+                        }
+                        event.preventDefault();
+                        await insertAttachmentFiles(files, "markdown");
                       }}
                       onKeyDown={(event) => {
                         if (slashMenu?.editor === "markdown") {
@@ -3647,7 +3775,32 @@ export default function App() {
                     ) : null}
                   </section>
                 ) : (
-                  <section className="markdown-pane rich-pane" aria-label="Rich editor">
+                  <section
+                    className={attachmentDropTarget === "rich" ? "markdown-pane rich-pane drop-active" : "markdown-pane rich-pane"}
+                    aria-label="Rich editor"
+                    onDragOver={(event) => {
+                      if (!event.dataTransfer?.files?.length) {
+                        return;
+                      }
+                      event.preventDefault();
+                      setAttachmentDropTarget("rich");
+                    }}
+                    onDragLeave={() => setAttachmentDropTarget((previous) => (previous === "rich" ? null : previous))}
+                    onDrop={async (event) => {
+                      event.preventDefault();
+                      setAttachmentDropTarget(null);
+                      const files = event.dataTransfer?.files ? Array.from(event.dataTransfer.files) : [];
+                      await insertAttachmentFiles(files, "rich");
+                    }}
+                    onPaste={async (event) => {
+                      const files = event.clipboardData?.files ? Array.from(event.clipboardData.files) : [];
+                      if (!files.length) {
+                        return;
+                      }
+                      event.preventDefault();
+                      await insertAttachmentFiles(files, "rich");
+                    }}
+                  >
                     <h3>Rich text</h3>
                     <RichMarkdownEditor
                       ref={richEditorRef}

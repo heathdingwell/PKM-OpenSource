@@ -3230,6 +3230,26 @@ export default function App() {
     setSearchOpen(false);
   }
 
+  function quickCreateTask(): void {
+    const rawInput = window.prompt("Task text");
+    const taskText = rawInput?.trim();
+    if (!taskText) {
+      return;
+    }
+    if (!activeNote) {
+      setToastMessage("Open a note before creating a task");
+      return;
+    }
+
+    const base = draftMarkdown.replace(/\s+$/, "");
+    const separator = base.length ? "\n\n" : "";
+    const nextMarkdown = `${base}${separator}- [ ] ${taskText}\n`;
+    setDraftMarkdown(nextMarkdown);
+    setSaveState("dirty");
+    openTasksPanel();
+    setToastMessage(`Task "${taskText}" added`);
+  }
+
   function runPaletteAction(actionId: string): void {
     if (actionId === "new-note") {
       setSearchOpen(false);
@@ -5065,7 +5085,7 @@ export default function App() {
           <button type="button" className="round-action" aria-label="Quick actions" onClick={openCommandPalette}>
             +
           </button>
-          <button type="button" className="round-action" aria-label="Create task" onClick={openTasksPanel}>
+          <button type="button" className="round-action" aria-label="Create task" onClick={quickCreateTask}>
             T
           </button>
           <button

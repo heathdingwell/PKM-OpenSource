@@ -32,7 +32,9 @@ describe("App", () => {
 
   it("opens tasks panel from create task button", () => {
     render(<App />);
+    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("Quick task");
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));
     expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
+    promptSpy.mockRestore();
   });
 });

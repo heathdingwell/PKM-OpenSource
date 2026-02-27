@@ -69,6 +69,16 @@ interface NoteHistoryDialogState {
   noteId: string;
 }
 
+interface OpenTaskItem {
+  id: string;
+  noteId: string;
+  lineIndex: number;
+  noteTitle: string;
+  notebook: string;
+  text: string;
+  updatedAt: string;
+}
+
 interface AppPrefs {
   selectedNotebook: string;
   activeId: string;
@@ -92,6 +102,7 @@ interface LinkSuggestionState {
 
 type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
+type SidebarView = "notes" | "tasks";
 type NoteSortMode =
   | "updated-desc"
   | "updated-asc"
@@ -338,6 +349,33 @@ function toDateBucketLabel(iso: string): string {
     return "Yesterday";
   }
   return targetDate.toLocaleDateString();
+}
+
+function extractOpenTasks(notes: AppNote[]): OpenTaskItem[] {
+  const tasks: OpenTaskItem[] = [];
+
+  for (const note of notes) {
+    const lines = note.markdown.replace(/\r\n/g, "\n").split("\n");
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      const match = line.match(/^\s*-\s\[\s\]\s+(.+)$/);
+      if (!match) {
+        continue;
+      }
+
+      tasks.push({
+        id: `${note.id}:${index}`,
+        noteId: note.id,
+        lineIndex: index,
+        noteTitle: note.title,
+        notebook: note.notebook,
+        text: match[1].trim(),
+        updatedAt: note.updatedAt
+      });
+    }
+  }
+
+  return tasks.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
 function rewriteHeading(markdown: string, title: string): string {
@@ -615,6 +653,7 @@ export default function App() {
   const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
   const [noteRenameDialog, setNoteRenameDialog] = useState<NoteRenameDialogState | null>(null);
   const [noteHistoryDialog, setNoteHistoryDialog] = useState<NoteHistoryDialogState | null>(null);
+  const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<"everywhere" | "current">("everywhere");
@@ -628,6 +667,7 @@ export default function App() {
   const [lastMove, setLastMove] = useState<LastMoveState | null>(null);
   const [draftMarkdown, setDraftMarkdown] = useState<string>("");
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">("saved");
+  const [sidebarView, setSidebarView] = useState<SidebarView>("notes");
   const [editorMode, setEditorMode] = useState<EditorMode>("markdown");
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [sortMode, setSortMode] = useState<NoteSortMode>(initialPrefs.sortMode ?? "updated-desc");
@@ -834,6 +874,8 @@ export default function App() {
 
     return groups;
   }, [quickResults]);
+
+  const openTasks = useMemo(() => extractOpenTasks(notes), [notes]);
 
   const suggestions = useMemo(() => {
     if (!linkSuggestion) {
@@ -1314,6 +1356,8 @@ export default function App() {
         setEditorContextMenu(null);
         setStackDialog(null);
         setNoteHistoryDialog(null);
+        setTasksDialogOpen(false);
+        setSidebarView("notes");
         setSearchOpen(false);
         setSlashMenu(null);
       }
@@ -1654,6 +1698,39 @@ export default function App() {
 
   function removeSavedSearch(id: string): void {
     setSavedSearches((previous) => previous.filter((entry) => entry.id !== id));
+  }
+
+  function completeOpenTask(task: OpenTaskItem): void {
+    flushActiveDraft();
+
+    let nextActiveMarkdown: string | null = null;
+
+    setNotes((previous) =>
+      previous.map((note) => {
+        if (note.id !== task.noteId) {
+          return note;
+        }
+
+        const lines = note.markdown.replace(/\r\n/g, "\n").split("\n");
+        const target = lines[task.lineIndex];
+        if (!target || !/^\s*-\s\[\s\]\s+/.test(target)) {
+          return note;
+        }
+
+        lines[task.lineIndex] = target.replace(/^(\s*-\s)\[\s\](\s+)/, "$1[x]$2");
+        const nextMarkdown = lines.join("\n");
+        if (activeId === note.id) {
+          nextActiveMarkdown = nextMarkdown;
+        }
+        return noteFromMarkdown(note, nextMarkdown, new Date().toISOString());
+      })
+    );
+
+    if (nextActiveMarkdown !== null) {
+      setDraftMarkdown(nextActiveMarkdown);
+    }
+
+    setToastMessage("Task completed");
   }
 
   function openSearchResult(note: AppNote, mode: "open" | "copy-link" | "open-window" = "open"): void {
@@ -3018,7 +3095,28 @@ export default function App() {
 
         <nav className="sidebar-nav">
           {sidePinned.map((item) => (
-            <button key={item} type="button" className="sidebar-link">
+            <button
+              key={item}
+              type="button"
+              className={
+                (item === "Notes" && sidebarView === "notes") || (item === "Tasks" && sidebarView === "tasks")
+                  ? "sidebar-link active"
+                  : "sidebar-link"
+              }
+              onClick={() => {
+                if (item === "Notes") {
+                  setSidebarView("notes");
+                  setTasksDialogOpen(false);
+                  return;
+                }
+                if (item === "Tasks") {
+                  setSidebarView("tasks");
+                  setTasksDialogOpen(true);
+                  return;
+                }
+                setToastMessage(`"${item}" is planned`);
+              }}
+            >
               {item}
             </button>
           ))}
@@ -4059,6 +4157,64 @@ export default function App() {
               </button>
               <button type="button" disabled={!quickQuery.trim()} onClick={saveCurrentSearch}>
                 Save Search
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {tasksDialogOpen ? (
+        <div
+          className="overlay"
+          onClick={() => {
+            setTasksDialogOpen(false);
+            setSidebarView("notes");
+          }}
+        >
+          <section className="move-modal tasks-modal" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <h3>Tasks</h3>
+              <small>{openTasks.length} open</small>
+            </header>
+            {openTasks.length ? (
+              <ul>
+                {openTasks.map((task) => (
+                  <li key={task.id} className="task-row">
+                    <button
+                      type="button"
+                      className="task-open"
+                      onClick={() => {
+                        setSelectedNotebook(task.notebook);
+                        focusNote(task.noteId);
+                        setTasksDialogOpen(false);
+                        setSidebarView("notes");
+                      }}
+                    >
+                      <strong>{task.text}</strong>
+                      <small>{task.notebook} - {task.noteTitle}</small>
+                    </button>
+                    <button
+                      type="button"
+                      className="task-complete"
+                      onClick={() => completeOpenTask(task)}
+                    >
+                      Done
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="history-empty">No open tasks</p>
+            )}
+            <footer>
+              <button
+                type="button"
+                onClick={() => {
+                  setTasksDialogOpen(false);
+                  setSidebarView("notes");
+                }}
+              >
+                Close
               </button>
             </footer>
           </section>

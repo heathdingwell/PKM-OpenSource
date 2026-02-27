@@ -114,6 +114,12 @@ button {
   background: #d5e2fb;
 }
 
+.sidebar-link.active {
+  color: #1e4fa6;
+  background: #d4e3ff;
+  font-weight: 600;
+}
+
 .sidebar-section {
   margin-top: 16px;
 }
@@ -1354,6 +1360,48 @@ button {
   margin: 6px 0 12px;
   color: #7f6b54;
   font-size: 13px;
+}
+
+.tasks-modal li button {
+  display: grid;
+  gap: 1px;
+}
+
+.tasks-modal .task-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.tasks-modal .task-open {
+  min-width: 0;
+}
+
+.tasks-modal li button strong {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tasks-modal li button small {
+  font-size: 11px;
+  color: #8f7f6a;
+}
+
+.task-complete {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #c8b79f;
+  border-radius: 7px;
+  color: #5a4a37;
+  background: #f8efdf;
+  font-size: 12px;
+}
+
+.task-complete:hover {
+  background: #efe3cf;
 }
 
 .stack-modal ul {

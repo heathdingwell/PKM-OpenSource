@@ -445,6 +445,7 @@ export default function App() {
   const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
   const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchScope, setSearchScope] = useState<"everywhere" | "current">("everywhere");
   const [quickQuery, setQuickQuery] = useState("");
   const [searchSelected, setSearchSelected] = useState(0);
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
@@ -569,15 +570,30 @@ export default function App() {
   }, [notes]);
 
   const quickResults = useMemo(() => {
+    const scopedNotes =
+      searchScope === "current" && selectedNotebook !== "All Notes"
+        ? notes.filter((note) => note.notebook === selectedNotebook)
+        : notes;
+    const scopedIds = new Set(scopedNotes.map((note) => note.id));
+
     if (!quickQuery.trim()) {
-      return visibleNotes.slice(0, 6);
+      return scopedNotes
+        .slice()
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+        .slice(0, 6);
     }
+
     return searchIndex
       .search(quickQuery)
       .map((result) => notes.find((note) => note.id === result.noteId))
-      .filter((note): note is AppNote => Boolean(note))
+      .filter((note): note is AppNote => {
+        if (!note) {
+          return false;
+        }
+        return scopedIds.has(note.id);
+      })
       .slice(0, 8);
-  }, [notes, quickQuery, searchIndex, visibleNotes]);
+  }, [notes, quickQuery, searchIndex, searchScope, selectedNotebook]);
 
   const selectedSearchResult = quickResults[searchSelected] ?? null;
 
@@ -919,7 +935,7 @@ export default function App() {
       return;
     }
     setSearchSelected(0);
-  }, [searchOpen, quickQuery]);
+  }, [searchOpen, quickQuery, searchScope]);
 
   useEffect(() => {
     if (searchSelected < quickResults.length) {
@@ -2933,8 +2949,20 @@ export default function App() {
               }}
             />
             <div className="search-chips">
-              <span className="chip active">Everywhere</span>
-              <span className="chip">{selectedNotebook}</span>
+              <button
+                type="button"
+                className={searchScope === "everywhere" ? "chip active" : "chip"}
+                onClick={() => setSearchScope("everywhere")}
+              >
+                Everywhere
+              </button>
+              <button
+                type="button"
+                className={searchScope === "current" ? "chip active" : "chip"}
+                onClick={() => setSearchScope("current")}
+              >
+                {selectedNotebook}
+              </button>
             </div>
             <div className="search-results">
               <h4>Recent searches</h4>

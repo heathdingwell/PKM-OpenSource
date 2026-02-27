@@ -119,6 +119,16 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
   });
 
+  it("restores a trashed note with cmd+z undo", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.keyDown(window, { key: "Backspace", metaKey: true });
+    fireEvent.keyDown(window, { key: "z", metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    expect(screen.getByText("Trash is empty.")).toBeInTheDocument();
+  });
+
   it("moves a note to trash and restores it from trash view", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

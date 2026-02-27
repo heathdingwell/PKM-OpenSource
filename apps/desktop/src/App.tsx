@@ -373,6 +373,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "cycle-theme", label: "Cycle theme", keywords: ["theme", "color", "palette"] },
   { id: "toggle-git-backup", label: "Toggle Git backups", keywords: ["git", "backup", "versioning"] },
   { id: "git-backup-now", label: "Run Git backup now", keywords: ["git", "backup", "commit"] },
+  { id: "undo-last-action", label: "Undo last action", keywords: ["undo", "restore", "revert"] },
   { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
 ];
 
@@ -2298,6 +2299,12 @@ export default function App() {
           return;
         }
 
+        if (key === "z" && !event.shiftKey && !isTextEntryTarget) {
+          event.preventDefault();
+          undoLastAction();
+          return;
+        }
+
         if (key === "b") {
           event.preventDefault();
           if (editorMode === "rich") {
@@ -3698,6 +3705,12 @@ export default function App() {
     if (actionId === "git-backup-now") {
       setSearchOpen(false);
       void runGitBackupNow();
+      return;
+    }
+
+    if (actionId === "undo-last-action") {
+      setSearchOpen(false);
+      undoLastAction();
       return;
     }
 

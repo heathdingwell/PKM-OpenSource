@@ -302,6 +302,22 @@ function formatRelativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
+function toDateBucketLabel(iso: string): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(iso);
+  const target = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+  const elapsedDays = Math.round((today.getTime() - target.getTime()) / 86400000);
+
+  if (elapsedDays <= 0) {
+    return "Today";
+  }
+  if (elapsedDays === 1) {
+    return "Yesterday";
+  }
+  return targetDate.toLocaleDateString();
+}
+
 function rewriteHeading(markdown: string, title: string): string {
   if (/^#\s+.*$/m.test(markdown)) {
     return markdown.replace(/^#\s+.*$/m, `# ${title}`);
@@ -678,6 +694,21 @@ export default function App() {
   }, [notes, quickQuery, searchIndex, searchScope, selectedNotebook]);
 
   const selectedSearchResult = quickResults[searchSelected] ?? null;
+  const quickResultGroups = useMemo(() => {
+    const groups: Array<{ label: string; entries: Array<{ note: AppNote; index: number }> }> = [];
+
+    quickResults.forEach((note, index) => {
+      const label = toDateBucketLabel(note.updatedAt);
+      const existing = groups.find((group) => group.label === label);
+      if (existing) {
+        existing.entries.push({ note, index });
+        return;
+      }
+      groups.push({ label, entries: [{ note, index }] });
+    });
+
+    return groups;
+  }, [quickResults]);
 
   const suggestions = useMemo(() => {
     if (!linkSuggestion) {
@@ -3354,19 +3385,24 @@ export default function App() {
                 )}
               </ul>
               <h4>Results</h4>
-              <ul>
-                {quickResults.map((note, index) => (
-                  <li
-                    key={note.id}
-                    className={index === searchSelected ? "active" : ""}
-                    onMouseEnter={() => setSearchSelected(index)}
-                    onClick={() => openSearchResult(note, "open")}
-                  >
-                    <strong>{note.title}</strong>
-                    <small>{note.notebook}</small>
-                  </li>
-                ))}
-              </ul>
+              {quickResultGroups.map((group) => (
+                <div key={group.label} className="search-group">
+                  <h5>{group.label}</h5>
+                  <ul>
+                    {group.entries.map(({ note, index }) => (
+                      <li
+                        key={note.id}
+                        className={index === searchSelected ? "active" : ""}
+                        onMouseEnter={() => setSearchSelected(index)}
+                        onClick={() => openSearchResult(note, "open")}
+                      >
+                        <strong>{note.title}</strong>
+                        <small>{note.notebook}</small>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
             <footer className="search-actions">
               <button

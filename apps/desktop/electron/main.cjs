@@ -227,6 +227,7 @@ async function hydrateFromIndex(rootDir, indexEntries) {
       createdAt: typeof rawEntry.createdAt === "string" ? rawEntry.createdAt : now,
       updatedAt: typeof rawEntry.updatedAt === "string" ? rawEntry.updatedAt : now,
       notebook: notebookFromPath(relativePath, rawEntry.notebook),
+      isTemplate: Boolean(rawEntry.isTemplate),
       markdown
     });
   }
@@ -262,6 +263,7 @@ async function hydrateFromMarkdownFiles(rootDir) {
       createdAt: stats.birthtime?.toISOString?.() || new Date().toISOString(),
       updatedAt: stats.mtime?.toISOString?.() || new Date().toISOString(),
       notebook: notebookFromPath(relativePath),
+      isTemplate: false,
       markdown
     });
   }
@@ -368,7 +370,8 @@ async function saveVaultNotes(payload) {
         : extractWikilinks(markdown),
       createdAt: typeof rawNote.createdAt === "string" ? rawNote.createdAt : now,
       updatedAt: typeof rawNote.updatedAt === "string" ? rawNote.updatedAt : now,
-      notebook: notebookFromPath(relativePath, rawNote.notebook)
+      notebook: notebookFromPath(relativePath, rawNote.notebook),
+      isTemplate: Boolean(rawNote.isTemplate)
     });
   }
 

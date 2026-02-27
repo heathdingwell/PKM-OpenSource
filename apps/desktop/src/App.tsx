@@ -9,11 +9,13 @@ interface SeedNote {
   fileName: string;
   markdown: string;
   updatedAt: string;
+  isTemplate?: boolean;
 }
 
 interface AppNote extends NoteRecord {
   notebook: string;
   markdown: string;
+  isTemplate?: boolean;
 }
 
 interface ContextMenuState {
@@ -82,6 +84,7 @@ interface OpenTaskItem {
 interface AppPrefs {
   selectedNotebook: string;
   activeId: string;
+  browseMode?: NoteBrowseMode;
   viewMode?: NoteViewMode;
   sortMode?: NoteSortMode;
   tagFilters?: string[];
@@ -103,6 +106,7 @@ interface LinkSuggestionState {
 type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
 type SidebarView = "notes" | "tasks";
+type NoteBrowseMode = "all" | "templates";
 type NoteSortMode =
   | "updated-desc"
   | "updated-asc"
@@ -156,6 +160,7 @@ const seedNotes: SeedNote[] = [
     notebook: "Daily Notes",
     fileName: "Agenda.md",
     updatedAt: "2026-02-26T18:00:00.000Z",
+    isTemplate: true,
     markdown:
       "# Agenda\n\n## Today priorities\n\n1. Priority 1\n2. Priority 2\n3. Priority 3\n\n## Meetings\n- Link a calendar event\n- Add any relevant tasks\n- Add or create any linked notes"
   },
@@ -163,6 +168,7 @@ const seedNotes: SeedNote[] = [
     notebook: "Daily Notes",
     fileName: "To-do list.md",
     updatedAt: "2026-02-26T17:00:00.000Z",
+    isTemplate: true,
     markdown:
       "# To-do list\n\n## High priority\n- Add your most urgent and important tasks here.\n- [ ] Add new task\n\n## Medium priority\n- These tasks are important, but not as time sensitive."
   },
@@ -221,6 +227,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "divider-3", label: "", divider: true },
   { id: "find", label: "Find in note", shortcut: "cmd+f" },
   { id: "note-info", label: "Note info", shortcut: "cmd+i" },
+  { id: "toggle-template", label: "Set as template" },
   { id: "note-history", label: "Note history" },
   { id: "divider-4", label: "", divider: true },
   { id: "export", label: "Export" },
@@ -438,6 +445,7 @@ function getSeededNotes(): AppNote[] {
       createdAt: seed.updatedAt,
       updatedAt: seed.updatedAt,
       notebook: seed.notebook,
+      isTemplate: Boolean(seed.isTemplate),
       markdown: seed.markdown
     };
   });
@@ -459,7 +467,8 @@ function isAppNote(value: unknown): value is AppNote {
     typeof note.createdAt === "string" &&
     typeof note.updatedAt === "string" &&
     typeof note.notebook === "string" &&
-    typeof note.markdown === "string"
+    typeof note.markdown === "string" &&
+    (note.isTemplate === undefined || typeof note.isTemplate === "boolean")
   );
 }
 
@@ -490,6 +499,7 @@ function loadPrefs(): AppPrefs {
     return {
       selectedNotebook: "Daily Notes",
       activeId: "",
+      browseMode: "all",
       viewMode: "cards",
       sortMode: "updated-desc",
       tagFilters: [],
@@ -509,6 +519,7 @@ function loadPrefs(): AppPrefs {
       return {
         selectedNotebook: "Daily Notes",
         activeId: "",
+        browseMode: "all",
         viewMode: "cards",
         sortMode: "updated-desc",
         tagFilters: [],
@@ -526,6 +537,7 @@ function loadPrefs(): AppPrefs {
     return {
       selectedNotebook: parsed.selectedNotebook || "Daily Notes",
       activeId: parsed.activeId || "",
+      browseMode: parsed.browseMode === "templates" ? "templates" : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
       tagFilters: Array.isArray(parsed.tagFilters)
@@ -570,6 +582,7 @@ function loadPrefs(): AppPrefs {
     return {
       selectedNotebook: "Daily Notes",
       activeId: "",
+      browseMode: "all",
       viewMode: "cards",
       sortMode: "updated-desc",
       tagFilters: [],
@@ -652,6 +665,7 @@ export default function App() {
   const [notes, setNotes] = useState<AppNote[]>(() => loadInitialNotes());
   const [selectedNotebook, setSelectedNotebook] = useState<string>(initialPrefs.selectedNotebook);
   const [activeId, setActiveId] = useState<string>(initialPrefs.activeId);
+  const [browseMode, setBrowseMode] = useState<NoteBrowseMode>(initialPrefs.browseMode ?? "all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -756,9 +770,12 @@ export default function App() {
         ? notes
         : notes.filter((note) => note.notebook === selectedNotebook);
 
+    const templateScoped =
+      browseMode === "templates" ? scoped.filter((note) => Boolean(note.isTemplate)) : scoped;
+
     const filtered = tagFilters.length
-      ? scoped.filter((note) => tagFilters.every((tag) => note.tags.includes(tag)))
-      : scoped;
+      ? templateScoped.filter((note) => tagFilters.every((tag) => note.tags.includes(tag)))
+      : templateScoped;
 
     const sorted = [...filtered];
     sorted.sort((left, right) => {
@@ -781,7 +798,7 @@ export default function App() {
     });
 
     return sorted;
-  }, [notes, selectedNotebook, tagFilters, sortMode]);
+  }, [notes, selectedNotebook, browseMode, tagFilters, sortMode]);
 
   const availableTags = useMemo(() => {
     const source = selectedNotebook === "All Notes" ? notes : notes.filter((note) => note.notebook === selectedNotebook);
@@ -1264,6 +1281,7 @@ export default function App() {
     const prefs: AppPrefs = {
       selectedNotebook,
       activeId,
+      browseMode,
       viewMode,
       sortMode,
       tagFilters,
@@ -1279,6 +1297,7 @@ export default function App() {
   }, [
     selectedNotebook,
     activeId,
+    browseMode,
     viewMode,
     sortMode,
     tagFilters,
@@ -1629,6 +1648,10 @@ export default function App() {
 
   function focusNote(noteId: string): void {
     flushActiveDraft();
+    const target = notes.find((note) => note.id === noteId);
+    if (browseMode === "templates" && target && !target.isTemplate) {
+      setBrowseMode("all");
+    }
     setActiveId(noteId);
     setSelectedIds(new Set([noteId]));
     setLastSelectedId(noteId);
@@ -1717,6 +1740,7 @@ export default function App() {
   }
 
   function openSavedSearch(saved: SavedSearch): void {
+    setBrowseMode("all");
     setSearchScope(saved.scope);
     setQuickQuery(saved.query);
     setSearchOpen(true);
@@ -1934,6 +1958,39 @@ export default function App() {
     return { pinned, unpinned };
   }
 
+  function toggleTemplateNotes(noteIds: string[]): { marked: number; unmarked: number } {
+    const selected = notes.filter((note) => noteIds.includes(note.id));
+    const setTemplate = !selected.length || !selected.every((note) => note.isTemplate);
+    let marked = 0;
+    let unmarked = 0;
+
+    setNotes((previous) =>
+      previous.map((note) => {
+        if (!noteIds.includes(note.id)) {
+          return note;
+        }
+
+        const nextTemplate = setTemplate;
+        if (Boolean(note.isTemplate) === nextTemplate) {
+          return note;
+        }
+
+        if (nextTemplate) {
+          marked += 1;
+        } else {
+          unmarked += 1;
+        }
+
+        return {
+          ...note,
+          isTemplate: nextTemplate
+        };
+      })
+    );
+
+    return { marked, unmarked };
+  }
+
   function restoreNoteSnapshot(noteId: string, index: number): void {
     const snapshot = noteHistory[noteId]?.[index];
     if (!snapshot) {
@@ -2066,6 +2123,40 @@ export default function App() {
     });
 
     return result?.markdown ?? markdown;
+  }
+
+  async function useTemplateNote(note: AppNote): Promise<void> {
+    const defaultTitle = note.title === "Untitled" ? "New note" : `${note.title} copy`;
+    const rawTitle = window.prompt("New note title", defaultTitle);
+    const nextTitle = rawTitle?.trim();
+    if (!nextTitle) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const path = `${note.notebook}/${toFileName(nextTitle)}`;
+    const rewrittenHeading = rewriteHeading(note.markdown, nextTitle);
+    const markdown = await cloneNoteAttachmentsForCopy(note.path, path, rewrittenHeading);
+    const created = noteFromMarkdown(
+      {
+        ...note,
+        id: crypto.randomUUID(),
+        title: nextTitle,
+        path,
+        markdown,
+        isTemplate: false,
+        createdAt: now,
+        updatedAt: now
+      },
+      markdown,
+      now
+    );
+
+    setNotes((previous) => [created, ...previous]);
+    setSelectedNotebook(created.notebook);
+    setBrowseMode("all");
+    focusNote(created.id);
+    setToastMessage(`Created note from template "${note.title}"`);
   }
 
   async function copyNotes(noteIds: string[], destination: string): Promise<void> {
@@ -2378,6 +2469,21 @@ export default function App() {
       return;
     }
 
+    if (action === "toggle-template") {
+      const { marked, unmarked } = toggleTemplateNotes(contextMenu.noteIds);
+      if (marked && unmarked) {
+        setToastMessage(`Templates updated (+${marked}/-${unmarked})`);
+      } else if (marked) {
+        setToastMessage(`${marked} marked as template`);
+      } else if (unmarked) {
+        setToastMessage(`${unmarked} removed from templates`);
+      } else {
+        setToastMessage("No template changes");
+      }
+      setContextMenu(null);
+      return;
+    }
+
     if (action === "pin-home") {
       const { pinned, unpinned } = togglePinnedNotes(contextMenu.noteIds, "home");
       if (pinned && unpinned) {
@@ -2437,6 +2543,10 @@ export default function App() {
     const allShortcut = contextMenu.noteIds.every((noteId) => shortcutSet.has(noteId));
     const allHomePinned = contextMenu.noteIds.every((noteId) => homePinnedSet.has(noteId));
     const allNotebookPinned = contextMenu.noteIds.every((noteId) => notebookPinnedSet.has(noteId));
+    const allTemplates = contextMenu.noteIds.every((noteId) => {
+      const note = notes.find((entry) => entry.id === noteId);
+      return Boolean(note?.isTemplate);
+    });
 
     if (action === "add-shortcuts") {
       return allShortcut ? "Remove from Shortcuts" : "Add to Shortcuts";
@@ -2446,6 +2556,9 @@ export default function App() {
     }
     if (action === "pin-notebook") {
       return allNotebookPinned ? "Unpin from Notebook" : "Pin to Notebook";
+    }
+    if (action === "toggle-template") {
+      return allTemplates ? "Remove from Templates" : "Set as template";
     }
 
     return defaultLabel;
@@ -3317,19 +3430,29 @@ export default function App() {
               key={item}
               type="button"
               className={
-                (item === "Notes" && sidebarView === "notes") || (item === "Tasks" && sidebarView === "tasks")
+                (item === "Notes" && sidebarView === "notes" && browseMode === "all") ||
+                (item === "Tasks" && sidebarView === "tasks") ||
+                (item === "Templates" && browseMode === "templates")
                   ? "sidebar-link active"
                   : "sidebar-link"
               }
               onClick={() => {
                 if (item === "Notes") {
                   setSidebarView("notes");
+                  setBrowseMode("all");
                   setTasksDialogOpen(false);
                   return;
                 }
                 if (item === "Tasks") {
                   setSidebarView("tasks");
                   setTasksDialogOpen(true);
+                  return;
+                }
+                if (item === "Templates") {
+                  setSidebarView("notes");
+                  setBrowseMode("templates");
+                  setSelectedNotebook("All Notes");
+                  setTasksDialogOpen(false);
                   return;
                 }
                 setToastMessage(`"${item}" is planned`);
@@ -3541,7 +3664,7 @@ export default function App() {
       <section className="note-column" style={{ width: layout.listWidth }}>
         <header className="note-column-header">
           <div>
-            <h1>{selectedNotebook}</h1>
+            <h1>{browseMode === "templates" ? "Templates" : selectedNotebook}</h1>
             <small>{visibleNotes.length}</small>
           </div>
           <div className="header-actions">
@@ -3640,6 +3763,7 @@ export default function App() {
                 <p>{note.snippet || "Untitled"}</p>
                 <footer>
                   <span>{formatRelativeTime(note.updatedAt)}</span>
+                  {note.isTemplate ? <span className="note-pin">Template</span> : null}
                   {homePinned ? <span className="note-pin">Home pin</span> : null}
                   {notebookPinned ? <span className="note-pin">Notebook pin</span> : null}
                   {viewMode === "list" ? <span>{note.notebook}</span> : null}
@@ -3747,10 +3871,14 @@ export default function App() {
               </span>
             </div>
 
-            <div className="template-banner">
-              <span>You are editing your "{draftPreview.title}" template</span>
-              <button type="button">Use this template</button>
-            </div>
+            {activeNote.isTemplate ? (
+              <div className="template-banner">
+                <span>You are editing your "{draftPreview.title}" template</span>
+                <button type="button" onClick={() => void useTemplateNote(activeNote)}>
+                  Use this template
+                </button>
+              </div>
+            ) : null}
 
             <article className={metadataOpen ? "editor-content with-metadata" : "editor-content"}>
               <div className="editor-workbench">

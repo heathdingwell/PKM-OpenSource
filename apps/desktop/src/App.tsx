@@ -130,6 +130,7 @@ interface AppPrefs {
   themeId?: ThemeId;
   browseMode?: NoteBrowseMode;
   viewMode?: NoteViewMode;
+  noteDensity?: NoteDensityMode;
   sortMode?: NoteSortMode;
   tagFilters?: string[];
   recentNoteIds?: string[];
@@ -157,6 +158,7 @@ interface MentionSuggestionState {
 
 type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
+type NoteDensityMode = "comfortable" | "compact";
 type SidebarView = "notes" | "tasks" | "calendar";
 type NoteBrowseMode = "all" | "templates";
 type ThemeId = "cobalt" | "sky" | "slate";
@@ -327,6 +329,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
+  { id: "toggle-density", label: "Toggle note density", keywords: ["density", "compact", "comfortable"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
   { id: "cycle-theme", label: "Cycle theme", keywords: ["theme", "color", "palette"] },
   { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
@@ -869,6 +872,7 @@ function defaultPrefs(): AppPrefs {
     themeId: "cobalt",
     browseMode: "all",
     viewMode: "cards",
+    noteDensity: "comfortable",
     sortMode: "updated-desc",
     tagFilters: [],
     recentNoteIds: [],
@@ -905,6 +909,7 @@ function loadPrefs(): AppPrefs {
       themeId: themeIds.includes(parsed.themeId as ThemeId) ? (parsed.themeId as ThemeId) : "cobalt",
       browseMode: parsed.browseMode === "templates" ? "templates" : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
+      noteDensity: parsed.noteDensity === "compact" ? "compact" : "comfortable",
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
       tagFilters: Array.isArray(parsed.tagFilters)
         ? parsed.tagFilters.filter((tag): tag is string => typeof tag === "string")
@@ -1248,6 +1253,7 @@ export default function App() {
   const [editorMode, setEditorMode] = useState<EditorMode>("markdown");
   const [themeId, setThemeId] = useState<ThemeId>(initialPrefs.themeId ?? "cobalt");
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
+  const [noteDensity, setNoteDensity] = useState<NoteDensityMode>(initialPrefs.noteDensity ?? "comfortable");
   const [sortMode, setSortMode] = useState<NoteSortMode>(initialPrefs.sortMode ?? "updated-desc");
   const [tagFilters, setTagFilters] = useState<string[]>(initialPrefs.tagFilters ?? []);
   const [recentNoteIds, setRecentNoteIds] = useState<string[]>(initialPrefs.recentNoteIds ?? []);
@@ -2006,6 +2012,7 @@ export default function App() {
       themeId,
       browseMode,
       viewMode,
+      noteDensity,
       sortMode,
       tagFilters,
       recentNoteIds,
@@ -2025,6 +2032,7 @@ export default function App() {
     themeId,
     browseMode,
     viewMode,
+    noteDensity,
     sortMode,
     tagFilters,
     recentNoteIds,
@@ -3166,6 +3174,12 @@ export default function App() {
 
     if (actionId === "toggle-view") {
       setViewMode((previous) => (previous === "cards" ? "list" : "cards"));
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-density") {
+      setNoteDensity((previous) => (previous === "comfortable" ? "compact" : "comfortable"));
       setSearchOpen(false);
       return;
     }
@@ -5174,6 +5188,13 @@ export default function App() {
             </button>
             <button
               type="button"
+              className={noteDensity === "compact" ? "active" : ""}
+              onClick={() => setNoteDensity((previous) => (previous === "comfortable" ? "compact" : "comfortable"))}
+            >
+              {noteDensity === "comfortable" ? "Comfortable" : "Compact"}
+            </button>
+            <button
+              type="button"
               onClick={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
                 openNoteListMenu("sort", rect.left, rect.bottom + 8);
@@ -5208,7 +5229,10 @@ export default function App() {
           </div>
         ) : null}
 
-        <div className={viewMode === "list" ? "note-grid list-mode" : "note-grid"} aria-label="Notes list">
+        <div
+          className={viewMode === "list" ? `note-grid list-mode ${noteDensity}` : `note-grid ${noteDensity}`}
+          aria-label="Notes list"
+        >
           {visibleNotes.map((note) => {
             const isSelected = selectedIds.has(note.id);
             const showQuickAction = hoveredCardId === note.id || isSelected;

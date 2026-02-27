@@ -497,6 +497,11 @@ body.is-resizing {
   grid-template-columns: 1fr;
 }
 
+.note-grid.compact {
+  gap: 6px;
+  padding: 8px;
+}
+
 .note-grid.list-mode .note-card {
   min-height: auto;
   gap: 4px;
@@ -511,6 +516,33 @@ body.is-resizing {
   margin-top: 2px;
   justify-content: flex-start;
   gap: 10px;
+}
+
+.note-grid.compact .note-card {
+  min-height: 142px;
+  gap: 6px;
+  padding: 8px;
+}
+
+.note-grid.compact .note-card strong {
+  font-size: 19px;
+}
+
+.note-grid.compact .note-card p {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.note-grid.compact .note-card footer {
+  font-size: 11px;
+}
+
+.note-grid.list-mode.compact .note-card {
+  padding: 8px 10px;
+}
+
+.note-grid.list-mode.compact .note-card strong {
+  font-size: 16px;
 }
 
 .note-card {

@@ -133,6 +133,40 @@ button {
   list-style: none;
 }
 
+.stack-group {
+  margin-bottom: 4px;
+}
+
+.stack-group > ul {
+  margin-top: 2px;
+  padding-left: 12px;
+}
+
+.stack-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 8px;
+  color: #466089;
+  font-size: 12px;
+  background: #dde8ff;
+}
+
+.stack-header:hover {
+  background: #d2e0fb;
+}
+
+.stack-header small {
+  color: #6780aa;
+}
+
+.stack-notebook-row .notebook-item {
+  font-size: 13px;
+}
+
 .notebook-item {
   position: relative;
   width: 100%;
@@ -158,6 +192,21 @@ button {
 .notebook-item small {
   color: #4f6897;
   font-size: 12px;
+}
+
+.sidebar-subaction {
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 8px;
+  border: 1px dashed #b9c8e4;
+  border-radius: 8px;
+  color: #3f5c88;
+  text-align: left;
+  background: #edf3ff;
+}
+
+.sidebar-subaction:hover {
+  background: #e3edff;
 }
 
 .drop-indicator {
@@ -1150,6 +1199,39 @@ button {
 .move-modal li button.active {
   color: #fff;
   background: var(--blue);
+}
+
+.stack-modal ul {
+  max-height: 180px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.stack-modal li button {
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  color: #5d4a35;
+  text-align: left;
+  background: transparent;
+}
+
+.stack-modal li button:hover {
+  background: #f5e7d5;
+}
+
+.stack-modal li button.active {
+  color: #fff;
+  background: var(--blue);
+}
+
+.stack-empty {
+  padding: 6px 8px;
+  color: #87735c;
+  font-size: 13px;
 }
 
 .move-modal footer,

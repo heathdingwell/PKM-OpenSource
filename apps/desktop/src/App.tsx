@@ -44,6 +44,12 @@ interface RenameDialogState {
   newName: string;
 }
 
+interface StackDialogState {
+  notebook: string;
+  selectedStack: string;
+  newStackName: string;
+}
+
 interface LastMoveState {
   previousById: Record<string, { notebook: string; path: string }>;
 }
@@ -54,6 +60,8 @@ interface AppPrefs {
   viewMode?: NoteViewMode;
   sortMode?: NoteSortMode;
   tagFilters?: string[];
+  notebookStacks?: Record<string, string>;
+  collapsedStacks?: string[];
 }
 
 interface LinkSuggestionState {
@@ -366,7 +374,9 @@ function loadPrefs(): AppPrefs {
       activeId: "",
       viewMode: "cards",
       sortMode: "updated-desc",
-      tagFilters: []
+      tagFilters: [],
+      notebookStacks: {},
+      collapsedStacks: []
     };
   }
 
@@ -378,7 +388,9 @@ function loadPrefs(): AppPrefs {
         activeId: "",
         viewMode: "cards",
         sortMode: "updated-desc",
-        tagFilters: []
+        tagFilters: [],
+        notebookStacks: {},
+        collapsedStacks: []
       };
     }
 
@@ -390,6 +402,17 @@ function loadPrefs(): AppPrefs {
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
       tagFilters: Array.isArray(parsed.tagFilters)
         ? parsed.tagFilters.filter((tag): tag is string => typeof tag === "string")
+        : [],
+      notebookStacks:
+        parsed.notebookStacks && typeof parsed.notebookStacks === "object"
+          ? Object.fromEntries(
+              Object.entries(parsed.notebookStacks).filter(
+                (entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string"
+              )
+            )
+          : {},
+      collapsedStacks: Array.isArray(parsed.collapsedStacks)
+        ? parsed.collapsedStacks.filter((stack): stack is string => typeof stack === "string")
         : []
     };
   } catch {
@@ -398,7 +421,9 @@ function loadPrefs(): AppPrefs {
       activeId: "",
       viewMode: "cards",
       sortMode: "updated-desc",
-      tagFilters: []
+      tagFilters: [],
+      notebookStacks: {},
+      collapsedStacks: []
     };
   }
 }
@@ -418,6 +443,7 @@ export default function App() {
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState | null>(null);
   const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
+  const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickQuery, setQuickQuery] = useState("");
   const [searchSelected, setSearchSelected] = useState(0);
@@ -432,6 +458,10 @@ export default function App() {
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [sortMode, setSortMode] = useState<NoteSortMode>(initialPrefs.sortMode ?? "updated-desc");
   const [tagFilters, setTagFilters] = useState<string[]>(initialPrefs.tagFilters ?? []);
+  const [notebookStacks, setNotebookStacks] = useState<Record<string, string>>(initialPrefs.notebookStacks ?? {});
+  const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(
+    () => new Set(initialPrefs.collapsedStacks ?? [])
+  );
   const [metadataOpen, setMetadataOpen] = useState(false);
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
@@ -453,6 +483,35 @@ export default function App() {
     );
     return ["All Notes", ...names];
   }, [notes]);
+
+  const notebookList = useMemo(() => notebooks.filter((item) => item !== "All Notes"), [notebooks]);
+
+  const stackNames = useMemo(() => {
+    return Array.from(new Set(Object.values(notebookStacks).filter((name) => name.trim())))
+      .sort((left, right) => left.localeCompare(right));
+  }, [notebookStacks]);
+
+  const stackedNotebookGroups = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    const unstacked: string[] = [];
+
+    for (const notebook of notebookList) {
+      const stack = notebookStacks[notebook]?.trim();
+      if (!stack) {
+        unstacked.push(notebook);
+        continue;
+      }
+      const list = groups.get(stack) ?? [];
+      list.push(notebook);
+      groups.set(stack, list);
+    }
+
+    const stacks = Array.from(groups.entries())
+      .sort((left, right) => left[0].localeCompare(right[0]))
+      .map(([stack, entries]) => ({ stack, notebooks: entries.sort((a, b) => a.localeCompare(b)) }));
+
+    return { stacks, unstacked: unstacked.sort((a, b) => a.localeCompare(b)) };
+  }, [notebookList, notebookStacks]);
 
   const visibleNotes = useMemo(() => {
     const scoped =
@@ -491,6 +550,8 @@ export default function App() {
     const source = selectedNotebook === "All Notes" ? notes : notes.filter((note) => note.notebook === selectedNotebook);
     return Array.from(new Set(source.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
   }, [notes, selectedNotebook]);
+
+  const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
 
   const activeNote = notes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
 
@@ -635,6 +696,42 @@ export default function App() {
   }, [notebooks, selectedNotebook]);
 
   useEffect(() => {
+    const knownNotebooks = new Set(notebookList);
+    setNotebookStacks((previous) => {
+      let changed = false;
+      const next: Record<string, string> = {};
+      for (const [notebook, stack] of Object.entries(previous)) {
+        const cleaned = stack.trim();
+        if (!knownNotebooks.has(notebook) || !cleaned) {
+          changed = true;
+          continue;
+        }
+        next[notebook] = cleaned;
+        if (previous[notebook] !== cleaned) {
+          changed = true;
+        }
+      }
+      return changed || Object.keys(next).length !== Object.keys(previous).length ? next : previous;
+    });
+  }, [notebookList]);
+
+  useEffect(() => {
+    const knownStacks = new Set(stackNames);
+    setCollapsedStacks((previous) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const stack of previous) {
+        if (!knownStacks.has(stack)) {
+          changed = true;
+          continue;
+        }
+        next.add(stack);
+      }
+      return changed ? next : previous;
+    });
+  }, [stackNames]);
+
+  useEffect(() => {
     if (!activeId && visibleNotes[0]) {
       setActiveId(visibleNotes[0].id);
       setSelectedIds(new Set([visibleNotes[0].id]));
@@ -732,9 +829,17 @@ export default function App() {
     if (typeof window === "undefined") {
       return;
     }
-    const prefs: AppPrefs = { selectedNotebook, activeId, viewMode, sortMode, tagFilters };
+    const prefs: AppPrefs = {
+      selectedNotebook,
+      activeId,
+      viewMode,
+      sortMode,
+      tagFilters,
+      notebookStacks,
+      collapsedStacks: Array.from(collapsedStacks)
+    };
     window.localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
-  }, [selectedNotebook, activeId, viewMode, sortMode, tagFilters]);
+  }, [selectedNotebook, activeId, viewMode, sortMode, tagFilters, notebookStacks, collapsedStacksKey]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -789,6 +894,7 @@ export default function App() {
         setNoteListMenu(null);
         setNotebookMenu(null);
         setEditorContextMenu(null);
+        setStackDialog(null);
         setSearchOpen(false);
         setSlashMenu(null);
       }
@@ -1115,6 +1221,91 @@ export default function App() {
     });
   }
 
+  function toggleStackCollapsed(stack: string): void {
+    setCollapsedStacks((previous) => {
+      const next = new Set(previous);
+      if (next.has(stack)) {
+        next.delete(stack);
+      } else {
+        next.add(stack);
+      }
+      return next;
+    });
+  }
+
+  function createNotebook(): void {
+    const raw = window.prompt("Notebook name");
+    const notebook = raw?.trim();
+    if (!notebook) {
+      return;
+    }
+
+    if (notebookList.includes(notebook)) {
+      setSelectedNotebook(notebook);
+      setToastMessage(`Notebook "${notebook}" already exists`);
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const markdown = "# Untitled\n\n";
+    const seed: AppNote = {
+      id: crypto.randomUUID(),
+      title: "Untitled",
+      snippet: "",
+      tags: [],
+      linksOut: [],
+      createdAt: now,
+      updatedAt: now,
+      notebook,
+      path: `${notebook}/untitled.md`,
+      markdown
+    };
+    const created = noteFromMarkdown(seed, markdown, now);
+    setNotes((previous) => [created, ...previous]);
+    setSelectedNotebook(notebook);
+    focusNote(created.id);
+    setToastMessage(`Notebook "${notebook}" created`);
+  }
+
+  function confirmStackAssignment(): void {
+    if (!stackDialog) {
+      return;
+    }
+
+    const chosen = stackDialog.newStackName.trim() || stackDialog.selectedStack.trim();
+    if (!chosen) {
+      setStackDialog(null);
+      return;
+    }
+
+    setNotebookStacks((previous) => ({
+      ...previous,
+      [stackDialog.notebook]: chosen
+    }));
+    setCollapsedStacks((previous) => {
+      if (!previous.has(chosen)) {
+        return previous;
+      }
+      const next = new Set(previous);
+      next.delete(chosen);
+      return next;
+    });
+    setStackDialog(null);
+    setToastMessage(`Moved "${stackDialog.notebook}" to stack "${chosen}"`);
+  }
+
+  function removeNotebookFromStack(notebook: string): void {
+    setNotebookStacks((previous) => {
+      if (!(notebook in previous)) {
+        return previous;
+      }
+      const next = { ...previous };
+      delete next[notebook];
+      return next;
+    });
+    setToastMessage(`Removed "${notebook}" from stack`);
+  }
+
   function moveNotes(noteIds: string[], destination: string): void {
     const changed = notes.filter((note) => noteIds.includes(note.id) && note.notebook !== destination);
     if (changed.length === 0) {
@@ -1363,6 +1554,17 @@ export default function App() {
       setSelectedNotebook(renamed);
     }
 
+    setNotebookStacks((previous) => {
+      if (!(renameDialog.oldName in previous)) {
+        return previous;
+      }
+      const next = { ...previous };
+      const stack = next[renameDialog.oldName];
+      delete next[renameDialog.oldName];
+      next[renamed] = stack;
+      return next;
+    });
+
     setRenameDialog(null);
     setToastMessage(`Notebook renamed to ${renamed}`);
   }
@@ -1448,6 +1650,49 @@ export default function App() {
         </button>
       );
     });
+  }
+
+  function renderNotebookRow(notebook: string, nested = false): ReactNode {
+    const count = notes.filter((note) => note.notebook === notebook).length;
+    const isDropTarget = dropNotebook === notebook;
+    return (
+      <li key={notebook} className={nested ? "stack-notebook-row" : ""}>
+        <button
+          type="button"
+          className={selectedNotebook === notebook ? "notebook-item active" : "notebook-item"}
+          onClick={() => {
+            flushActiveDraft();
+            setSelectedNotebook(notebook);
+          }}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            const position = clampMenuPosition(event.clientX, event.clientY);
+            setNotebookMenu({ notebook, x: position.x, y: position.y });
+          }}
+          onDragOver={(event) => {
+            if (!draggingNoteId) {
+              return;
+            }
+            event.preventDefault();
+            setDropNotebook(notebook);
+          }}
+          onDragLeave={() => setDropNotebook(null)}
+          onDrop={(event) => {
+            event.preventDefault();
+            if (!draggingNoteId) {
+              return;
+            }
+            moveNotes([draggingNoteId], notebook);
+            setDraggingNoteId(null);
+            setDropNotebook(null);
+          }}
+        >
+          <span>{notebook}</span>
+          <small>{count}</small>
+          {isDropTarget ? <i className="drop-indicator" /> : null}
+        </button>
+      </li>
+    );
   }
 
   function runRichToolbarAction(action: "bold" | "italic" | "underline" | "bullet" | "link"): void {
@@ -1909,51 +2154,28 @@ export default function App() {
         <section className="sidebar-section">
           <h2>Notebooks</h2>
           <ul>
-            {notebooks
-              .filter((item) => item !== "All Notes")
-              .map((notebook) => {
-                const count = notes.filter((note) => note.notebook === notebook).length;
-                const isDropTarget = dropNotebook === notebook;
-                return (
-                  <li key={notebook}>
-                    <button
-                      type="button"
-                      className={selectedNotebook === notebook ? "notebook-item active" : "notebook-item"}
-                      onClick={() => {
-                        flushActiveDraft();
-                        setSelectedNotebook(notebook);
-                      }}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        const position = clampMenuPosition(event.clientX, event.clientY);
-                        setNotebookMenu({ notebook, x: position.x, y: position.y });
-                      }}
-                      onDragOver={(event) => {
-                        if (!draggingNoteId) {
-                          return;
-                        }
-                        event.preventDefault();
-                        setDropNotebook(notebook);
-                      }}
-                      onDragLeave={() => setDropNotebook(null)}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        if (!draggingNoteId) {
-                          return;
-                        }
-                        moveNotes([draggingNoteId], notebook);
-                        setDraggingNoteId(null);
-                        setDropNotebook(null);
-                      }}
-                    >
-                      <span>{notebook}</span>
-                      <small>{count}</small>
-                      {isDropTarget ? <i className="drop-indicator" /> : null}
-                    </button>
-                  </li>
-                );
-              })}
+            {stackedNotebookGroups.stacks.map((group) => {
+              const isCollapsed = collapsedStacks.has(group.stack);
+              return (
+                <li key={group.stack} className="stack-group">
+                  <button
+                    type="button"
+                    className="stack-header"
+                    onClick={() => toggleStackCollapsed(group.stack)}
+                    title={isCollapsed ? "Expand stack" : "Collapse stack"}
+                  >
+                    <span>{isCollapsed ? "▸" : "▾"} {group.stack}</span>
+                    <small>{group.notebooks.length}</small>
+                  </button>
+                  {!isCollapsed ? <ul>{group.notebooks.map((notebook) => renderNotebookRow(notebook, true))}</ul> : null}
+                </li>
+              );
+            })}
+            {stackedNotebookGroups.unstacked.map((notebook) => renderNotebookRow(notebook))}
           </ul>
+          <button type="button" className="sidebar-subaction" onClick={createNotebook}>
+            + New notebook
+          </button>
         </section>
       </aside>
 
@@ -2625,6 +2847,31 @@ export default function App() {
           >
             <span>Move selected here</span>
           </button>
+          <div className="context-divider" />
+          <button
+            type="button"
+            onClick={() => {
+              setStackDialog({
+                notebook: notebookMenu.notebook,
+                selectedStack: notebookStacks[notebookMenu.notebook] ?? "",
+                newStackName: ""
+              });
+              setNotebookMenu(null);
+            }}
+          >
+            <span>Move to stack...</span>
+          </button>
+          {notebookStacks[notebookMenu.notebook] ? (
+            <button
+              type="button"
+              onClick={() => {
+                removeNotebookFromStack(notebookMenu.notebook);
+                setNotebookMenu(null);
+              }}
+            >
+              <span>Remove from stack</span>
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -2802,6 +3049,44 @@ export default function App() {
                 Cancel
               </button>
               <button type="button" className="primary" onClick={confirmNotebookRename}>
+                Save
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {stackDialog ? (
+        <div className="overlay" onClick={() => setStackDialog(null)}>
+          <section className="rename-modal stack-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>Move "{stackDialog.notebook}" to stack</h3>
+            <input
+              placeholder="New stack name"
+              value={stackDialog.newStackName}
+              onChange={(event) => setStackDialog({ ...stackDialog, newStackName: event.target.value })}
+            />
+            <ul>
+              {stackNames.length ? (
+                stackNames.map((stack) => (
+                  <li key={stack}>
+                    <button
+                      type="button"
+                      className={stackDialog.selectedStack === stack ? "active" : ""}
+                      onClick={() => setStackDialog({ ...stackDialog, selectedStack: stack, newStackName: "" })}
+                    >
+                      {stack}
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li className="stack-empty">No stacks yet</li>
+              )}
+            </ul>
+            <footer>
+              <button type="button" onClick={() => setStackDialog(null)}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={confirmStackAssignment}>
                 Save
               </button>
             </footer>

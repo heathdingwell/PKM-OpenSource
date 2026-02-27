@@ -253,11 +253,6 @@ interface ResizeState {
   startListWidth: number;
 }
 
-interface TagPaneResizeState {
-  startY: number;
-  startHeight: number;
-}
-
 const NOTES_STORAGE_KEY = "pkm-os.desktop.notes.v2";
 const PREFS_STORAGE_KEY = "pkm-os.desktop.prefs.v1";
 const SEARCH_RECENTS_KEY = "pkm-os.desktop.search-recents.v1";
@@ -273,6 +268,10 @@ const MAX_TAG_PANE_HEIGHT = 240;
 const DEFAULT_TAG_PANE_HEIGHT = 52;
 const themeIds: ThemeId[] = ["cobalt", "sky", "slate"];
 const aiProviders: AiProvider[] = ["openai", "anthropic", "gemini", "perplexity", "openai-compatible", "ollama"];
+
+function clampTagPaneHeight(value: number): number {
+  return Math.max(MIN_TAG_PANE_HEIGHT, Math.min(value, MAX_TAG_PANE_HEIGHT));
+}
 
 const seedNotes: SeedNote[] = [
   {
@@ -917,9 +916,7 @@ function loadPrefs(): AppPrefs {
       listWidth:
         typeof parsed.listWidth === "number" ? clampPaneWidth(parsed.listWidth, MIN_LIST_WIDTH, MAX_LIST_WIDTH) : 520,
       tagPaneHeight:
-        typeof parsed.tagPaneHeight === "number"
-          ? Math.max(MIN_TAG_PANE_HEIGHT, Math.min(parsed.tagPaneHeight, MAX_TAG_PANE_HEIGHT))
-          : DEFAULT_TAG_PANE_HEIGHT,
+        typeof parsed.tagPaneHeight === "number" ? clampTagPaneHeight(parsed.tagPaneHeight) : DEFAULT_TAG_PANE_HEIGHT,
       themeId: themeIds.includes(parsed.themeId as ThemeId) ? (parsed.themeId as ThemeId) : "cobalt",
       browseMode: parsed.browseMode === "templates" ? "templates" : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
@@ -1313,7 +1310,6 @@ export default function App() {
   const markdownEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
   const activeResizeRef = useRef<ResizeState | null>(null);
-  const activeTagPaneResizeRef = useRef<TagPaneResizeState | null>(null);
 
   const notebooks = useMemo(() => {
     const names = Array.from(new Set(notes.map((note) => note.notebook))).sort((left, right) =>
@@ -2145,7 +2141,6 @@ export default function App() {
 
       if (event.key === "Escape") {
         activeResizeRef.current = null;
-        activeTagPaneResizeRef.current = null;
         document.body.classList.remove("is-resizing");
         setContextMenu(null);
         setNoteListMenu(null);
@@ -2241,26 +2236,13 @@ export default function App() {
           setListWidth(nextList);
         }
       }
-
-      const activeTagResize = activeTagPaneResizeRef.current;
-      if (!activeTagResize) {
-        return;
-      }
-
-      const deltaY = event.clientY - activeTagResize.startY;
-      const nextHeight = Math.max(
-        MIN_TAG_PANE_HEIGHT,
-        Math.min(activeTagResize.startHeight - deltaY, MAX_TAG_PANE_HEIGHT)
-      );
-      setTagPaneHeight(nextHeight);
     };
 
     const handleMouseUp = () => {
-      if (!activeResizeRef.current && !activeTagPaneResizeRef.current) {
+      if (!activeResizeRef.current) {
         return;
       }
       activeResizeRef.current = null;
-      activeTagPaneResizeRef.current = null;
       document.body.classList.remove("is-resizing");
     };
 
@@ -2276,7 +2258,7 @@ export default function App() {
     const handleWindowResize = () => {
       setSidebarWidth((previous) => clampPaneWidth(previous, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH));
       setListWidth((previous) => clampPaneWidth(previous, MIN_LIST_WIDTH, MAX_LIST_WIDTH));
-      setTagPaneHeight((previous) => Math.max(MIN_TAG_PANE_HEIGHT, Math.min(previous, MAX_TAG_PANE_HEIGHT)));
+      setTagPaneHeight((previous) => clampTagPaneHeight(previous));
     };
 
     window.addEventListener("resize", handleWindowResize);
@@ -2293,14 +2275,6 @@ export default function App() {
     document.body.classList.add("is-resizing");
   }
 
-  function startTagPaneResize(startY: number): void {
-    activeTagPaneResizeRef.current = {
-      startY,
-      startHeight: tagPaneHeight
-    };
-    document.body.classList.add("is-resizing");
-  }
-
   function nudgePaneWidth(kind: "sidebar" | "list", direction: "decrease" | "increase"): void {
     const delta = direction === "increase" ? 16 : -16;
     if (kind === "sidebar") {
@@ -2308,6 +2282,36 @@ export default function App() {
       return;
     }
     setListWidth((previous) => clampPaneWidth(previous + delta, MIN_LIST_WIDTH, MAX_LIST_WIDTH));
+  }
+
+  function nudgeTagPaneHeight(direction: "decrease" | "increase"): void {
+    const delta = direction === "increase" ? 12 : -12;
+    setTagPaneHeight((previous) => clampTagPaneHeight(previous + delta));
+  }
+
+  function startTagPanePointerResize(event: React.PointerEvent<HTMLButtonElement>): void {
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = tagPaneHeight;
+    const target = event.currentTarget;
+    document.body.classList.add("is-resizing");
+    target.setPointerCapture(event.pointerId);
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      setTagPaneHeight(clampTagPaneHeight(startHeight - deltaY));
+    };
+
+    const stop = () => {
+      target.removeEventListener("pointermove", onPointerMove);
+      target.removeEventListener("pointerup", stop);
+      target.removeEventListener("pointercancel", stop);
+      document.body.classList.remove("is-resizing");
+    };
+
+    target.addEventListener("pointermove", onPointerMove);
+    target.addEventListener("pointerup", stop);
+    target.addEventListener("pointercancel", stop);
   }
 
   function cycleTheme(): void {
@@ -6149,15 +6153,35 @@ export default function App() {
               ) : null}
             </article>
 
-            <footer className="editor-footer" style={{ height: `${tagPaneHeight}px` }}>
+            <footer
+              className="editor-footer"
+              style={{
+                height: `${tagPaneHeight}px`,
+                minHeight: `${tagPaneHeight}px`,
+                maxHeight: `${tagPaneHeight}px`
+              }}
+            >
               <button
                 type="button"
                 className="tag-pane-resizer"
+                role="separator"
+                tabIndex={0}
                 aria-label="Resize tag pane"
                 title="Drag to resize tags area"
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  startTagPaneResize(event.clientY);
+                aria-orientation="horizontal"
+                aria-valuemin={MIN_TAG_PANE_HEIGHT}
+                aria-valuemax={MAX_TAG_PANE_HEIGHT}
+                aria-valuenow={tagPaneHeight}
+                onPointerDown={startTagPanePointerResize}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    nudgeTagPaneHeight("increase");
+                  }
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    nudgeTagPaneHeight("decrease");
+                  }
                 }}
                 onDoubleClick={() => setTagPaneHeight(DEFAULT_TAG_PANE_HEIGHT)}
               />

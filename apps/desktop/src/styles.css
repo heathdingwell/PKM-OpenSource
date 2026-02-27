@@ -1439,11 +1439,10 @@ body.is-resizing {
   gap: 8px;
   align-items: center;
   align-content: flex-start;
-  padding: 10px 12px 6px;
+  padding: 0 12px 6px;
   border-top: 1px solid var(--border);
   background: #ffffff;
   overflow: auto;
-  position: relative;
 }
 
 .editor-footer button {
@@ -1457,19 +1456,23 @@ body.is-resizing {
 }
 
 .tag-pane-resizer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 8px;
+  flex: 0 0 calc(100% + 24px);
+  width: calc(100% + 24px);
+  height: 10px;
+  margin: 0 -12px 4px;
   border: 0;
   border-radius: 0;
   cursor: row-resize;
-  background: linear-gradient(180deg, #edf4ff 0%, transparent 100%);
+  background: linear-gradient(180deg, #edf4ff 0%, #e6efff 45%, transparent 100%);
 }
 
 .tag-pane-resizer:hover {
-  background: linear-gradient(180deg, #dbe9ff 0%, transparent 100%);
+  background: linear-gradient(180deg, #dbe9ff 0%, #d2e3ff 45%, transparent 100%);
+}
+
+.tag-pane-resizer:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: -2px;
 }
 
 .tag-strip {

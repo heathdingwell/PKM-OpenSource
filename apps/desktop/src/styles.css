@@ -1342,19 +1342,19 @@ body.is-resizing {
   gap: 8px;
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid #eadfce;
+  border-top: 1px solid #e2eaf6;
 }
 
 .link-sections section {
-  border: 1px solid #e7dbca;
+  border: 1px solid #d3deee;
   border-radius: 10px;
   padding: 8px;
-  background: #fff9f0;
+  background: #ffffff;
 }
 
 .link-sections h5 {
   margin: 0 0 8px;
-  color: #6f5f4a;
+  color: #4f6b93;
   font-size: 12px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -1379,7 +1379,7 @@ body.is-resizing {
   border: 0;
   border-radius: 6px;
   padding: 6px 8px;
-  color: #4f3f2b;
+  color: #395478;
   text-align: left;
   background: transparent;
 }
@@ -1389,7 +1389,7 @@ body.is-resizing {
 }
 
 .link-sections .muted {
-  color: #8a7861;
+  color: #94a3b8;
   font-size: 13px;
 }
 
@@ -1405,13 +1405,17 @@ body.is-resizing {
   align-items: center;
   padding: 6px 12px;
   border-top: 1px solid var(--border);
-  background: #fbf3e8;
+  background: #ffffff;
 }
 
 .editor-footer button {
   border: 0;
-  color: #6f5f4d;
+  color: #4f6b93;
   background: transparent;
+}
+
+.editor-footer button:hover {
+  background: #eaf1ff;
 }
 
 .tag-strip {
@@ -1423,19 +1427,19 @@ body.is-resizing {
 .tag-chip {
   height: 24px;
   padding: 0 8px;
-  border: 1px solid #d7c6af;
+  border: 1px solid #c9d8ef;
   border-radius: 999px;
-  color: #5b4a35;
-  background: #f8efe2;
+  color: #395478;
+  background: #f4f8ff;
   font-size: 12px;
 }
 
 .tag-chip:hover {
-  background: #ede3d4;
+  background: #eaf1ff;
 }
 
 .tag-empty {
-  color: #8a7860;
+  color: #94a3b8;
   font-size: 12px;
 }
 
@@ -1449,20 +1453,20 @@ body.is-resizing {
   height: 28px;
   width: 120px;
   padding: 0 8px;
-  border: 1px solid #d6c5ac;
+  border: 1px solid #c9d8ef;
   border-radius: 8px;
-  color: #4a3b28;
-  background: #fffdf9;
+  color: #1f2937;
+  background: #ffffff;
   font-size: 12px;
 }
 
 .tag-input-wrap button {
   height: 28px;
   padding: 0 10px;
-  border: 1px solid #c8b395;
+  border: 1px solid #c7d8f4;
   border-radius: 8px;
-  color: #4f3f2c;
-  background: #f4e9d8;
+  color: #395478;
+  background: #eef4ff;
   font-size: 12px;
 }
 

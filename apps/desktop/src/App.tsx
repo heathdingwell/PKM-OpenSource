@@ -81,6 +81,16 @@ interface OpenTaskItem {
   updatedAt: string;
 }
 
+interface AttachmentItem {
+  id: string;
+  noteId: string;
+  noteTitle: string;
+  notebook: string;
+  label: string;
+  target: string;
+  updatedAt: string;
+}
+
 interface AppPrefs {
   selectedNotebook: string;
   activeId: string;
@@ -394,6 +404,50 @@ function noteHasOpenTasks(markdown: string): boolean {
   return /^\s*-\s\[\s\]\s+/m.test(markdown);
 }
 
+function extractAttachments(notes: AppNote[]): AttachmentItem[] {
+  const linkPattern = /(!?\[([^\]]*)\])\(([^)]+)\)/g;
+  const items: AttachmentItem[] = [];
+
+  for (const note of notes) {
+    let match: RegExpExecArray | null;
+    while ((match = linkPattern.exec(note.markdown)) !== null) {
+      const label = match[2]?.trim() || "Attachment";
+      const target = match[3]?.trim() || "";
+      if (!target) {
+        continue;
+      }
+
+      if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#")) {
+        continue;
+      }
+
+      const normalized = target.replace(/^<|>$/g, "");
+      if (!normalized) {
+        continue;
+      }
+
+      const looksLikeAttachment =
+        /(^|\/)attachments\//i.test(normalized) ||
+        /\.(pdf|png|jpe?g|gif|webp|svg|mp4|mov|mp3|wav|m4a|zip|docx?|xlsx?|pptx?)($|[?#])/i.test(normalized);
+      if (!looksLikeAttachment) {
+        continue;
+      }
+
+      items.push({
+        id: `${note.id}:${match.index}`,
+        noteId: note.id,
+        noteTitle: note.title,
+        notebook: note.notebook,
+        label,
+        target: normalized,
+        updatedAt: note.updatedAt
+      });
+    }
+  }
+
+  return items.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
 function rewriteHeading(markdown: string, title: string): string {
   if (/^#\s+.*$/m.test(markdown)) {
     return markdown.replace(/^#\s+.*$/m, `# ${title}`);
@@ -677,6 +731,7 @@ export default function App() {
   const [noteRenameDialog, setNoteRenameDialog] = useState<NoteRenameDialogState | null>(null);
   const [noteHistoryDialog, setNoteHistoryDialog] = useState<NoteHistoryDialogState | null>(null);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
+  const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<"everywhere" | "current">("everywhere");
@@ -916,6 +971,7 @@ export default function App() {
   }, [quickResults]);
 
   const openTasks = useMemo(() => extractOpenTasks(notes), [notes]);
+  const attachmentItems = useMemo(() => extractAttachments(notes), [notes]);
 
   const suggestions = useMemo(() => {
     if (!linkSuggestion) {
@@ -1401,6 +1457,7 @@ export default function App() {
         setStackDialog(null);
         setNoteHistoryDialog(null);
         setTasksDialogOpen(false);
+        setFilesDialogOpen(false);
         setAttachmentDropTarget(null);
         setSidebarView("notes");
         setSearchOpen(false);
@@ -3399,6 +3456,7 @@ export default function App() {
         setDraggingNotebook(null);
         setStackDropTarget(null);
         setNoteHistoryDialog(null);
+        setFilesDialogOpen(false);
         setAttachmentDropTarget(null);
         setSlashMenu(null);
       }}
@@ -3430,9 +3488,14 @@ export default function App() {
               key={item}
               type="button"
               className={
-                (item === "Notes" && sidebarView === "notes" && browseMode === "all") ||
+                (item === "Notes" &&
+                  sidebarView === "notes" &&
+                  browseMode === "all" &&
+                  !tasksDialogOpen &&
+                  !filesDialogOpen) ||
                 (item === "Tasks" && sidebarView === "tasks") ||
-                (item === "Templates" && browseMode === "templates")
+                (item === "Files" && filesDialogOpen) ||
+                (item === "Templates" && browseMode === "templates" && !filesDialogOpen && !tasksDialogOpen)
                   ? "sidebar-link active"
                   : "sidebar-link"
               }
@@ -3441,11 +3504,19 @@ export default function App() {
                   setSidebarView("notes");
                   setBrowseMode("all");
                   setTasksDialogOpen(false);
+                  setFilesDialogOpen(false);
                   return;
                 }
                 if (item === "Tasks") {
                   setSidebarView("tasks");
                   setTasksDialogOpen(true);
+                  setFilesDialogOpen(false);
+                  return;
+                }
+                if (item === "Files") {
+                  setSidebarView("notes");
+                  setTasksDialogOpen(false);
+                  setFilesDialogOpen(true);
                   return;
                 }
                 if (item === "Templates") {
@@ -3453,6 +3524,7 @@ export default function App() {
                   setBrowseMode("templates");
                   setSelectedNotebook("All Notes");
                   setTasksDialogOpen(false);
+                  setFilesDialogOpen(false);
                   return;
                 }
                 setToastMessage(`"${item}" is planned`);
@@ -4647,6 +4719,49 @@ export default function App() {
                   setSidebarView("notes");
                 }}
               >
+                Close
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {filesDialogOpen ? (
+        <div
+          className="overlay"
+          onClick={() => {
+            setFilesDialogOpen(false);
+          }}
+        >
+          <section className="move-modal files-modal" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <h3>Files</h3>
+              <small>{attachmentItems.length} attachments</small>
+            </header>
+            {attachmentItems.length ? (
+              <ul>
+                {attachmentItems.map((file) => (
+                  <li key={file.id}>
+                    <button
+                      type="button"
+                      className="task-open"
+                      onClick={() => {
+                        setSelectedNotebook(file.notebook);
+                        focusNote(file.noteId);
+                        setFilesDialogOpen(false);
+                      }}
+                    >
+                      <strong>{file.label}</strong>
+                      <small>{file.target}</small>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="history-empty">No attachments found</p>
+            )}
+            <footer>
+              <button type="button" onClick={() => setFilesDialogOpen(false)}>
                 Close
               </button>
             </footer>

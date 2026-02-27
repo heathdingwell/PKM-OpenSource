@@ -1401,6 +1401,27 @@ button {
   color: #8f7f6a;
 }
 
+.files-modal li button {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.files-modal li button strong {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.files-modal li button small {
+  font-size: 11px;
+  color: #8f7f6a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .task-complete {
   height: 30px;
   padding: 0 10px;

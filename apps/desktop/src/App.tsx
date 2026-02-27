@@ -380,6 +380,7 @@ const seedCalendarEvents: Array<Pick<CalendarEvent, "title" | "startAt" | "endAt
 
 const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
   { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
+  { id: "open-lite-edit", label: "Open in Lite edit mode", shortcut: "alt+cmd+o" },
   { id: "share", label: "Share", shortcut: "cmd+s" },
   { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
   { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
@@ -4054,6 +4055,17 @@ export default function App() {
 
     if (action === "open-window") {
       openNoteInNewWindow(targetId);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-lite-edit") {
+      if (targetId && targetId !== activeId) {
+        focusNote(targetId);
+      }
+      setEditorMode("markdown");
+      setMetadataOpen(false);
+      setAiPanelOpen(false);
       setContextMenu(null);
       return;
     }

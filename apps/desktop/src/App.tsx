@@ -450,7 +450,6 @@ export default function App() {
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
   const [dropNotebook, setDropNotebook] = useState<string | null>(null);
-  const [noteInfoId, setNoteInfoId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<LastMoveState | null>(null);
   const [draftMarkdown, setDraftMarkdown] = useState<string>("");
@@ -555,8 +554,6 @@ export default function App() {
   const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
 
   const activeNote = notes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
-
-  const noteInfo = noteInfoId ? notes.find((note) => note.id === noteInfoId) ?? null : null;
 
   const draftPreview = useMemo(
     () => parseForPreview(draftMarkdown || activeNote?.markdown || "# Untitled\n"),
@@ -3114,45 +3111,6 @@ export default function App() {
               </button>
               <button type="button" className="primary" onClick={confirmStackAssignment}>
                 Save
-              </button>
-            </footer>
-          </section>
-        </div>
-      ) : null}
-
-      {noteInfo ? (
-        <div className="overlay" onClick={() => setNoteInfoId(null)}>
-          <section className="info-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>Note info</h3>
-            <dl>
-              <div>
-                <dt>Title</dt>
-                <dd>{noteInfo.title}</dd>
-              </div>
-              <div>
-                <dt>Notebook</dt>
-                <dd>{noteInfo.notebook}</dd>
-              </div>
-              <div>
-                <dt>Path</dt>
-                <dd>{noteInfo.path}</dd>
-              </div>
-              <div>
-                <dt>Created</dt>
-                <dd>{new Date(noteInfo.createdAt).toLocaleString()}</dd>
-              </div>
-              <div>
-                <dt>Updated</dt>
-                <dd>{new Date(noteInfo.updatedAt).toLocaleString()}</dd>
-              </div>
-              <div>
-                <dt>Tags</dt>
-                <dd>{noteInfo.tags.length ? noteInfo.tags.join(", ") : "No tags"}</dd>
-              </div>
-            </dl>
-            <footer>
-              <button type="button" className="primary" onClick={() => setNoteInfoId(null)}>
-                Close
               </button>
             </footer>
           </section>

@@ -2494,6 +2494,46 @@ export default function App() {
     richEditorRef.current?.setLink(href.trim());
   }
 
+  function promptMediaInsert(commandId: "image" | "file" | "video" | "audio" | "transcribe-media"): string | null {
+    if (commandId === "image") {
+      const source = window.prompt("Image URL or relative path", "./attachments/image.png");
+      if (!source?.trim()) {
+        return null;
+      }
+      return `![image](${source.trim()})`;
+    }
+
+    if (commandId === "file") {
+      const source = window.prompt("File URL or relative path", "./attachments/file.pdf");
+      if (!source?.trim()) {
+        return null;
+      }
+      return `[file](${source.trim()})`;
+    }
+
+    if (commandId === "video") {
+      const source = window.prompt("Video URL or relative path", "https://");
+      if (!source?.trim()) {
+        return null;
+      }
+      return `[video](${source.trim()})`;
+    }
+
+    if (commandId === "audio") {
+      const source = window.prompt("Audio URL or relative path", "./attachments/audio.m4a");
+      if (!source?.trim()) {
+        return null;
+      }
+      return `[audio](${source.trim()})`;
+    }
+
+    const source = window.prompt("Media to transcribe (URL or path)", "./attachments/media.mp4");
+    if (!source?.trim()) {
+      return null;
+    }
+    return `> Transcribe media\n> Source: ${source.trim()}\n`;
+  }
+
   function openEditorContextMenu(clientX: number, clientY: number): void {
     const position = clampMenuPosition(clientX, clientY);
     setEditorContextMenu(position);
@@ -2702,16 +2742,49 @@ export default function App() {
         insert("## Table of contents\n- \n");
         break;
       case "image":
-        insert("![image](./attachments/image.png)");
+        {
+          const value = promptMediaInsert("image");
+          if (!value) {
+            return;
+          }
+          insert(value);
+        }
         break;
       case "file":
-        insert("[file](./attachments/file.pdf)");
+        {
+          const value = promptMediaInsert("file");
+          if (!value) {
+            return;
+          }
+          insert(value);
+        }
         break;
       case "video":
-        insert("[video](https://)");
+        {
+          const value = promptMediaInsert("video");
+          if (!value) {
+            return;
+          }
+          insert(value);
+        }
         break;
       case "audio":
-        insert("[audio](./attachments/audio.m4a)");
+        {
+          const value = promptMediaInsert("audio");
+          if (!value) {
+            return;
+          }
+          insert(value);
+        }
+        break;
+      case "transcribe-media":
+        {
+          const value = promptMediaInsert("transcribe-media");
+          if (!value) {
+            return;
+          }
+          insert(value);
+        }
         break;
       case "code-block":
         insert("```text\n\n```");
@@ -2827,16 +2900,49 @@ export default function App() {
         richEditorRef.current?.insertContent("## Table of contents\n- ");
         break;
       case "image":
-        richEditorRef.current?.insertContent("![image](./attachments/image.png)");
+        {
+          const value = promptMediaInsert("image");
+          if (!value) {
+            return;
+          }
+          richEditorRef.current?.insertContent(value);
+        }
         break;
       case "file":
-        richEditorRef.current?.insertContent("[file](./attachments/file.pdf)");
+        {
+          const value = promptMediaInsert("file");
+          if (!value) {
+            return;
+          }
+          richEditorRef.current?.insertContent(value);
+        }
         break;
       case "video":
-        richEditorRef.current?.insertContent("[video](https://)");
+        {
+          const value = promptMediaInsert("video");
+          if (!value) {
+            return;
+          }
+          richEditorRef.current?.insertContent(value);
+        }
         break;
       case "audio":
-        richEditorRef.current?.insertContent("[audio](./attachments/audio.m4a)");
+        {
+          const value = promptMediaInsert("audio");
+          if (!value) {
+            return;
+          }
+          richEditorRef.current?.insertContent(value);
+        }
+        break;
+      case "transcribe-media":
+        {
+          const value = promptMediaInsert("transcribe-media");
+          if (!value) {
+            return;
+          }
+          richEditorRef.current?.insertContent(value);
+        }
         break;
       case "code-block":
         richEditorRef.current?.toggleCodeBlock();

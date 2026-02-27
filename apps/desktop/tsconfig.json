@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["vite/client", "node", "vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@evernote-os/vault-core": ["../../packages/vault-core/src/index.ts"],
+      "@evernote-os/doc-engine": ["../../packages/doc-engine/src/index.ts"],
+      "@evernote-os/indexer": ["../../packages/indexer/src/index.ts"],
+      "@evernote-os/ui-features": ["../../packages/ui-features/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

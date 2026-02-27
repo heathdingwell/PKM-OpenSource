@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-label="Evernote OpenSource theme palette">
+  <style>
+    .label { font: 600 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #2f261a; }
+    .hex { font: 500 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4f4638; }
+    .title { font: 700 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #2f261a; }
+  </style>
+  <rect x="0" y="0" width="1200" height="520" fill="#f6f2ea"/>
+  <text x="40" y="52" class="title">Current App Theme Palette</text>
+
+  <g transform="translate(40,90)">
+    <rect width="210" height="120" rx="16" fill="#f6f2ea" stroke="#cfc4b5"/>
+    <text x="16" y="32" class="label">Shell</text>
+    <text x="16" y="58" class="hex">#f6f2ea</text>
+  </g>
+
+  <g transform="translate(270,90)">
+    <rect width="210" height="120" rx="16" fill="#ece4d7" stroke="#cfc4b5"/>
+    <text x="16" y="32" class="label">Panel</text>
+    <text x="16" y="58" class="hex">#ece4d7</text>
+  </g>
+
+  <g transform="translate(500,90)">
+    <rect width="210" height="120" rx="16" fill="#e2e9f5" stroke="#cfc4b5"/>
+    <text x="16" y="32" class="label">Sidebar</text>
+    <text x="16" y="58" class="hex">#e2e9f5</text>
+  </g>
+
+  <g transform="translate(730,90)">
+    <rect width="210" height="120" rx="16" fill="#fffaf0" stroke="#cfc4b5"/>
+    <text x="16" y="32" class="label">Cards</text>
+    <text x="16" y="58" class="hex">#fffaf0</text>
+  </g>
+
+  <g transform="translate(960,90)">
+    <rect width="210" height="120" rx="16" fill="#fffbf5" stroke="#cfc4b5"/>
+    <text x="16" y="32" class="label">Editor</text>
+    <text x="16" y="58" class="hex">#fffbf5</text>
+  </g>
+
+  <g transform="translate(40,250)">
+    <rect width="210" height="120" rx="16" fill="#2563eb"/>
+    <text x="16" y="32" class="label" fill="#ffffff" style="fill:#ffffff">Primary Action</text>
+    <text x="16" y="58" class="hex" fill="#dce7ff" style="fill:#dce7ff">#2563eb</text>
+  </g>
+
+  <g transform="translate(270,250)">
+    <rect width="210" height="120" rx="16" fill="#c2410c"/>
+    <text x="16" y="32" class="label" fill="#ffffff" style="fill:#ffffff">Accent</text>
+    <text x="16" y="58" class="hex" fill="#ffe4d4" style="fill:#ffe4d4">#c2410c</text>
+  </g>
+
+  <g transform="translate(500,250)">
+    <rect width="210" height="120" rx="16" fill="#e5edff" stroke="#a9bde6"/>
+    <text x="16" y="32" class="label">Template Banner</text>
+    <text x="16" y="58" class="hex">#e5edff</text>
+  </g>
+
+  <g transform="translate(730,250)">
+    <rect width="210" height="120" rx="16" fill="#fff7ec" stroke="#e8d3ba"/>
+    <text x="16" y="32" class="label">Toolbar</text>
+    <text x="16" y="58" class="hex">#fff7ec</text>
+  </g>
+
+  <g transform="translate(960,250)">
+    <rect width="210" height="120" rx="16" fill="#fffaf2" stroke="#dac9b0"/>
+    <text x="16" y="32" class="label">Menus/Dialogs</text>
+    <text x="16" y="58" class="hex">#fffaf2</text>
+  </g>
+
+  <g transform="translate(40,410)">
+    <rect width="560" height="70" rx="14" fill="#2f261a"/>
+    <text x="18" y="38" class="label" fill="#fef4e8" style="fill:#fef4e8">Text: #2f261a · Muted: #756550 · Border: #cfc4b5</text>
+  </g>
+
+  <g transform="translate(620,410)">
+    <rect width="550" height="70" rx="14" fill="#f4e9d8" stroke="#d8cab5"/>
+    <text x="18" y="38" class="label">Hover Surface: #f4e9d8 · Selection Ring: #2563eb</text>
+  </g>
+</svg>

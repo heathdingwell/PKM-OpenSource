@@ -1,0 +1,2584 @@
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { SearchIndex } from "@evernote-os/indexer";
+import { createDefaultLayout } from "@evernote-os/ui-features";
+import { type NoteRecord, VaultService } from "@evernote-os/vault-core";
+import RichMarkdownEditor, { type RichMarkdownEditorHandle } from "./RichMarkdownEditor";
+
+interface SeedNote {
+  notebook: string;
+  fileName: string;
+  markdown: string;
+  updatedAt: string;
+}
+
+interface AppNote extends NoteRecord {
+  notebook: string;
+  markdown: string;
+}
+
+interface ContextMenuState {
+  x: number;
+  y: number;
+  noteIds: string[];
+}
+
+interface NotebookMenuState {
+  x: number;
+  y: number;
+  notebook: string;
+}
+
+interface EditorContextMenuState {
+  x: number;
+  y: number;
+}
+
+interface MoveDialogState {
+  noteIds: string[];
+  destination: string;
+  mode: "move" | "copy";
+}
+
+interface RenameDialogState {
+  oldName: string;
+  newName: string;
+}
+
+interface LastMoveState {
+  previousById: Record<string, { notebook: string; path: string }>;
+}
+
+interface AppPrefs {
+  selectedNotebook: string;
+  activeId: string;
+  viewMode?: NoteViewMode;
+  sortMode?: NoteSortMode;
+  tagFilters?: string[];
+}
+
+interface LinkSuggestionState {
+  start: number;
+  query: string;
+  selected: number;
+}
+
+type EditorMode = "markdown" | "rich";
+type NoteViewMode = "cards" | "list";
+type NoteSortMode =
+  | "updated-desc"
+  | "updated-asc"
+  | "created-desc"
+  | "created-asc"
+  | "title-asc"
+  | "title-desc";
+
+interface SlashMenuState {
+  editor: EditorMode;
+  source: "typed" | "insert";
+  query: string;
+  selected: number;
+  markdownRange?: { start: number; end: number };
+  richRange?: { from: number; to: number };
+}
+
+interface SlashCommand {
+  id: string;
+  label: string;
+  section: string;
+  keywords: string[];
+}
+
+interface NoteListMenuState {
+  x: number;
+  y: number;
+  kind: "sort" | "filter";
+}
+
+interface ShellNotesPayload {
+  [index: number]: unknown;
+  length: number;
+}
+
+const NOTES_STORAGE_KEY = "evernote-os.desktop.notes.v2";
+const PREFS_STORAGE_KEY = "evernote-os.desktop.prefs.v1";
+
+const seedNotes: SeedNote[] = [
+  {
+    notebook: "Daily Notes",
+    fileName: "Agenda.md",
+    updatedAt: "2026-02-26T18:00:00.000Z",
+    markdown:
+      "# Agenda\n\n## Today priorities\n\n1. Priority 1\n2. Priority 2\n3. Priority 3\n\n## Meetings\n- Link a calendar event\n- Add any relevant tasks\n- Add or create any linked notes"
+  },
+  {
+    notebook: "Daily Notes",
+    fileName: "To-do list.md",
+    updatedAt: "2026-02-26T17:00:00.000Z",
+    markdown:
+      "# To-do list\n\n## High priority\n- Add your most urgent and important tasks here.\n- [ ] Add new task\n\n## Medium priority\n- These tasks are important, but not as time sensitive."
+  },
+  {
+    notebook: "Daily Notes",
+    fileName: "Daily Journal.md",
+    updatedAt: "2026-02-25T22:00:00.000Z",
+    markdown:
+      "# Daily Journal\n\nAM fill this section first thing in the morning to set yourself up for success.\n\n## Wins\n- Closed key tasks\n- Did a focused review"
+  },
+  {
+    notebook: "Readwise",
+    fileName: "Tweets From Eric Cole.md",
+    updatedAt: "2026-02-25T15:00:00.000Z",
+    markdown:
+      "# Tweets From Eric Cole\n\nhttps://twitter.com/erichustls\n\nIf I wanted to quit my job and use AI to get rich by Summer, here is exactly what I would do."
+  },
+  {
+    notebook: "Readwise",
+    fileName: "Tweets From Dickie Bush.md",
+    updatedAt: "2026-02-25T14:00:00.000Z",
+    markdown:
+      "# Tweets From Dickie Bush\n\nWild how this newsletter generates 3k what I made on Wall Street under fluorescent lights."
+  },
+  {
+    notebook: "[aNote] No Folder",
+    fileName: "Second test.md",
+    updatedAt: "2026-02-24T12:00:00.000Z",
+    markdown: "# Second test\n\nUntitled\n\n/"
+  },
+  {
+    notebook: "Recipes",
+    fileName: "Simple soup.md",
+    updatedAt: "2026-02-23T09:00:00.000Z",
+    markdown:
+      "# Simple soup\n\n## Ingredients\n- 2 onions\n- 1 carrot\n\n## Steps\n1. Dice vegetables\n2. Simmer"
+  }
+];
+
+const sidePinned = ["Shortcuts", "Notes", "Tasks", "Files", "Calendar", "Templates"];
+
+const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
+  { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
+  { id: "share", label: "Share", shortcut: "cmd+s" },
+  { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
+  { id: "divider-1", label: "", divider: true },
+  { id: "move", label: "Move", shortcut: "cmd+shift+m" },
+  { id: "copy-to", label: "Copy to" },
+  { id: "duplicate", label: "Duplicate" },
+  { id: "edit-tags", label: "Edit tags", shortcut: "cmd+alt+t" },
+  { id: "divider-2", label: "", divider: true },
+  { id: "add-shortcuts", label: "Add to Shortcuts" },
+  { id: "pin-notebook", label: "Pin to Notebook" },
+  { id: "pin-home", label: "Pin to Home" },
+  { id: "divider-3", label: "", divider: true },
+  { id: "find", label: "Find in note", shortcut: "cmd+f" },
+  { id: "note-info", label: "Note info", shortcut: "cmd+i" },
+  { id: "note-history", label: "Note history" },
+  { id: "divider-4", label: "", divider: true },
+  { id: "export", label: "Export" },
+  { id: "print", label: "Print", shortcut: "cmd+p" },
+  { id: "divider-5", label: "", divider: true },
+  { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace" }
+];
+
+const slashCommands: SlashCommand[] = [
+  { id: "transcribe-media", label: "Transcribe media", section: "New Features", keywords: ["audio", "video"] },
+  { id: "new-task", label: "New task", section: "Essentials", keywords: ["todo", "checklist"] },
+  { id: "event", label: "Event", section: "Essentials", keywords: ["calendar"] },
+  { id: "new-linked-note", label: "New linked note", section: "Essentials", keywords: ["wikilink"] },
+  { id: "link-to-note", label: "Link to note", section: "Essentials", keywords: ["wikilink"] },
+  { id: "link", label: "Link", section: "Essentials", keywords: ["url"] },
+  { id: "table-of-contents", label: "Table of contents", section: "Essentials", keywords: ["toc"] },
+  { id: "table", label: "Table", section: "Essentials", keywords: ["grid"] },
+  { id: "divider", label: "Divider", section: "Essentials", keywords: ["hr", "line"] },
+  { id: "quote", label: "Quote", section: "Text Styles", keywords: ["blockquote"] },
+  { id: "heading-1", label: "Large header", section: "Text Styles", keywords: ["h1", "heading"] },
+  { id: "heading-2", label: "Medium header", section: "Text Styles", keywords: ["h2", "heading"] },
+  { id: "heading-3", label: "Small header", section: "Text Styles", keywords: ["h3", "heading"] },
+  { id: "paragraph", label: "Normal text", section: "Text Styles", keywords: ["body", "paragraph"] },
+  { id: "bold", label: "Bold", section: "Formatting", keywords: ["strong"] },
+  { id: "italic", label: "Italic", section: "Formatting", keywords: ["emphasis"] },
+  { id: "underline", label: "Underlined", section: "Formatting", keywords: ["underline"] },
+  { id: "strikethrough", label: "Strikethrough", section: "Formatting", keywords: ["strike"] },
+  { id: "superscript", label: "Superscript", section: "Formatting", keywords: ["super"] },
+  { id: "subscript", label: "Subscript", section: "Formatting", keywords: ["sub"] },
+  { id: "bullet-list", label: "Bullet list", section: "Lists", keywords: ["ul", "list"] },
+  { id: "checklist", label: "Checklist", section: "Lists", keywords: ["task", "todo"] },
+  { id: "numbered-list", label: "Numbered list", section: "Lists", keywords: ["ol", "list"] },
+  { id: "checkbox", label: "Checkbox", section: "Lists", keywords: ["task", "check"] },
+  { id: "image", label: "Image", section: "Media", keywords: ["photo"] },
+  { id: "file", label: "File", section: "Media", keywords: ["attachment"] },
+  { id: "video", label: "Video", section: "Media", keywords: ["media"] },
+  { id: "audio", label: "Audio", section: "Media", keywords: ["recording"] },
+  { id: "code-block", label: "Code Block", section: "Advanced", keywords: ["code", "fence"] },
+  { id: "formula", label: "Formula", section: "Advanced", keywords: ["latex", "math"] },
+  { id: "current-date", label: "Current date", section: "Utilities", keywords: ["today", "date"] },
+  { id: "current-time", label: "Current time", section: "Utilities", keywords: ["time", "clock"] }
+];
+
+const editorContextRows: Array<{ id: string; label: string; divider?: boolean }> = [
+  { id: "bold", label: "Bold" },
+  { id: "italic", label: "Italic" },
+  { id: "underline", label: "Underline" },
+  { id: "strikethrough", label: "Strikethrough" },
+  { id: "divider-1", label: "", divider: true },
+  { id: "bullet", label: "Bullet list" },
+  { id: "checklist", label: "Checklist" },
+  { id: "divider-2", label: "", divider: true },
+  { id: "link", label: "Insert link" },
+  { id: "divider-3", label: "", divider: true },
+  { id: "copy-note-link", label: "Copy note link" }
+];
+
+function toFileName(title: string): string {
+  const base = title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `${base || "untitled"}.md`;
+}
+
+function clampMenuPosition(x: number, y: number): { x: number; y: number } {
+  const maxX = window.innerWidth - 260;
+  const maxY = window.innerHeight - 420;
+  return { x: Math.max(16, Math.min(x, maxX)), y: Math.max(16, Math.min(y, maxY)) };
+}
+
+function parseForPreview(markdown: string): { title: string; body: string[] } {
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  if (lines[0]?.startsWith("# ")) {
+    return { title: lines[0].slice(2).trim() || "Untitled", body: lines.slice(1) };
+  }
+
+  const fallback = lines.find((line) => line.trim())?.trim() || "Untitled";
+  return { title: fallback, body: lines };
+}
+
+function extractWikilinks(markdown: string): string[] {
+  const links = new Set<string>();
+  for (const match of markdown.matchAll(/\[\[([^\]]+)\]\]/g)) {
+    const value = match[1]?.trim();
+    if (value) {
+      links.add(value);
+    }
+  }
+  return [...links];
+}
+
+function formatRelativeTime(iso: string): string {
+  const elapsedMs = Date.now() - new Date(iso).getTime();
+  const hours = Math.floor(elapsedMs / 3600000);
+  if (hours < 1) {
+    return "Just now";
+  }
+  if (hours < 24) {
+    return `${hours} hr ago`;
+  }
+  return new Date(iso).toLocaleDateString();
+}
+
+function noteFromMarkdown(base: AppNote, markdown: string, nowIso?: string): AppNote {
+  const parser = new VaultService();
+  const parsed = parser.upsertNoteFromMarkdown(base.path, markdown);
+  const mergedTags = Array.from(new Set([...(base.tags ?? []), ...parsed.tags])).sort((left, right) =>
+    left.localeCompare(right)
+  );
+  return {
+    ...base,
+    title: parsed.title,
+    snippet: parsed.snippet,
+    tags: mergedTags,
+    linksOut: parsed.linksOut,
+    markdown,
+    path: `${base.notebook}/${toFileName(parsed.title)}`,
+    updatedAt: nowIso ?? new Date().toISOString()
+  };
+}
+
+function getSeededNotes(): AppNote[] {
+  const service = new VaultService();
+  return seedNotes.map((seed) => {
+    const note = service.upsertNoteFromMarkdown(`${seed.notebook}/${seed.fileName}`, seed.markdown);
+    return {
+      ...note,
+      createdAt: seed.updatedAt,
+      updatedAt: seed.updatedAt,
+      notebook: seed.notebook,
+      markdown: seed.markdown
+    };
+  });
+}
+
+function isAppNote(value: unknown): value is AppNote {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const note = value as Partial<AppNote>;
+  return (
+    typeof note.id === "string" &&
+    typeof note.path === "string" &&
+    typeof note.title === "string" &&
+    typeof note.snippet === "string" &&
+    Array.isArray(note.tags) &&
+    Array.isArray(note.linksOut) &&
+    typeof note.createdAt === "string" &&
+    typeof note.updatedAt === "string" &&
+    typeof note.notebook === "string" &&
+    typeof note.markdown === "string"
+  );
+}
+
+function loadInitialNotes(): AppNote[] {
+  if (typeof window === "undefined") {
+    return getSeededNotes();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(NOTES_STORAGE_KEY);
+    if (!raw) {
+      return getSeededNotes();
+    }
+
+    const parsed = JSON.parse(raw) as AppNote[];
+    if (!Array.isArray(parsed) || !parsed.length) {
+      return getSeededNotes();
+    }
+
+    return parsed;
+  } catch {
+    return getSeededNotes();
+  }
+}
+
+function loadPrefs(): AppPrefs {
+  if (typeof window === "undefined") {
+    return { selectedNotebook: "Daily Notes", activeId: "" };
+  }
+
+  try {
+    const raw = window.localStorage.getItem(PREFS_STORAGE_KEY);
+    if (!raw) {
+      return { selectedNotebook: "Daily Notes", activeId: "" };
+    }
+
+    const parsed = JSON.parse(raw) as Partial<AppPrefs>;
+    return {
+      selectedNotebook: parsed.selectedNotebook || "Daily Notes",
+      activeId: parsed.activeId || ""
+    };
+  } catch {
+    return { selectedNotebook: "Daily Notes", activeId: "" };
+  }
+}
+
+export default function App() {
+  const initialPrefs = useMemo(() => loadPrefs(), []);
+
+  const [layout] = useState(() => ({ ...createDefaultLayout(), sidebarWidth: 240, listWidth: 520 }));
+  const [notes, setNotes] = useState<AppNote[]>(() => loadInitialNotes());
+  const [selectedNotebook, setSelectedNotebook] = useState<string>(initialPrefs.selectedNotebook);
+  const [activeId, setActiveId] = useState<string>(initialPrefs.activeId);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [notebookMenu, setNotebookMenu] = useState<NotebookMenuState | null>(null);
+  const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
+  const [moveDialog, setMoveDialog] = useState<MoveDialogState | null>(null);
+  const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [quickQuery, setQuickQuery] = useState("");
+  const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
+  const [dropNotebook, setDropNotebook] = useState<string | null>(null);
+  const [noteInfoId, setNoteInfoId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [lastMove, setLastMove] = useState<LastMoveState | null>(null);
+  const [draftMarkdown, setDraftMarkdown] = useState<string>("");
+  const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">("saved");
+  const [editorMode, setEditorMode] = useState<EditorMode>("markdown");
+  const [metadataOpen, setMetadataOpen] = useState(false);
+  const [tagEditorOpen, setTagEditorOpen] = useState(false);
+  const [tagInput, setTagInput] = useState("");
+  const [vaultReady, setVaultReady] = useState(false);
+  const [vaultMode] = useState<"local" | "desktop">(() =>
+    typeof window !== "undefined" && window.evernoteShell?.saveVaultState ? "desktop" : "local"
+  );
+  const [linkSuggestion, setLinkSuggestion] = useState<LinkSuggestionState | null>(null);
+  const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
+
+  const autosaveTimerRef = useRef<number | null>(null);
+  const editorMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const markdownEditorRef = useRef<HTMLTextAreaElement | null>(null);
+  const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
+
+  const notebooks = useMemo(() => {
+    const names = Array.from(new Set(notes.map((note) => note.notebook))).sort((left, right) =>
+      left.localeCompare(right)
+    );
+    return ["All Notes", ...names];
+  }, [notes]);
+
+  const visibleNotes = useMemo(() => {
+    const scoped =
+      selectedNotebook === "All Notes"
+        ? notes
+        : notes.filter((note) => note.notebook === selectedNotebook);
+    return [...scoped].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }, [notes, selectedNotebook]);
+
+  const activeNote = notes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
+
+  const noteInfo = noteInfoId ? notes.find((note) => note.id === noteInfoId) ?? null : null;
+
+  const draftPreview = useMemo(
+    () => parseForPreview(draftMarkdown || activeNote?.markdown || "# Untitled\n"),
+    [draftMarkdown, activeNote?.markdown]
+  );
+
+  const searchIndex = useMemo(() => {
+    const index = new SearchIndex();
+    for (const note of notes) {
+      index.upsert(note, note.markdown);
+    }
+    return index;
+  }, [notes]);
+
+  const quickResults = useMemo(() => {
+    if (!quickQuery.trim()) {
+      return visibleNotes.slice(0, 6);
+    }
+    return searchIndex
+      .search(quickQuery)
+      .map((result) => notes.find((note) => note.id === result.noteId))
+      .filter((note): note is AppNote => Boolean(note))
+      .slice(0, 8);
+  }, [notes, quickQuery, searchIndex, visibleNotes]);
+
+  const suggestions = useMemo(() => {
+    if (!linkSuggestion) {
+      return [];
+    }
+
+    const lower = linkSuggestion.query.toLowerCase();
+    return notes
+      .filter((note) => note.id !== activeNote?.id)
+      .filter((note) => (lower ? note.title.toLowerCase().includes(lower) : true))
+      .slice(0, 8);
+  }, [notes, linkSuggestion, activeNote?.id]);
+
+  const slashResults = useMemo(() => {
+    if (!slashMenu) {
+      return [];
+    }
+
+    const query = slashMenu.query.trim().toLowerCase();
+    if (!query) {
+      return slashCommands;
+    }
+
+    return slashCommands.filter((command) => {
+      if (command.label.toLowerCase().includes(query)) {
+        return true;
+      }
+      return command.keywords.some((keyword) => keyword.toLowerCase().includes(query));
+    });
+  }, [slashMenu]);
+
+  const slashSections = useMemo(() => {
+    const grouped = new Map<string, SlashCommand[]>();
+    for (const command of slashResults) {
+      const list = grouped.get(command.section) ?? [];
+      list.push(command);
+      grouped.set(command.section, list);
+    }
+    return Array.from(grouped.entries());
+  }, [slashResults]);
+
+  const outgoingLinks = useMemo(() => {
+    if (!activeNote) {
+      return [];
+    }
+
+    const parsed = extractWikilinks(draftMarkdown);
+    return parsed.map((title) => ({
+      title,
+      target: notes.find((note) => note.title.toLowerCase() === title.toLowerCase()) ?? null
+    }));
+  }, [activeNote, draftMarkdown, notes]);
+
+  const backlinks = useMemo(() => {
+    if (!activeNote) {
+      return [];
+    }
+
+    const title = activeNote.title.toLowerCase();
+    return notes.filter(
+      (note) => note.id !== activeNote.id && note.linksOut.some((link) => link.toLowerCase() === title)
+    );
+  }, [notes, activeNote]);
+
+  const draftWordCount = useMemo(() => {
+    const text = draftMarkdown.trim();
+    return text ? text.split(/\s+/).length : 0;
+  }, [draftMarkdown]);
+
+  const draftCharCount = draftMarkdown.length;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateVault() {
+      if (typeof window === "undefined" || !window.evernoteShell?.loadVaultState) {
+        setVaultReady(true);
+        return;
+      }
+
+      try {
+        const payload = (await window.evernoteShell.loadVaultState()) as ShellNotesPayload | null;
+        if (cancelled || !payload || !Array.isArray(payload)) {
+          setVaultReady(true);
+          return;
+        }
+
+        const hydrated = payload.filter(isAppNote);
+        if (hydrated.length > 0) {
+          setNotes(hydrated);
+        }
+      } catch {
+        // Fallback to local state when desktop vault load fails.
+      } finally {
+        if (!cancelled) {
+          setVaultReady(true);
+        }
+      }
+    }
+
+    void hydrateVault();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!notebooks.includes(selectedNotebook)) {
+      setSelectedNotebook("All Notes");
+    }
+  }, [notebooks, selectedNotebook]);
+
+  useEffect(() => {
+    if (!activeId && visibleNotes[0]) {
+      setActiveId(visibleNotes[0].id);
+      setSelectedIds(new Set([visibleNotes[0].id]));
+      return;
+    }
+
+    if (activeId && !notes.some((note) => note.id === activeId)) {
+      setActiveId(visibleNotes[0]?.id ?? "");
+      setSelectedIds(visibleNotes[0] ? new Set([visibleNotes[0].id]) : new Set());
+    }
+  }, [activeId, notes, visibleNotes]);
+
+  useEffect(() => {
+    if (!activeNote) {
+      setDraftMarkdown("");
+      setSaveState("saved");
+      setTagEditorOpen(false);
+      setTagInput("");
+      return;
+    }
+
+    setDraftMarkdown(activeNote.markdown);
+    setSaveState("saved");
+    setTagEditorOpen(false);
+    setTagInput("");
+  }, [activeNote?.id]);
+
+  useEffect(() => {
+    if (editorMode === "rich" && linkSuggestion) {
+      setLinkSuggestion(null);
+    }
+  }, [editorMode, linkSuggestion]);
+
+  useEffect(() => {
+    if (!slashMenu) {
+      return;
+    }
+    if (slashMenu.editor !== editorMode && slashMenu.source === "typed") {
+      setSlashMenu(null);
+    }
+  }, [editorMode, slashMenu]);
+
+  useEffect(() => {
+    if (!activeNote) {
+      return;
+    }
+
+    if (draftMarkdown === activeNote.markdown) {
+      return;
+    }
+
+    setSaveState("dirty");
+
+    if (autosaveTimerRef.current) {
+      window.clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = window.setTimeout(() => {
+      setSaveState("saving");
+      setNotes((previous) =>
+        previous.map((note) => (note.id === activeNote.id ? noteFromMarkdown(note, draftMarkdown) : note))
+      );
+      setSaveState("saved");
+      autosaveTimerRef.current = null;
+    }, 650);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        window.clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [draftMarkdown, activeNote?.id, activeNote?.markdown]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
+
+    if (!vaultReady || !window.evernoteShell?.saveVaultState) {
+      return;
+    }
+
+    void window.evernoteShell.saveVaultState(notes);
+  }, [notes, vaultReady]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const prefs: AppPrefs = { selectedNotebook, activeId };
+    window.localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+  }, [selectedNotebook, activeId]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (slashMenu?.editor === "rich") {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setSlashMenu(null);
+          return;
+        }
+
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          setSlashMenu((previous) => {
+            if (!previous) {
+              return previous;
+            }
+            const max = Math.max(0, slashResults.length - 1);
+            return { ...previous, selected: Math.min(previous.selected + 1, max) };
+          });
+          return;
+        }
+
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          setSlashMenu((previous) =>
+            previous ? { ...previous, selected: Math.max(previous.selected - 1, 0) } : previous
+          );
+          return;
+        }
+
+        if (event.key === "Tab" || event.key === "Enter") {
+          event.preventDefault();
+          commitSlashCommand(slashMenu.selected);
+          return;
+        }
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        flushActiveDraft();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        setContextMenu(null);
+        setNotebookMenu(null);
+        setEditorContextMenu(null);
+        setSearchOpen(false);
+        setSlashMenu(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [draftMarkdown, activeNote?.id, activeNote?.markdown, slashMenu, slashResults]);
+
+  useEffect(() => {
+    if (!toastMessage) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+
+    return () => window.clearTimeout(timeout);
+  }, [toastMessage]);
+
+  useEffect(() => {
+    if (!slashMenu) {
+      return;
+    }
+
+    if (!slashResults.length) {
+      if (slashMenu.selected !== 0) {
+        setSlashMenu((previous) => (previous ? { ...previous, selected: 0 } : previous));
+      }
+      return;
+    }
+
+    if (slashMenu.selected >= slashResults.length) {
+      setSlashMenu((previous) =>
+        previous ? { ...previous, selected: Math.max(0, slashResults.length - 1) } : previous
+      );
+    }
+  }, [slashMenu, slashResults]);
+
+  function flushActiveDraft(): void {
+    if (!activeNote || draftMarkdown === activeNote.markdown) {
+      return;
+    }
+
+    if (autosaveTimerRef.current) {
+      window.clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    setNotes((previous) =>
+      previous.map((note) => (note.id === activeNote.id ? noteFromMarkdown(note, draftMarkdown) : note))
+    );
+    setSaveState("saved");
+  }
+
+  function syncSlashSuggestion(markdown: string, caret: number): void {
+    const head = markdown.slice(0, caret);
+    const match = head.match(/(?:^|\s)\/([a-z0-9-]*)$/i);
+
+    if (!match) {
+      setSlashMenu((previous) => {
+        if (previous?.editor === "markdown" && previous.source === "typed") {
+          return null;
+        }
+        return previous;
+      });
+      return;
+    }
+
+    const token = match[0];
+    const leadingSpace = token.startsWith(" ") ? 1 : 0;
+    const start = caret - token.length + leadingSpace;
+
+    setSlashMenu((previous) => ({
+      editor: "markdown",
+      source: "typed",
+      query: match[1] ?? "",
+      selected: previous?.editor === "markdown" && previous.source === "typed" ? previous.selected : 0,
+      markdownRange: { start, end: caret }
+    }));
+    setLinkSuggestion(null);
+  }
+
+  function syncRichSlashSuggestion(state: { query: string; from: number; to: number } | null): void {
+    setSlashMenu((previous) => {
+      if (previous?.editor === "rich" && previous.source === "insert") {
+        return previous;
+      }
+
+      if (!state) {
+        if (previous?.editor === "rich" && previous.source === "typed") {
+          return null;
+        }
+        return previous;
+      }
+
+      return {
+        editor: "rich",
+        source: "typed",
+        query: state.query,
+        selected: previous?.editor === "rich" && previous.source === "typed" ? previous.selected : 0,
+        richRange: { from: state.from, to: state.to }
+      };
+    });
+  }
+
+  function syncLinkSuggestion(markdown: string, caret: number): void {
+    const head = markdown.slice(0, caret);
+    const match = head.match(/\[\[([^\]\n]*)$/);
+    if (!match) {
+      setLinkSuggestion(null);
+      return;
+    }
+
+    const start = caret - match[0].length;
+    const query = match[1];
+    setLinkSuggestion((previous) => ({
+      start,
+      query,
+      selected: previous ? Math.min(previous.selected, suggestions.length) : 0
+    }));
+  }
+
+  function openSlashMenuFromInsert(): void {
+    if (editorMode === "markdown") {
+      const editor = markdownEditorRef.current;
+      const position = editor?.selectionStart ?? draftMarkdown.length;
+      setSlashMenu({
+        editor: "markdown",
+        source: "insert",
+        query: "",
+        selected: 0,
+        markdownRange: { start: position, end: position }
+      });
+      editor?.focus();
+      return;
+    }
+
+    setSlashMenu({
+      editor: "rich",
+      source: "insert",
+      query: "",
+      selected: 0
+    });
+    richEditorRef.current?.focus();
+  }
+
+  function ensureLinkedNote(title: string): AppNote {
+    const existing = notes.find((note) => note.title.toLowerCase() === title.toLowerCase());
+    if (existing) {
+      return existing;
+    }
+
+    const notebook = selectedNotebook === "All Notes" ? notebooks[1] || "Inbox" : selectedNotebook;
+    const now = new Date().toISOString();
+    const markdown = `# ${title}\n\n`;
+    const created: AppNote = {
+      id: crypto.randomUUID(),
+      title,
+      snippet: "",
+      tags: [],
+      linksOut: [],
+      createdAt: now,
+      updatedAt: now,
+      notebook,
+      path: `${notebook}/${toFileName(title)}`,
+      markdown
+    };
+
+    const hydrated = noteFromMarkdown(created, markdown, now);
+    setNotes((previous) => [hydrated, ...previous]);
+    return hydrated;
+  }
+
+  function insertWikilink(title: string): void {
+    const editor = markdownEditorRef.current;
+    if (!editor || !linkSuggestion) {
+      return;
+    }
+
+    const caret = editor.selectionStart;
+    const before = draftMarkdown.slice(0, linkSuggestion.start);
+    const after = draftMarkdown.slice(caret);
+    const insert = `[[${title}]]`;
+    const next = `${before}${insert}${after}`;
+    setDraftMarkdown(next);
+    setLinkSuggestion(null);
+
+    window.requestAnimationFrame(() => {
+      const position = before.length + insert.length;
+      editor.focus();
+      editor.setSelectionRange(position, position);
+    });
+  }
+
+  function commitLinkSuggestion(index: number): void {
+    if (!linkSuggestion) {
+      return;
+    }
+
+    const picked = suggestions[index];
+    if (picked) {
+      insertWikilink(picked.title);
+      return;
+    }
+
+    const fallbackTitle = linkSuggestion.query.trim();
+    if (!fallbackTitle) {
+      setLinkSuggestion(null);
+      return;
+    }
+
+    const created = ensureLinkedNote(fallbackTitle);
+    insertWikilink(created.title);
+  }
+
+  function focusNote(noteId: string): void {
+    flushActiveDraft();
+    setActiveId(noteId);
+    setSelectedIds(new Set([noteId]));
+    setLastSelectedId(noteId);
+    setLinkSuggestion(null);
+    setSlashMenu(null);
+  }
+
+  function onCardClick(noteId: string, event: React.MouseEvent<HTMLButtonElement>): void {
+    const isToggle = event.metaKey || event.ctrlKey;
+    const isRange = event.shiftKey && lastSelectedId;
+
+    if (isRange && lastSelectedId) {
+      const ids = visibleNotes.map((note) => note.id);
+      const start = ids.indexOf(lastSelectedId);
+      const end = ids.indexOf(noteId);
+      if (start >= 0 && end >= 0) {
+        const low = Math.min(start, end);
+        const high = Math.max(start, end);
+        const range = ids.slice(low, high + 1);
+        setSelectedIds(new Set(range));
+      }
+      setActiveId(noteId);
+      return;
+    }
+
+    if (isToggle) {
+      setSelectedIds((previous) => {
+        const next = new Set(previous);
+        if (next.has(noteId)) {
+          next.delete(noteId);
+        } else {
+          next.add(noteId);
+        }
+        return next;
+      });
+      setActiveId(noteId);
+      setLastSelectedId(noteId);
+      return;
+    }
+
+    focusNote(noteId);
+  }
+
+  function openCardMenu(noteId: string, clientX: number, clientY: number): void {
+    const noteIds = selectedIds.has(noteId) ? Array.from(selectedIds) : [noteId];
+    const position = clampMenuPosition(clientX, clientY);
+    setContextMenu({ x: position.x, y: position.y, noteIds });
+    setEditorContextMenu(null);
+  }
+
+  function openEditorMenu(): void {
+    if (!activeNote || !editorMenuButtonRef.current) {
+      return;
+    }
+
+    const rect = editorMenuButtonRef.current.getBoundingClientRect();
+    const position = clampMenuPosition(rect.left - 210, rect.bottom + 8);
+    setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id] });
+    setEditorContextMenu(null);
+  }
+
+  function moveNotes(noteIds: string[], destination: string): void {
+    const changed = notes.filter((note) => noteIds.includes(note.id) && note.notebook !== destination);
+    if (changed.length === 0) {
+      return;
+    }
+
+    const previousById: Record<string, { notebook: string; path: string }> = {};
+    for (const note of changed) {
+      previousById[note.id] = { notebook: note.notebook, path: note.path };
+    }
+
+    setNotes((previous) =>
+      previous.map((note) => {
+        if (!noteIds.includes(note.id)) {
+          return note;
+        }
+
+        if (note.notebook === destination) {
+          return note;
+        }
+
+        return {
+          ...note,
+          notebook: destination,
+          path: `${destination}/${toFileName(note.title)}`,
+          updatedAt: new Date().toISOString()
+        };
+      })
+    );
+
+    setLastMove({ previousById });
+    setToastMessage(
+      `${changed.length === 1 ? `\"${changed[0].title}\"` : `${changed.length} notes`} moved to ${destination}`
+    );
+  }
+
+  function copyNotes(noteIds: string[], destination: string): void {
+    const selected = notes.filter((note) => noteIds.includes(note.id));
+    if (!selected.length) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const copies = selected.map((source, index) => {
+      const suffix = selected.length > 1 ? ` copy ${index + 1}` : " copy";
+      const draft = parseForPreview(source.markdown);
+      const copyTitle = `${draft.title}${suffix}`;
+      const rewritten = source.markdown.replace(/^#\s+.*$/m, `# ${copyTitle}`);
+      const copy: AppNote = {
+        ...source,
+        id: crypto.randomUUID(),
+        notebook: destination,
+        markdown: rewritten,
+        createdAt: now,
+        updatedAt: now,
+        path: `${destination}/${toFileName(copyTitle)}`,
+        title: copyTitle
+      };
+      return noteFromMarkdown(copy, rewritten, now);
+    });
+
+    setNotes((previous) => [...copies, ...previous]);
+    setToastMessage(
+      `${copies.length === 1 ? `\"${copies[0].title}\"` : `${copies.length} notes`} copied to ${destination}`
+    );
+  }
+
+  function undoLastMove(): void {
+    if (!lastMove) {
+      return;
+    }
+
+    setNotes((previous) =>
+      previous.map((note) => {
+        const prior = lastMove.previousById[note.id];
+        if (!prior) {
+          return note;
+        }
+
+        return {
+          ...note,
+          notebook: prior.notebook,
+          path: prior.path,
+          updatedAt: new Date().toISOString()
+        };
+      })
+    );
+
+    setToastMessage("Move undone");
+    setLastMove(null);
+  }
+
+  function duplicateNotes(noteIds: string[]): void {
+    const now = new Date().toISOString();
+    const duplicates = notes
+      .filter((note) => noteIds.includes(note.id))
+      .map((note) => {
+        const title = `${note.title} copy`;
+        const markdown = note.markdown.replace(/^#\s+.*$/m, `# ${title}`);
+        const copy: AppNote = {
+          ...note,
+          id: crypto.randomUUID(),
+          title,
+          markdown,
+          createdAt: now,
+          updatedAt: now,
+          path: `${note.notebook}/${toFileName(title)}`
+        };
+
+        return noteFromMarkdown(copy, markdown, now);
+      });
+
+    if (!duplicates.length) {
+      return;
+    }
+
+    setNotes((previous) => [...duplicates, ...previous]);
+    setToastMessage(`${duplicates.length} duplicated`);
+    focusNote(duplicates[0].id);
+  }
+
+  async function copyNoteLink(noteId: string): Promise<void> {
+    const note = notes.find((entry) => entry.id === noteId);
+    if (!note) {
+      return;
+    }
+
+    const encoded = encodeURIComponent(note.path);
+    const link = `evernote-os://note/${encoded}`;
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(link);
+      setToastMessage("Note link copied");
+      return;
+    }
+
+    setToastMessage(link);
+  }
+
+  function handleMenuAction(action: string): void {
+    if (!contextMenu) {
+      return;
+    }
+
+    const targetId = contextMenu.noteIds[0];
+
+    if (action === "move") {
+      setMoveDialog({
+        noteIds: contextMenu.noteIds,
+        destination: selectedNotebook === "All Notes" ? "" : selectedNotebook,
+        mode: "move"
+      });
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "copy-to") {
+      setMoveDialog({
+        noteIds: contextMenu.noteIds,
+        destination: selectedNotebook === "All Notes" ? "" : selectedNotebook,
+        mode: "copy"
+      });
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "duplicate") {
+      duplicateNotes(contextMenu.noteIds);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "copy-link") {
+      void copyNoteLink(targetId);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "note-info") {
+      if (targetId && targetId !== activeId) {
+        focusNote(targetId);
+      }
+      setMetadataOpen(true);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "move-trash") {
+      setNotes((previous) => previous.filter((note) => !contextMenu.noteIds.includes(note.id)));
+      setContextMenu(null);
+      return;
+    }
+
+    setContextMenu(null);
+  }
+
+  function createNewNote(): void {
+    flushActiveDraft();
+
+    const notebook = selectedNotebook === "All Notes" ? notebooks[1] || "Inbox" : selectedNotebook;
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+    const markdown = "# Untitled\n\n";
+
+    const seed: AppNote = {
+      id,
+      title: "Untitled",
+      snippet: "",
+      tags: [],
+      linksOut: [],
+      createdAt: now,
+      updatedAt: now,
+      notebook,
+      path: `${notebook}/untitled.md`,
+      markdown
+    };
+
+    const note = noteFromMarkdown(seed, markdown, now);
+
+    setNotes((previous) => [note, ...previous]);
+    setSelectedNotebook(notebook);
+    focusNote(note.id);
+  }
+
+  function confirmNotebookRename(): void {
+    if (!renameDialog || !renameDialog.newName.trim()) {
+      return;
+    }
+
+    const renamed = renameDialog.newName.trim();
+    setNotes((previous) =>
+      previous.map((note) => {
+        if (note.notebook !== renameDialog.oldName) {
+          return note;
+        }
+
+        return {
+          ...note,
+          notebook: renamed,
+          path: `${renamed}/${toFileName(note.title)}`
+        };
+      })
+    );
+
+    if (selectedNotebook === renameDialog.oldName) {
+      setSelectedNotebook(renamed);
+    }
+
+    setRenameDialog(null);
+    setToastMessage(`Notebook renamed to ${renamed}`);
+  }
+
+  function addTagToActiveNote(rawTag: string): void {
+    if (!activeNote) {
+      return;
+    }
+
+    const normalized = rawTag.trim().replace(/^#/, "");
+    if (!normalized) {
+      return;
+    }
+
+    setNotes((previous) =>
+      previous.map((note) => {
+        if (note.id !== activeNote.id) {
+          return note;
+        }
+        if (note.tags.includes(normalized)) {
+          return note;
+        }
+        const nextTags = [...note.tags, normalized].sort((left, right) => left.localeCompare(right));
+        return {
+          ...note,
+          tags: nextTags,
+          updatedAt: new Date().toISOString()
+        };
+      })
+    );
+
+    setTagInput("");
+    setTagEditorOpen(false);
+    setToastMessage(`Tag #${normalized} added`);
+  }
+
+  function removeTagFromActiveNote(tag: string): void {
+    if (!activeNote) {
+      return;
+    }
+
+    setNotes((previous) =>
+      previous.map((note) => {
+        if (note.id !== activeNote.id) {
+          return note;
+        }
+        return {
+          ...note,
+          tags: note.tags.filter((entry) => entry !== tag),
+          updatedAt: new Date().toISOString()
+        };
+      })
+    );
+  }
+
+  function renderInlineWithLinks(text: string): ReactNode {
+    const parts = text.split(/(\[\[[^\]]+\]\])/g).filter(Boolean);
+
+    return parts.map((part, index) => {
+      const match = part.match(/^\[\[([^\]]+)\]\]$/);
+      if (!match) {
+        return <span key={`${part}-${index}`}>{part}</span>;
+      }
+
+      const label = match[1].trim();
+      const target = notes.find((note) => note.title.toLowerCase() === label.toLowerCase());
+
+      return (
+        <button
+          key={`${label}-${index}`}
+          type="button"
+          className="inline-link"
+          onClick={() => {
+            if (target) {
+              focusNote(target.id);
+            } else {
+              const created = ensureLinkedNote(label);
+              focusNote(created.id);
+            }
+          }}
+        >
+          [[{label}]]
+        </button>
+      );
+    });
+  }
+
+  function runRichToolbarAction(action: "bold" | "italic" | "underline" | "bullet" | "link"): void {
+    if (editorMode !== "rich") {
+      return;
+    }
+
+    if (action === "bold") {
+      richEditorRef.current?.toggleBold();
+      return;
+    }
+
+    if (action === "italic") {
+      richEditorRef.current?.toggleItalic();
+      return;
+    }
+
+    if (action === "underline") {
+      richEditorRef.current?.toggleUnderline();
+      return;
+    }
+
+    if (action === "bullet") {
+      richEditorRef.current?.toggleBulletList();
+      return;
+    }
+
+    const href = window.prompt("Enter a URL for this link");
+    if (!href?.trim()) {
+      return;
+    }
+
+    richEditorRef.current?.setLink(href.trim());
+  }
+
+  function openEditorContextMenu(clientX: number, clientY: number): void {
+    const position = clampMenuPosition(clientX, clientY);
+    setEditorContextMenu(position);
+    setContextMenu(null);
+    setNotebookMenu(null);
+    setSlashMenu(null);
+  }
+
+  function applyMarkdownInlineFormat(
+    prefix: string,
+    suffix: string,
+    fallback: string,
+    options?: { linePrefix?: string }
+  ): void {
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      return;
+    }
+
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const selected = draftMarkdown.slice(start, end);
+
+    let replacement = "";
+    let cursorStart = start;
+    let cursorEnd = start;
+
+    if (options?.linePrefix) {
+      const line = selected || fallback;
+      replacement = `${options.linePrefix}${line}`;
+      cursorStart = start + replacement.length;
+      cursorEnd = cursorStart;
+    } else if (selected) {
+      replacement = `${prefix}${selected}${suffix}`;
+      cursorStart = start + replacement.length;
+      cursorEnd = cursorStart;
+    } else {
+      replacement = `${prefix}${fallback}${suffix}`;
+      cursorStart = start + prefix.length;
+      cursorEnd = cursorStart + fallback.length;
+    }
+
+    const next = `${draftMarkdown.slice(0, start)}${replacement}${draftMarkdown.slice(end)}`;
+    setDraftMarkdown(next);
+
+    window.requestAnimationFrame(() => {
+      const current = markdownEditorRef.current;
+      if (!current) {
+        return;
+      }
+      current.focus();
+      current.setSelectionRange(cursorStart, cursorEnd);
+    });
+  }
+
+  function handleEditorContextAction(action: string): void {
+    if (action === "copy-note-link") {
+      if (activeNote) {
+        void copyNoteLink(activeNote.id);
+      }
+      setEditorContextMenu(null);
+      return;
+    }
+
+    if (editorMode === "rich") {
+      if (action === "bold") {
+        richEditorRef.current?.toggleBold();
+      } else if (action === "italic") {
+        richEditorRef.current?.toggleItalic();
+      } else if (action === "underline") {
+        richEditorRef.current?.toggleUnderline();
+      } else if (action === "strikethrough") {
+        richEditorRef.current?.toggleStrike();
+      } else if (action === "bullet") {
+        richEditorRef.current?.toggleBulletList();
+      } else if (action === "checklist") {
+        richEditorRef.current?.toggleTaskList();
+      } else if (action === "link") {
+        runRichToolbarAction("link");
+      }
+
+      setEditorContextMenu(null);
+      return;
+    }
+
+    if (action === "bold") {
+      applyMarkdownInlineFormat("**", "**", "bold text");
+    } else if (action === "italic") {
+      applyMarkdownInlineFormat("*", "*", "italic text");
+    } else if (action === "underline") {
+      applyMarkdownInlineFormat("<u>", "</u>", "underlined text");
+    } else if (action === "strikethrough") {
+      applyMarkdownInlineFormat("~~", "~~", "struck text");
+    } else if (action === "bullet") {
+      applyMarkdownInlineFormat("", "", "item", { linePrefix: "- " });
+    } else if (action === "checklist") {
+      applyMarkdownInlineFormat("", "", "task", { linePrefix: "- [ ] " });
+    } else if (action === "link") {
+      applyMarkdownInlineFormat("[", "](https://)", "link text");
+    }
+
+    setEditorContextMenu(null);
+  }
+
+  function applyMarkdownSlashCommand(command: SlashCommand): void {
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      return;
+    }
+
+    const typedRange =
+      slashMenu?.editor === "markdown" && slashMenu.source === "typed" ? slashMenu.markdownRange : undefined;
+    const selectionStart = editor.selectionStart;
+    const selectionEnd = editor.selectionEnd;
+    const replaceStart = typedRange ? typedRange.start : selectionStart;
+    const replaceEnd = typedRange ? typedRange.end : selectionEnd;
+    const selectedText = typedRange ? "" : draftMarkdown.slice(selectionStart, selectionEnd);
+
+    let replacement = "";
+    let cursorStart = replaceStart;
+    let cursorEnd = replaceStart;
+
+    const insert = (value: string) => {
+      replacement = value;
+      cursorStart = replaceStart + value.length;
+      cursorEnd = cursorStart;
+    };
+
+    const wrap = (prefix: string, suffix: string, placeholder: string) => {
+      const content = selectedText || placeholder;
+      replacement = `${prefix}${content}${suffix}`;
+      if (selectedText) {
+        cursorStart = replaceStart + replacement.length;
+        cursorEnd = cursorStart;
+      } else {
+        cursorStart = replaceStart + prefix.length;
+        cursorEnd = cursorStart + placeholder.length;
+      }
+    };
+
+    switch (command.id) {
+      case "heading-1":
+        insert(`# ${selectedText || "Heading"}\n`);
+        break;
+      case "heading-2":
+        insert(`## ${selectedText || "Heading"}\n`);
+        break;
+      case "heading-3":
+        insert(`### ${selectedText || "Heading"}\n`);
+        break;
+      case "paragraph":
+        insert(`${selectedText || "Text"}\n`);
+        break;
+      case "quote":
+        insert(`> ${selectedText || "Quote"}\n`);
+        break;
+      case "divider":
+        insert("\n---\n");
+        break;
+      case "bold":
+        wrap("**", "**", "bold text");
+        break;
+      case "italic":
+        wrap("*", "*", "italic text");
+        break;
+      case "underline":
+        wrap("<u>", "</u>", "underlined text");
+        break;
+      case "strikethrough":
+        wrap("~~", "~~", "struck text");
+        break;
+      case "superscript":
+        wrap("<sup>", "</sup>", "sup");
+        break;
+      case "subscript":
+        wrap("<sub>", "</sub>", "sub");
+        break;
+      case "bullet-list":
+        insert("- ");
+        break;
+      case "checklist":
+      case "new-task":
+      case "checkbox":
+        insert("- [ ] ");
+        break;
+      case "numbered-list":
+        insert("1. ");
+        break;
+      case "link":
+        wrap("[", "](https://)", "link text");
+        break;
+      case "new-linked-note":
+      case "link-to-note": {
+        const title = window.prompt("Linked note title");
+        if (!title?.trim()) {
+          return;
+        }
+        const linked = ensureLinkedNote(title.trim());
+        insert(`[[${linked.title}]]`);
+        break;
+      }
+      case "table":
+        insert("| Column | Value |\n| --- | --- |\n|  |  |\n");
+        break;
+      case "table-of-contents":
+        insert("## Table of contents\n- \n");
+        break;
+      case "image":
+        insert("![image](./attachments/image.png)");
+        break;
+      case "file":
+        insert("[file](./attachments/file.pdf)");
+        break;
+      case "video":
+        insert("[video](https://)");
+        break;
+      case "audio":
+        insert("[audio](./attachments/audio.m4a)");
+        break;
+      case "code-block":
+        insert("```text\n\n```");
+        break;
+      case "formula":
+        insert("$$\n\n$$");
+        break;
+      case "event":
+        insert("- [ ] Calendar event: ");
+        break;
+      case "current-date":
+        insert(new Date().toLocaleDateString());
+        break;
+      case "current-time":
+        insert(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+        break;
+      default:
+        setToastMessage(`"${command.label}" is planned`);
+        return;
+    }
+
+    const next = `${draftMarkdown.slice(0, replaceStart)}${replacement}${draftMarkdown.slice(replaceEnd)}`;
+    setDraftMarkdown(next);
+    setSlashMenu(null);
+    setLinkSuggestion(null);
+
+    window.requestAnimationFrame(() => {
+      const current = markdownEditorRef.current;
+      if (!current) {
+        return;
+      }
+      current.focus();
+      current.setSelectionRange(cursorStart, cursorEnd);
+    });
+  }
+
+  function applyRichSlashCommand(command: SlashCommand): void {
+    const typedRange = slashMenu?.editor === "rich" && slashMenu.source === "typed" ? slashMenu.richRange : undefined;
+    if (typedRange) {
+      richEditorRef.current?.replaceRange(typedRange.from, typedRange.to, "");
+    }
+
+    switch (command.id) {
+      case "heading-1":
+        richEditorRef.current?.setHeading(1);
+        break;
+      case "heading-2":
+        richEditorRef.current?.setHeading(2);
+        break;
+      case "heading-3":
+        richEditorRef.current?.setHeading(3);
+        break;
+      case "paragraph":
+        richEditorRef.current?.setParagraph();
+        break;
+      case "quote":
+        richEditorRef.current?.toggleBlockquote();
+        break;
+      case "divider":
+        richEditorRef.current?.setHorizontalRule();
+        break;
+      case "bold":
+        richEditorRef.current?.toggleBold();
+        break;
+      case "italic":
+        richEditorRef.current?.toggleItalic();
+        break;
+      case "underline":
+        richEditorRef.current?.toggleUnderline();
+        break;
+      case "strikethrough":
+        richEditorRef.current?.toggleStrike();
+        break;
+      case "superscript":
+        richEditorRef.current?.insertContent("<sup>sup</sup>");
+        break;
+      case "subscript":
+        richEditorRef.current?.insertContent("<sub>sub</sub>");
+        break;
+      case "bullet-list":
+        richEditorRef.current?.toggleBulletList();
+        break;
+      case "checklist":
+      case "new-task":
+      case "checkbox":
+        richEditorRef.current?.toggleTaskList();
+        break;
+      case "numbered-list":
+        richEditorRef.current?.toggleOrderedList();
+        break;
+      case "link": {
+        const href = window.prompt("Enter a URL for this link");
+        if (!href?.trim()) {
+          return;
+        }
+        richEditorRef.current?.setLink(href.trim());
+        break;
+      }
+      case "new-linked-note":
+      case "link-to-note": {
+        const title = window.prompt("Linked note title");
+        if (!title?.trim()) {
+          return;
+        }
+        const linked = ensureLinkedNote(title.trim());
+        richEditorRef.current?.insertContent(`[[${linked.title}]]`);
+        break;
+      }
+      case "table":
+        richEditorRef.current?.insertContent("| Column | Value |\n| --- | --- |\n|  |  |");
+        break;
+      case "table-of-contents":
+        richEditorRef.current?.insertContent("## Table of contents\n- ");
+        break;
+      case "image":
+        richEditorRef.current?.insertContent("![image](./attachments/image.png)");
+        break;
+      case "file":
+        richEditorRef.current?.insertContent("[file](./attachments/file.pdf)");
+        break;
+      case "video":
+        richEditorRef.current?.insertContent("[video](https://)");
+        break;
+      case "audio":
+        richEditorRef.current?.insertContent("[audio](./attachments/audio.m4a)");
+        break;
+      case "code-block":
+        richEditorRef.current?.toggleCodeBlock();
+        break;
+      case "formula":
+        richEditorRef.current?.insertContent("$$\n\n$$");
+        break;
+      case "event":
+        richEditorRef.current?.insertContent("- [ ] Calendar event: ");
+        break;
+      case "current-date":
+        richEditorRef.current?.insertContent(new Date().toLocaleDateString());
+        break;
+      case "current-time":
+        richEditorRef.current?.insertContent(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+        break;
+      default:
+        setToastMessage(`"${command.label}" is planned`);
+        return;
+    }
+
+    setSlashMenu(null);
+  }
+
+  function commitSlashCommand(index: number): void {
+    const command = slashResults[index];
+    if (!command) {
+      return;
+    }
+
+    if ((slashMenu?.editor ?? editorMode) === "rich") {
+      applyRichSlashCommand(command);
+      return;
+    }
+
+    applyMarkdownSlashCommand(command);
+  }
+
+  return (
+    <div
+      className="app-shell"
+      role="application"
+      aria-label="Evernote OpenSource Shell"
+      onClick={() => {
+        setContextMenu(null);
+        setNotebookMenu(null);
+        setEditorContextMenu(null);
+        setSlashMenu(null);
+      }}
+    >
+      <aside className="left-sidebar" style={{ width: layout.sidebarWidth }}>
+        <div className="sidebar-search" onClick={() => setSearchOpen(true)}>
+          <span>Search</span>
+          <kbd>cmd+k</kbd>
+        </div>
+
+        <div className="sidebar-actions">
+          <button type="button" className="new-note" onClick={createNewNote}>
+            + Note
+          </button>
+          <button type="button" className="round-action" aria-label="Quick actions">
+            +
+          </button>
+          <button type="button" className="round-action" aria-label="Create task">
+            T
+          </button>
+          <button type="button" className="round-action" aria-label="More actions">
+            ...
+          </button>
+        </div>
+
+        <nav className="sidebar-nav">
+          {sidePinned.map((item) => (
+            <button key={item} type="button" className="sidebar-link">
+              {item}
+            </button>
+          ))}
+        </nav>
+
+        <section className="sidebar-section">
+          <h2>Notebooks</h2>
+          <ul>
+            {notebooks
+              .filter((item) => item !== "All Notes")
+              .map((notebook) => {
+                const count = notes.filter((note) => note.notebook === notebook).length;
+                const isDropTarget = dropNotebook === notebook;
+                return (
+                  <li key={notebook}>
+                    <button
+                      type="button"
+                      className={selectedNotebook === notebook ? "notebook-item active" : "notebook-item"}
+                      onClick={() => {
+                        flushActiveDraft();
+                        setSelectedNotebook(notebook);
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        const position = clampMenuPosition(event.clientX, event.clientY);
+                        setNotebookMenu({ notebook, x: position.x, y: position.y });
+                      }}
+                      onDragOver={(event) => {
+                        if (!draggingNoteId) {
+                          return;
+                        }
+                        event.preventDefault();
+                        setDropNotebook(notebook);
+                      }}
+                      onDragLeave={() => setDropNotebook(null)}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        if (!draggingNoteId) {
+                          return;
+                        }
+                        moveNotes([draggingNoteId], notebook);
+                        setDraggingNoteId(null);
+                        setDropNotebook(null);
+                      }}
+                    >
+                      <span>{notebook}</span>
+                      <small>{count}</small>
+                      {isDropTarget ? <i className="drop-indicator" /> : null}
+                    </button>
+                  </li>
+                );
+              })}
+          </ul>
+        </section>
+      </aside>
+
+      <section className="note-column" style={{ width: layout.listWidth }}>
+        <header className="note-column-header">
+          <div>
+            <h1>{selectedNotebook}</h1>
+            <small>{visibleNotes.length}</small>
+          </div>
+          <div className="header-actions">
+            <button type="button">List</button>
+            <button type="button">Sort</button>
+            <button type="button">Filter</button>
+          </div>
+        </header>
+
+        <div className="note-grid" aria-label="Notes list">
+          {visibleNotes.map((note) => {
+            const isSelected = selectedIds.has(note.id);
+            return (
+              <button
+                key={note.id}
+                type="button"
+                draggable
+                onDragStart={() => setDraggingNoteId(note.id)}
+                onDragEnd={() => {
+                  setDraggingNoteId(null);
+                  setDropNotebook(null);
+                }}
+                className={isSelected ? "note-card selected" : "note-card"}
+                onClick={(event) => onCardClick(note.id, event)}
+                onDoubleClick={() => focusNote(note.id)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  openCardMenu(note.id, event.clientX, event.clientY);
+                }}
+              >
+                <strong>{note.title}</strong>
+                <p>{note.snippet || "Untitled"}</p>
+                <footer>
+                  <span>{formatRelativeTime(note.updatedAt)}</span>
+                  {isSelected ? <em>{selectedIds.size > 1 ? "Multi" : "Selected"}</em> : null}
+                </footer>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <main className="editor-shell">
+        {activeNote ? (
+          <>
+            <header className="editor-topbar">
+              <div className="crumbs">
+                <span>{activeNote.notebook}</span>
+                <span>{draftPreview.title}</span>
+              </div>
+              <div className="editor-top-actions">
+                <button type="button" className="link-btn" onClick={() => setMetadataOpen((previous) => !previous)}>
+                  Info
+                </button>
+                <button type="button" className="share-btn">
+                  Share
+                </button>
+                <button type="button" className="link-btn">
+                  Link
+                </button>
+                <button
+                  ref={editorMenuButtonRef}
+                  type="button"
+                  className="link-btn"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openEditorMenu();
+                  }}
+                >
+                  ...
+                </button>
+              </div>
+            </header>
+
+            <div className="editor-toolbar">
+              <button
+                type="button"
+                className={editorMode === "markdown" ? "active" : ""}
+                onClick={() => setEditorMode("markdown")}
+              >
+                Markdown
+              </button>
+              <button
+                type="button"
+                className={editorMode === "rich" ? "active" : ""}
+                onClick={() => {
+                  setEditorMode("rich");
+                  window.requestAnimationFrame(() => richEditorRef.current?.focus());
+                }}
+              >
+                Rich
+              </button>
+              <span className="toolbar-divider" />
+              <button type="button" onClick={openSlashMenuFromInsert}>
+                Insert
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (editorMode === "rich") {
+                    richEditorRef.current?.setParagraph();
+                  }
+                }}
+              >
+                Aa
+              </button>
+              <button type="button">Sans Serif</button>
+              <button type="button">15</button>
+              <button type="button" onClick={() => runRichToolbarAction("bold")}>
+                B
+              </button>
+              <button type="button" onClick={() => runRichToolbarAction("italic")}>
+                I
+              </button>
+              <button type="button" onClick={() => runRichToolbarAction("underline")}>
+                U
+              </button>
+              <button type="button" onClick={() => runRichToolbarAction("bullet")}>
+                List
+              </button>
+              <button type="button" onClick={() => runRichToolbarAction("link")}>
+                Link
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (editorMode === "rich") {
+                    richEditorRef.current?.toggleCodeBlock();
+                  }
+                }}
+              >
+                More
+              </button>
+              <span className={`save-pill ${saveState}`}>
+                {saveState === "dirty" ? "Unsaved" : saveState} · {vaultMode}
+              </span>
+            </div>
+
+            <div className="template-banner">
+              <span>You are editing your "{draftPreview.title}" template</span>
+              <button type="button">Use this template</button>
+            </div>
+
+            <article className={metadataOpen ? "editor-content with-metadata" : "editor-content"}>
+              <div className="editor-workbench">
+                {editorMode === "markdown" ? (
+                  <section className="markdown-pane" aria-label="Markdown editor">
+                    <h3>Markdown</h3>
+                    <textarea
+                      ref={markdownEditorRef}
+                      className="markdown-editor"
+                      value={draftMarkdown}
+                      onChange={(event) => {
+                        setDraftMarkdown(event.target.value);
+                        syncLinkSuggestion(event.target.value, event.target.selectionStart);
+                        syncSlashSuggestion(event.target.value, event.target.selectionStart);
+                      }}
+                      onClick={(event) => {
+                        const target = event.currentTarget;
+                        syncLinkSuggestion(target.value, target.selectionStart);
+                        syncSlashSuggestion(target.value, target.selectionStart);
+                      }}
+                      onKeyUp={(event) => {
+                        const target = event.currentTarget;
+                        syncLinkSuggestion(target.value, target.selectionStart);
+                        syncSlashSuggestion(target.value, target.selectionStart);
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        openEditorContextMenu(event.clientX, event.clientY);
+                      }}
+                      onKeyDown={(event) => {
+                        if (slashMenu?.editor === "markdown") {
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            setSlashMenu(null);
+                            return;
+                          }
+
+                          if (event.key === "ArrowDown") {
+                            event.preventDefault();
+                            setSlashMenu((previous) => {
+                              if (!previous) {
+                                return previous;
+                              }
+                              const max = Math.max(0, slashResults.length - 1);
+                              return { ...previous, selected: Math.min(previous.selected + 1, max) };
+                            });
+                            return;
+                          }
+
+                          if (event.key === "ArrowUp") {
+                            event.preventDefault();
+                            setSlashMenu((previous) =>
+                              previous ? { ...previous, selected: Math.max(previous.selected - 1, 0) } : previous
+                            );
+                            return;
+                          }
+
+                          if (event.key === "Tab" || event.key === "Enter") {
+                            event.preventDefault();
+                            commitSlashCommand(slashMenu.selected);
+                            return;
+                          }
+                        }
+
+                        if (!linkSuggestion) {
+                          return;
+                        }
+
+                        if (event.key === "Escape") {
+                          event.preventDefault();
+                          setLinkSuggestion(null);
+                          return;
+                        }
+
+                        if (event.key === "ArrowDown") {
+                          event.preventDefault();
+                          setLinkSuggestion((previous) => {
+                            if (!previous) {
+                              return previous;
+                            }
+                            const limit = Math.max(0, suggestions.length - 1);
+                            return { ...previous, selected: Math.min(previous.selected + 1, limit) };
+                          });
+                          return;
+                        }
+
+                        if (event.key === "ArrowUp") {
+                          event.preventDefault();
+                          setLinkSuggestion((previous) =>
+                            previous ? { ...previous, selected: Math.max(previous.selected - 1, 0) } : previous
+                          );
+                          return;
+                        }
+
+                        if (event.key === "Tab" || event.key === "Enter") {
+                          event.preventDefault();
+                          commitLinkSuggestion(linkSuggestion.selected);
+                        }
+                      }}
+                    />
+                    {linkSuggestion ? (
+                      <div className="wikilink-suggest" role="listbox" aria-label="Wikilink suggestions">
+                        {suggestions.map((note, index) => (
+                          <button
+                            key={note.id}
+                            type="button"
+                            className={index === linkSuggestion.selected ? "active" : ""}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              commitLinkSuggestion(index);
+                            }}
+                          >
+                            {note.title}
+                            <small>{note.notebook}</small>
+                          </button>
+                        ))}
+                        {linkSuggestion.query.trim() && !suggestions.length ? (
+                          <button
+                            type="button"
+                            className="create-link"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              commitLinkSuggestion(0);
+                            }}
+                          >
+                            Create "{linkSuggestion.query.trim()}"
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </section>
+                ) : (
+                  <section className="markdown-pane rich-pane" aria-label="Rich editor">
+                    <h3>Rich text</h3>
+                    <RichMarkdownEditor
+                      ref={richEditorRef}
+                      markdown={draftMarkdown}
+                      onMarkdownChange={(nextMarkdown) => setDraftMarkdown(nextMarkdown)}
+                      onSlashQueryChange={syncRichSlashSuggestion}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        openEditorContextMenu(event.clientX, event.clientY);
+                      }}
+                    />
+                  </section>
+                )}
+
+                <section className="preview-pane" aria-label="Rendered preview">
+                  <h3>Preview</h3>
+                  <div className="preview-document">
+                    <h2>{draftPreview.title}</h2>
+                    {draftPreview.body.map((line, index) => {
+                      const key = `${line}-${index}`;
+
+                      if (!line.trim()) {
+                        return <div key={key} className="line-space" />;
+                      }
+
+                      if (line.startsWith("## ")) {
+                        return <h4 key={key}>{line.slice(3)}</h4>;
+                      }
+
+                      if (line.startsWith("- [ ] ")) {
+                        return (
+                          <p key={key} className="task-line">
+                            <span>[ ]</span>
+                            {renderInlineWithLinks(line.slice(6))}
+                          </p>
+                        );
+                      }
+
+                      if (line.startsWith("- ")) {
+                        return (
+                          <p key={key} className="bullet-line">
+                            <span>-</span>
+                            {renderInlineWithLinks(line.slice(2))}
+                          </p>
+                        );
+                      }
+
+                      return <p key={key}>{renderInlineWithLinks(line)}</p>;
+                    })}
+
+                    <div className="link-sections">
+                      <section>
+                        <h5>Outgoing links</h5>
+                        <ul>
+                          {outgoingLinks.length ? (
+                            outgoingLinks.map((entry, index) => (
+                              <li key={`${entry.title}-${index}`}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (entry.target) {
+                                      focusNote(entry.target.id);
+                                    } else {
+                                      const created = ensureLinkedNote(entry.title);
+                                      focusNote(created.id);
+                                    }
+                                  }}
+                                >
+                                  {entry.title}
+                                </button>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="muted">No outgoing links</li>
+                          )}
+                        </ul>
+                      </section>
+                      <section>
+                        <h5>Backlinks</h5>
+                        <ul>
+                          {backlinks.length ? (
+                            backlinks.map((entry) => (
+                              <li key={entry.id}>
+                                <button type="button" onClick={() => focusNote(entry.id)}>
+                                  {entry.title}
+                                </button>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="muted">No backlinks yet</li>
+                          )}
+                        </ul>
+                      </section>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              {slashMenu ? (
+                <section className="slash-menu" onMouseDown={(event) => event.preventDefault()}>
+                  <header>
+                    <span>/ {slashMenu.query || "commands"}</span>
+                    <small>{slashResults.length} results</small>
+                  </header>
+                  <div className="slash-menu-list">
+                    {slashResults.length ? (
+                      slashSections.map(([section, commands]) => (
+                        <div key={section} className="slash-group">
+                          <h4>{section}</h4>
+                          {commands.map((command) => {
+                            const globalIndex = slashResults.findIndex((item) => item.id === command.id);
+                            return (
+                              <button
+                                key={command.id}
+                                type="button"
+                                className={slashMenu.selected === globalIndex ? "active" : ""}
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  commitSlashCommand(globalIndex);
+                                }}
+                              >
+                                {command.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="slash-empty">No commands found</p>
+                    )}
+                  </div>
+                </section>
+              ) : null}
+
+              {metadataOpen && activeNote ? (
+                <aside className="metadata-panel">
+                  <header>
+                    <h4>Note metadata</h4>
+                    <button type="button" onClick={() => setMetadataOpen(false)}>
+                      Close
+                    </button>
+                  </header>
+                  <dl>
+                    <div>
+                      <dt>Title</dt>
+                      <dd>{draftPreview.title}</dd>
+                    </div>
+                    <div>
+                      <dt>Notebook</dt>
+                      <dd>{activeNote.notebook}</dd>
+                    </div>
+                    <div>
+                      <dt>Path</dt>
+                      <dd>{activeNote.path}</dd>
+                    </div>
+                    <div>
+                      <dt>Created</dt>
+                      <dd>{new Date(activeNote.createdAt).toLocaleString()}</dd>
+                    </div>
+                    <div>
+                      <dt>Updated</dt>
+                      <dd>{new Date(activeNote.updatedAt).toLocaleString()}</dd>
+                    </div>
+                    <div>
+                      <dt>Words</dt>
+                      <dd>{draftWordCount}</dd>
+                    </div>
+                    <div>
+                      <dt>Characters</dt>
+                      <dd>{draftCharCount}</dd>
+                    </div>
+                    <div>
+                      <dt>Outgoing</dt>
+                      <dd>{outgoingLinks.length}</dd>
+                    </div>
+                    <div>
+                      <dt>Backlinks</dt>
+                      <dd>{backlinks.length}</dd>
+                    </div>
+                    <div>
+                      <dt>Tags</dt>
+                      <dd>{activeNote.tags.length ? activeNote.tags.join(", ") : "No tags"}</dd>
+                    </div>
+                  </dl>
+                </aside>
+              ) : null}
+            </article>
+
+            <footer className="editor-footer">
+              <button
+                type="button"
+                onClick={() => {
+                  setTagEditorOpen(true);
+                  window.requestAnimationFrame(() => {
+                    const input = document.getElementById("tag-input");
+                    if (input instanceof HTMLInputElement) {
+                      input.focus();
+                    }
+                  });
+                }}
+              >
+                +
+              </button>
+              <button type="button" onClick={() => setTagEditorOpen((previous) => !previous)}>
+                Add tag
+              </button>
+              <div className="tag-strip">
+                {activeNote.tags.length ? (
+                  activeNote.tags.map((tag) => (
+                    <button key={tag} type="button" className="tag-chip" onClick={() => removeTagFromActiveNote(tag)}>
+                      #{tag}
+                    </button>
+                  ))
+                ) : (
+                  <span className="tag-empty">No tags</span>
+                )}
+              </div>
+              {tagEditorOpen ? (
+                <form
+                  className="tag-input-wrap"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    addTagToActiveNote(tagInput);
+                  }}
+                >
+                  <input
+                    id="tag-input"
+                    value={tagInput}
+                    placeholder="new-tag"
+                    onChange={(event) => setTagInput(event.target.value)}
+                  />
+                  <button type="submit">Save</button>
+                </form>
+              ) : null}
+            </footer>
+          </>
+        ) : (
+          <p className="empty-editor">Select a note.</p>
+        )}
+      </main>
+
+      {contextMenu ? (
+        <div
+          className="context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {noteMenuRows.map((row) =>
+            row.divider ? (
+              <div key={row.id} className="context-divider" />
+            ) : (
+              <button key={row.id} type="button" onClick={() => handleMenuAction(row.id)}>
+                <span>{row.label}</span>
+                {row.shortcut ? <small>{row.shortcut}</small> : null}
+              </button>
+            )
+          )}
+        </div>
+      ) : null}
+
+      {editorContextMenu ? (
+        <div
+          className="context-menu editor-context-menu"
+          style={{ left: editorContextMenu.x, top: editorContextMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {editorContextRows.map((row) =>
+            row.divider ? (
+              <div key={row.id} className="context-divider" />
+            ) : (
+              <button key={row.id} type="button" onClick={() => handleEditorContextAction(row.id)}>
+                <span>{row.label}</span>
+              </button>
+            )
+          )}
+        </div>
+      ) : null}
+
+      {notebookMenu ? (
+        <div
+          className="context-menu notebook-menu"
+          style={{ left: notebookMenu.x, top: notebookMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setRenameDialog({ oldName: notebookMenu.notebook, newName: notebookMenu.notebook });
+              setNotebookMenu(null);
+            }}
+          >
+            <span>Rename notebook</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedNotebook(notebookMenu.notebook);
+              setMoveDialog({ noteIds: Array.from(selectedIds), destination: notebookMenu.notebook, mode: "move" });
+              setNotebookMenu(null);
+            }}
+          >
+            <span>Move selected here</span>
+          </button>
+        </div>
+      ) : null}
+
+      {searchOpen ? (
+        <div className="overlay" onClick={() => setSearchOpen(false)}>
+          <section className="search-modal" onClick={(event) => event.stopPropagation()}>
+            <input
+              autoFocus
+              placeholder="Search or ask a question"
+              value={quickQuery}
+              onChange={(event) => setQuickQuery(event.target.value)}
+            />
+            <div className="search-chips">
+              <span className="chip active">Everywhere</span>
+              <span className="chip">{selectedNotebook}</span>
+            </div>
+            <div className="search-results">
+              <h4>Recent searches</h4>
+              <ul>
+                <li>Troy, NY</li>
+                <li>Alfred, NY</li>
+                <li>post university</li>
+              </ul>
+              <h4>Results</h4>
+              <ul>
+                {quickResults.map((note) => (
+                  <li
+                    key={note.id}
+                    onClick={() => {
+                      focusNote(note.id);
+                      setSearchOpen(false);
+                    }}
+                  >
+                    <strong>{note.title}</strong>
+                    <small>{note.notebook}</small>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {moveDialog ? (
+        <div className="overlay" onClick={() => setMoveDialog(null)}>
+          <section className="move-modal" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <h3>{moveDialog.mode === "copy" ? "Copy to" : "Move"}</h3>
+              <small>{moveDialog.noteIds.length} selected</small>
+            </header>
+            <input
+              placeholder="Find a location"
+              value={moveDialog.destination}
+              onChange={(event) => setMoveDialog({ ...moveDialog, destination: event.target.value })}
+            />
+            <ul>
+              {notebooks
+                .filter((notebook) => notebook !== "All Notes")
+                .map((notebook) => (
+                  <li key={notebook}>
+                    <button
+                      type="button"
+                      className={moveDialog.destination === notebook ? "active" : ""}
+                      onClick={() => setMoveDialog({ ...moveDialog, destination: notebook })}
+                    >
+                      {notebook}
+                    </button>
+                  </li>
+                ))}
+            </ul>
+            <footer>
+              <button type="button" onClick={() => setMoveDialog(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={!moveDialog.destination.trim()}
+                onClick={() => {
+                  if (moveDialog.mode === "copy") {
+                    copyNotes(moveDialog.noteIds, moveDialog.destination.trim());
+                  } else {
+                    moveNotes(moveDialog.noteIds, moveDialog.destination.trim());
+                  }
+                  setMoveDialog(null);
+                }}
+              >
+                Done
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {renameDialog ? (
+        <div className="overlay" onClick={() => setRenameDialog(null)}>
+          <section className="rename-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>Rename notebook</h3>
+            <input
+              value={renameDialog.newName}
+              onChange={(event) => setRenameDialog({ ...renameDialog, newName: event.target.value })}
+            />
+            <footer>
+              <button type="button" onClick={() => setRenameDialog(null)}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={confirmNotebookRename}>
+                Save
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {noteInfo ? (
+        <div className="overlay" onClick={() => setNoteInfoId(null)}>
+          <section className="info-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>Note info</h3>
+            <dl>
+              <div>
+                <dt>Title</dt>
+                <dd>{noteInfo.title}</dd>
+              </div>
+              <div>
+                <dt>Notebook</dt>
+                <dd>{noteInfo.notebook}</dd>
+              </div>
+              <div>
+                <dt>Path</dt>
+                <dd>{noteInfo.path}</dd>
+              </div>
+              <div>
+                <dt>Created</dt>
+                <dd>{new Date(noteInfo.createdAt).toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt>Updated</dt>
+                <dd>{new Date(noteInfo.updatedAt).toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt>Tags</dt>
+                <dd>{noteInfo.tags.length ? noteInfo.tags.join(", ") : "No tags"}</dd>
+              </div>
+            </dl>
+            <footer>
+              <button type="button" className="primary" onClick={() => setNoteInfoId(null)}>
+                Close
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {toastMessage ? (
+        <div className="toast">
+          <span>{toastMessage}</span>
+          {lastMove ? (
+            <button type="button" onClick={undoLastMove}>
+              Undo
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}

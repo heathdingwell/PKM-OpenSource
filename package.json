@@ -1,0 +1,23 @@
+{
+  "name": "evernote-opensource",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run -w @evernote-os/desktop dev",
+    "build": "npm run -ws build",
+    "typecheck": "npm run -ws typecheck",
+    "test": "npm run -ws test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -207,4 +207,13 @@ describe("App", () => {
     expect(targetOutgoingSection).toBeTruthy();
     expect(within(targetOutgoingSection as HTMLElement).getByRole("button", { name: "Agenda" })).toBeInTheDocument();
   });
+
+  it("toggles auto reciprocal links from the editor header", () => {
+    render(<App />);
+    const autoLinksButton = screen.getByRole("button", { name: "Auto links" });
+    expect(autoLinksButton).not.toHaveClass("active");
+
+    fireEvent.click(autoLinksButton);
+    expect(autoLinksButton).toHaveClass("active");
+  });
 });

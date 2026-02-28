@@ -2579,6 +2579,14 @@ export default function App() {
     });
   }
 
+  function toggleAutoReciprocalLinks(): void {
+    setAutoReciprocalLinks((previous) => {
+      const next = !previous;
+      setToastMessage(next ? "Auto reciprocal links enabled" : "Auto reciprocal links disabled");
+      return next;
+    });
+  }
+
   function applyAiProvider(provider: AiProvider): void {
     const defaults = aiProviderDefaults(provider);
     setAiSettings((previous) => ({
@@ -3749,11 +3757,7 @@ export default function App() {
     }
 
     if (actionId === "toggle-auto-links") {
-      setAutoReciprocalLinks((previous) => {
-        const next = !previous;
-        setToastMessage(next ? "Auto reciprocal links enabled" : "Auto reciprocal links disabled");
-        return next;
-      });
+      toggleAutoReciprocalLinks();
       setSearchOpen(false);
       return;
     }
@@ -6664,6 +6668,13 @@ export default function App() {
                 </button>
                 <button type="button" className={aiPanelOpen ? "link-btn active" : "link-btn"} onClick={toggleAiPanel}>
                   AI
+                </button>
+                <button
+                  type="button"
+                  className={autoReciprocalLinks ? "link-btn active" : "link-btn"}
+                  onClick={toggleAutoReciprocalLinks}
+                >
+                  Auto links
                 </button>
                 <button type="button" className="link-btn" onClick={cycleTheme}>
                   Theme

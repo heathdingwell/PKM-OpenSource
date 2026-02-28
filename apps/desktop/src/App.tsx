@@ -46,6 +46,10 @@ interface RenameDialogState {
   newName: string;
 }
 
+interface CreateNotebookDialogState {
+  name: string;
+}
+
 interface NoteRenameDialogState {
   noteId: string;
   newTitle: string;
@@ -1313,6 +1317,7 @@ export default function App() {
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState | null>(null);
   const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
+  const [createNotebookDialog, setCreateNotebookDialog] = useState<CreateNotebookDialogState | null>(null);
   const [noteRenameDialog, setNoteRenameDialog] = useState<NoteRenameDialogState | null>(null);
   const [noteHistoryDialog, setNoteHistoryDialog] = useState<NoteHistoryDialogState | null>(null);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
@@ -3967,14 +3972,23 @@ export default function App() {
   }
 
   function createNotebook(): void {
-    const raw = window.prompt("Notebook name");
-    const notebook = raw?.trim();
+    setCreateNotebookDialog({ name: "" });
+  }
+
+  function saveCreateNotebookDialog(): void {
+    if (!createNotebookDialog) {
+      return;
+    }
+
+    const notebook = createNotebookDialog.name.trim();
     if (!notebook) {
+      setToastMessage("Enter a notebook name");
       return;
     }
 
     if (notebookList.includes(notebook)) {
       setSelectedNotebook(notebook);
+      setCreateNotebookDialog(null);
       setToastMessage(`Notebook "${notebook}" already exists`);
       return;
     }
@@ -3995,6 +4009,7 @@ export default function App() {
     };
     const created = noteFromMarkdown(seed, markdown, now);
     setNotes((previous) => [created, ...previous]);
+    setCreateNotebookDialog(null);
     setSelectedNotebook(notebook);
     focusNote(created.id);
     setToastMessage(`Notebook "${notebook}" created`);
@@ -8449,6 +8464,34 @@ export default function App() {
               </button>
               <button type="button" className="primary" onClick={saveQuickTaskDialog}>
                 Add task
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {createNotebookDialog ? (
+        <div className="overlay" onClick={() => setCreateNotebookDialog(null)}>
+          <section className="rename-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>New notebook</h3>
+            <input
+              autoFocus
+              placeholder="Notebook name"
+              value={createNotebookDialog.name}
+              onChange={(event) => setCreateNotebookDialog({ name: event.target.value })}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  saveCreateNotebookDialog();
+                }
+              }}
+            />
+            <footer>
+              <button type="button" onClick={() => setCreateNotebookDialog(null)}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={saveCreateNotebookDialog}>
+                Create
               </button>
             </footer>
           </section>

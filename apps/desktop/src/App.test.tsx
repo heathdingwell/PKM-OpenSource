@@ -64,6 +64,15 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "New from template", level: 3 })).toBeInTheDocument();
   });
 
+  it("creates a notebook from modal flow", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ New notebook" }));
+    expect(screen.getByRole("heading", { name: "New notebook", level: 3 })).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Notebook name"), { target: { value: "Research" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(screen.getByRole("heading", { name: "Research", level: 1 })).toBeInTheDocument();
+  });
+
   it("opens template picker from note header action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "From template" }));

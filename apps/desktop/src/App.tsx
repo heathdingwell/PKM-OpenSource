@@ -143,6 +143,11 @@ interface QuickTaskDialogState {
   noteId: string;
 }
 
+interface ScratchNoteDialogState {
+  title: string;
+  notebook: string;
+}
+
 interface AppPrefs {
   selectedNotebook: string;
   activeId: string;
@@ -1325,6 +1330,7 @@ export default function App() {
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
   const [quickTaskDialog, setQuickTaskDialog] = useState<QuickTaskDialogState | null>(null);
+  const [scratchNoteDialog, setScratchNoteDialog] = useState<ScratchNoteDialogState | null>(null);
   const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
   const [templateDialog, setTemplateDialog] = useState<TemplateDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -4023,13 +4029,30 @@ export default function App() {
     }
 
     const suggestedTitle = content.split(/\r?\n/)[0]?.replace(/^#+\s*/, "").trim() || "Scratch note";
-    const rawTitle = window.prompt("New note title", suggestedTitle);
-    const title = rawTitle?.trim();
-    if (!title) {
+    setScratchNoteDialog({
+      title: suggestedTitle,
+      notebook: resolveDefaultNotebook()
+    });
+  }
+
+  function saveScratchNoteDialog(): void {
+    if (!scratchNoteDialog) {
       return;
     }
 
-    const notebook = resolveDefaultNotebook();
+    const content = homeScratchPad.trim();
+    const title = scratchNoteDialog.title.trim();
+    const notebook = scratchNoteDialog.notebook.trim();
+
+    if (!content) {
+      setToastMessage("Scratch pad is empty");
+      return;
+    }
+    if (!title || !notebook) {
+      setToastMessage("Enter both note title and notebook");
+      return;
+    }
+
     const now = new Date().toISOString();
     const markdown = `# ${title}\n\n${content}`;
     const created = noteFromMarkdown(
@@ -4050,6 +4073,7 @@ export default function App() {
     );
 
     setNotes((previous) => [created, ...previous]);
+    setScratchNoteDialog(null);
     setHomeScratchPad("");
     setBrowseMode("all");
     setSelectedNotebook(notebook);
@@ -8464,6 +8488,50 @@ export default function App() {
               </button>
               <button type="button" className="primary" onClick={saveQuickTaskDialog}>
                 Add task
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {scratchNoteDialog ? (
+        <div className="overlay" onClick={() => setScratchNoteDialog(null)}>
+          <section className="rename-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>Save scratch to note</h3>
+            <label className="template-field">
+              <span>Note title</span>
+              <input
+                autoFocus
+                placeholder="New note title"
+                value={scratchNoteDialog.title}
+                onChange={(event) => setScratchNoteDialog({ ...scratchNoteDialog, title: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    saveScratchNoteDialog();
+                  }
+                }}
+              />
+            </label>
+            <label className="template-field">
+              <span>Notebook</span>
+              <select
+                value={scratchNoteDialog.notebook}
+                onChange={(event) => setScratchNoteDialog({ ...scratchNoteDialog, notebook: event.target.value })}
+              >
+                {notebooks.filter((name) => name !== "All Notes").map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <footer>
+              <button type="button" onClick={() => setScratchNoteDialog(null)}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={saveScratchNoteDialog}>
+                Create note
               </button>
             </footer>
           </section>

@@ -29,6 +29,18 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Saved searches", level: 2 })).toBeInTheDocument();
   });
 
+  it("saves scratch pad content to a note via modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    fireEvent.change(screen.getByPlaceholderText("Capture quick thoughts, todos, or links..."), {
+      target: { value: "Scratch title\nMore detail" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save to note" }));
+    expect(screen.getByRole("heading", { name: "Save scratch to note", level: 3 })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Create note" }));
+    expect(screen.getByRole("heading", { name: "Scratch title", level: 2 })).toBeInTheDocument();
+  });
+
   it("opens command palette from quick actions button", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

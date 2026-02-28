@@ -99,6 +99,65 @@ describe("App", () => {
     promptSpy.mockRestore();
   });
 
+
+  it("opens toolbar link action in modal without prompt", () => {
+    const promptSpy = vi.spyOn(window, "prompt");
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rich" }));
+
+    const toolbarLink = Array.from(document.querySelectorAll(".editor-toolbar button")).find(
+      (button) => button.textContent?.trim() === "Link"
+    ) as HTMLButtonElement | undefined;
+    expect(toolbarLink).toBeTruthy();
+    fireEvent.click(toolbarLink as HTMLButtonElement);
+
+    expect(screen.getByRole("heading", { name: "Insert link", level: 3 })).toBeInTheDocument();
+    const linkModal = screen.getByRole("heading", { name: "Insert link", level: 3 }).closest("section");
+    expect(linkModal).toBeTruthy();
+    fireEvent.change(within(linkModal as HTMLElement).getByLabelText("URL"), {
+      target: { value: "https://example.com" }
+    });
+    fireEvent.click(within(linkModal as HTMLElement).getByRole("button", { name: "Insert link" }));
+
+    expect(screen.queryByRole("heading", { name: "Insert link", level: 3 })).not.toBeInTheDocument();
+    expect(promptSpy).not.toHaveBeenCalled();
+    promptSpy.mockRestore();
+  });
+
+  it("inserts media from markdown slash menu via modal", () => {
+    const promptSpy = vi.spyOn(window, "prompt");
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    const slashCommand = `${editor?.value ?? ""}
+/image`;
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: slashCommand, selectionStart: slashCommand.length }
+    });
+
+    const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
+    expect(slashMenu).toBeTruthy();
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Image" }));
+
+    expect(screen.getByRole("heading", { name: "Insert image", level: 3 })).toBeInTheDocument();
+    const imageModal = screen.getByRole("heading", { name: "Insert image", level: 3 }).closest("section");
+    expect(imageModal).toBeTruthy();
+    fireEvent.change(within(imageModal as HTMLElement).getByLabelText("Image URL or path"), {
+      target: { value: "./attachments/test.png" }
+    });
+    fireEvent.click(within(imageModal as HTMLElement).getByRole("button", { name: "Insert" }));
+
+    const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(updatedEditor?.value).toContain("![image](./attachments/test.png)");
+    expect(promptSpy).not.toHaveBeenCalled();
+    promptSpy.mockRestore();
+  });
+
   it("opens template picker from sidebar action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "New from template" }));

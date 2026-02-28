@@ -148,8 +148,17 @@ interface ScratchNoteDialogState {
   notebook: string;
 }
 
+type MediaInsertCommandId = "image" | "file" | "video" | "audio" | "transcribe-media";
+
 interface SlashInputDialogState {
   kind: "linked-note" | "url";
+  editor: EditorMode;
+  value: string;
+  markdownRange?: { start: number; end: number };
+}
+
+interface MediaInsertDialogState {
+  commandId: MediaInsertCommandId;
   editor: EditorMode;
   value: string;
   markdownRange?: { start: number; end: number };
@@ -1408,6 +1417,7 @@ export default function App() {
   const [mentionSuggestion, setMentionSuggestion] = useState<MentionSuggestionState | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const [slashInputDialog, setSlashInputDialog] = useState<SlashInputDialogState | null>(null);
+  const [mediaInsertDialog, setMediaInsertDialog] = useState<MediaInsertDialogState | null>(null);
 
   const activeNotes = useMemo(() => notes.filter((note) => !note.trashedAt), [notes]);
   const trashedNotes = useMemo(() => notes.filter((note) => Boolean(note.trashedAt)), [notes]);
@@ -2300,6 +2310,7 @@ export default function App() {
         !eventDialog &&
         !templateDialog &&
         !slashInputDialog &&
+        !mediaInsertDialog &&
         sidebarView === "notes" &&
         browseMode !== "home";
 
@@ -2416,6 +2427,7 @@ export default function App() {
         setSidebarView("notes");
         setSearchOpen(false);
         setSlashInputDialog(null);
+        setMediaInsertDialog(null);
         setSlashMenu(null);
         setMentionSuggestion(null);
       }
@@ -2440,6 +2452,7 @@ export default function App() {
     eventDialog,
     templateDialog,
     slashInputDialog,
+    mediaInsertDialog,
     sidebarView,
     browseMode,
     visibleNotes,
@@ -5320,52 +5333,101 @@ export default function App() {
       return;
     }
 
-    const href = window.prompt("Enter a URL for this link");
-    if (!href?.trim()) {
+    setSlashInputDialog({
+      kind: "url",
+      editor: "rich",
+      value: "https://"
+    });
+  }
+
+  function getMediaInsertDefault(commandId: MediaInsertCommandId): string {
+    if (commandId === "image") {
+      return "./attachments/image.png";
+    }
+    if (commandId === "file") {
+      return "./attachments/file.pdf";
+    }
+    if (commandId === "video") {
+      return "https://";
+    }
+    if (commandId === "audio") {
+      return "./attachments/audio.m4a";
+    }
+    return "./attachments/media.mp4";
+  }
+
+  function formatMediaInsert(commandId: MediaInsertCommandId, source: string): string {
+    if (commandId === "image") {
+      return `![image](${source})`;
+    }
+    if (commandId === "file") {
+      return `[file](${source})`;
+    }
+    if (commandId === "video") {
+      return `[video](${source})`;
+    }
+    if (commandId === "audio") {
+      return `[audio](${source})`;
+    }
+    return `> Transcribe media
+> Source: ${source}
+`;
+  }
+
+  function openMediaInsertDialog(
+    commandId: MediaInsertCommandId,
+    editor: EditorMode,
+    markdownRange?: { start: number; end: number }
+  ): void {
+    setMediaInsertDialog({
+      commandId,
+      editor,
+      value: getMediaInsertDefault(commandId),
+      markdownRange
+    });
+  }
+
+  function submitMediaInsertDialog(): void {
+    if (!mediaInsertDialog) {
       return;
     }
 
-    richEditorRef.current?.setLink(href.trim());
-  }
-
-  function promptMediaInsert(commandId: "image" | "file" | "video" | "audio" | "transcribe-media"): string | null {
-    if (commandId === "image") {
-      const source = window.prompt("Image URL or relative path", "./attachments/image.png");
-      if (!source?.trim()) {
-        return null;
-      }
-      return `![image](${source.trim()})`;
+    const source = mediaInsertDialog.value.trim();
+    if (!source) {
+      return;
     }
 
-    if (commandId === "file") {
-      const source = window.prompt("File URL or relative path", "./attachments/file.pdf");
-      if (!source?.trim()) {
-        return null;
-      }
-      return `[file](${source.trim()})`;
+    const content = formatMediaInsert(mediaInsertDialog.commandId, source);
+
+    if (mediaInsertDialog.editor === "markdown") {
+      const selectionStart = markdownEditorRef.current?.selectionStart ?? draftMarkdown.length;
+      const selectionEnd = markdownEditorRef.current?.selectionEnd ?? selectionStart;
+      const range = mediaInsertDialog.markdownRange ?? { start: selectionStart, end: selectionEnd };
+      const next = `${draftMarkdown.slice(0, range.start)}${content}${draftMarkdown.slice(range.end)}`;
+      setDraftMarkdown(next);
+      setMediaInsertDialog(null);
+      setSlashMenu(null);
+      setLinkSuggestion(null);
+
+      window.requestAnimationFrame(() => {
+        const current = markdownEditorRef.current;
+        if (!current) {
+          return;
+        }
+        const cursor = range.start + content.length;
+        current.focus();
+        current.setSelectionRange(cursor, cursor);
+      });
+      return;
     }
 
-    if (commandId === "video") {
-      const source = window.prompt("Video URL or relative path", "https://");
-      if (!source?.trim()) {
-        return null;
-      }
-      return `[video](${source.trim()})`;
-    }
-
-    if (commandId === "audio") {
-      const source = window.prompt("Audio URL or relative path", "./attachments/audio.m4a");
-      if (!source?.trim()) {
-        return null;
-      }
-      return `[audio](${source.trim()})`;
-    }
-
-    const source = window.prompt("Media to transcribe (URL or path)", "./attachments/media.mp4");
-    if (!source?.trim()) {
-      return null;
-    }
-    return `> Transcribe media\n> Source: ${source.trim()}\n`;
+    richEditorRef.current?.insertContent(content);
+    setMediaInsertDialog(null);
+    setSlashMenu(null);
+    setLinkSuggestion(null);
+    window.requestAnimationFrame(() => {
+      richEditorRef.current?.focus();
+    });
   }
 
   function openEditorContextMenu(clientX: number, clientY: number): void {
@@ -5637,50 +5699,30 @@ export default function App() {
         insert("## Table of contents\n- \n");
         break;
       case "image":
-        {
-          const value = promptMediaInsert("image");
-          if (!value) {
-            return;
-          }
-          insert(value);
-        }
-        break;
+        openMediaInsertDialog("image", "markdown", { start: replaceStart, end: replaceEnd });
+        setSlashMenu(null);
+        setLinkSuggestion(null);
+        return;
       case "file":
-        {
-          const value = promptMediaInsert("file");
-          if (!value) {
-            return;
-          }
-          insert(value);
-        }
-        break;
+        openMediaInsertDialog("file", "markdown", { start: replaceStart, end: replaceEnd });
+        setSlashMenu(null);
+        setLinkSuggestion(null);
+        return;
       case "video":
-        {
-          const value = promptMediaInsert("video");
-          if (!value) {
-            return;
-          }
-          insert(value);
-        }
-        break;
+        openMediaInsertDialog("video", "markdown", { start: replaceStart, end: replaceEnd });
+        setSlashMenu(null);
+        setLinkSuggestion(null);
+        return;
       case "audio":
-        {
-          const value = promptMediaInsert("audio");
-          if (!value) {
-            return;
-          }
-          insert(value);
-        }
-        break;
+        openMediaInsertDialog("audio", "markdown", { start: replaceStart, end: replaceEnd });
+        setSlashMenu(null);
+        setLinkSuggestion(null);
+        return;
       case "transcribe-media":
-        {
-          const value = promptMediaInsert("transcribe-media");
-          if (!value) {
-            return;
-          }
-          insert(value);
-        }
-        break;
+        openMediaInsertDialog("transcribe-media", "markdown", { start: replaceStart, end: replaceEnd });
+        setSlashMenu(null);
+        setLinkSuggestion(null);
+        return;
       case "code-block":
         insert("```text\n\n```");
         break;
@@ -5802,50 +5844,25 @@ export default function App() {
         richEditorRef.current?.insertContent("## Table of contents\n- ");
         break;
       case "image":
-        {
-          const value = promptMediaInsert("image");
-          if (!value) {
-            return;
-          }
-          richEditorRef.current?.insertContent(value);
-        }
-        break;
+        openMediaInsertDialog("image", "rich");
+        setSlashMenu(null);
+        return;
       case "file":
-        {
-          const value = promptMediaInsert("file");
-          if (!value) {
-            return;
-          }
-          richEditorRef.current?.insertContent(value);
-        }
-        break;
+        openMediaInsertDialog("file", "rich");
+        setSlashMenu(null);
+        return;
       case "video":
-        {
-          const value = promptMediaInsert("video");
-          if (!value) {
-            return;
-          }
-          richEditorRef.current?.insertContent(value);
-        }
-        break;
+        openMediaInsertDialog("video", "rich");
+        setSlashMenu(null);
+        return;
       case "audio":
-        {
-          const value = promptMediaInsert("audio");
-          if (!value) {
-            return;
-          }
-          richEditorRef.current?.insertContent(value);
-        }
-        break;
+        openMediaInsertDialog("audio", "rich");
+        setSlashMenu(null);
+        return;
       case "transcribe-media":
-        {
-          const value = promptMediaInsert("transcribe-media");
-          if (!value) {
-            return;
-          }
-          richEditorRef.current?.insertContent(value);
-        }
-        break;
+        openMediaInsertDialog("transcribe-media", "rich");
+        setSlashMenu(null);
+        return;
       case "code-block":
         richEditorRef.current?.toggleCodeBlock();
         break;
@@ -5912,6 +5929,7 @@ export default function App() {
         setEventDialog(null);
         setAttachmentDropTarget(null);
         setSlashInputDialog(null);
+        setMediaInsertDialog(null);
         setSlashMenu(null);
         setMentionSuggestion(null);
       }}
@@ -6975,7 +6993,13 @@ export default function App() {
               <button type="button" onClick={() => runRichToolbarAction("bullet")}>
                 List
               </button>
-              <button type="button" onClick={() => runRichToolbarAction("link")}>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  runRichToolbarAction("link");
+                }}
+              >
                 Link
               </button>
               <button
@@ -8495,6 +8519,44 @@ export default function App() {
               </button>
               <button type="button" className="primary" onClick={submitSlashInputDialog}>
                 Insert link
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {mediaInsertDialog ? (
+        <div className="overlay" onClick={() => setMediaInsertDialog(null)}>
+          <section className="rename-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>
+              {mediaInsertDialog.commandId === "transcribe-media"
+                ? "Transcribe media"
+                : `Insert ${mediaInsertDialog.commandId}`}
+            </h3>
+            <label className="template-field">
+              <span>
+                {mediaInsertDialog.commandId === "transcribe-media"
+                  ? "Media URL or path"
+                  : `${mediaInsertDialog.commandId[0].toUpperCase()}${mediaInsertDialog.commandId.slice(1)} URL or path`}
+              </span>
+              <input
+                autoFocus
+                value={mediaInsertDialog.value}
+                onChange={(event) => setMediaInsertDialog({ ...mediaInsertDialog, value: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    submitMediaInsertDialog();
+                  }
+                }}
+              />
+            </label>
+            <footer>
+              <button type="button" onClick={() => setMediaInsertDialog(null)}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={submitMediaInsertDialog}>
+                Insert
               </button>
             </footer>
           </section>

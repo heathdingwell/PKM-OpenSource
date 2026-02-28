@@ -240,4 +240,5 @@ describe("App", () => {
     expect(editor?.value).toContain("- Suggested action");
     expect(editor?.value).toContain("- Follow-up item");
   });
+
 });

@@ -3144,6 +3144,12 @@ export default function App() {
     return hydrated;
   }
 
+  function ensureLinkedNoteWithReciprocal(title: string): AppNote {
+    const linked = ensureLinkedNote(title);
+    insertReciprocalLink(linked.id, activeNote);
+    return linked;
+  }
+
   function insertWikilink(title: string): void {
     const editor = markdownEditorRef.current;
     if (!editor || !linkSuggestion) {
@@ -3182,7 +3188,7 @@ export default function App() {
       return;
     }
 
-    const created = ensureLinkedNote(fallbackTitle);
+    const created = ensureLinkedNoteWithReciprocal(fallbackTitle);
     insertWikilink(created.title);
   }
 
@@ -3224,8 +3230,7 @@ export default function App() {
   }
 
   function openOrCreateLinkedNote(title: string): void {
-    const linked = ensureLinkedNote(title);
-    insertReciprocalLink(linked.id, activeNote);
+    const linked = ensureLinkedNoteWithReciprocal(title);
     focusNote(linked.id);
   }
 
@@ -5431,7 +5436,7 @@ export default function App() {
         if (!title?.trim()) {
           return;
         }
-        const linked = ensureLinkedNote(title.trim());
+        const linked = ensureLinkedNoteWithReciprocal(title.trim());
         insert(`[[${linked.title}]]`);
         break;
       }
@@ -5597,7 +5602,7 @@ export default function App() {
         if (!title?.trim()) {
           return;
         }
-        const linked = ensureLinkedNote(title.trim());
+        const linked = ensureLinkedNoteWithReciprocal(title.trim());
         richEditorRef.current?.insertContent(`[[${linked.title}]]`);
         break;
       }

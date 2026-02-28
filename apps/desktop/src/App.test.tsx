@@ -4,6 +4,7 @@ import App from "./App";
 describe("App", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    (window as unknown as { pkmShell?: unknown }).pkmShell = undefined;
   });
 
   it("renders the notebook view shell", () => {
@@ -215,5 +216,28 @@ describe("App", () => {
 
     fireEvent.click(autoLinksButton);
     expect(autoLinksButton).toHaveClass("active");
+  });
+
+  it("inserts AI response content into the active note", async () => {
+    const chatWithLlm = vi.fn().mockResolvedValue({
+      message: "- Suggested action\n- Follow-up item"
+    });
+    (window as unknown as { pkmShell?: { chatWithLlm: typeof chatWithLlm } }).pkmShell = { chatWithLlm };
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.change(screen.getByPlaceholderText("Ask about this note or your vault..."), {
+      target: { value: "Plan my next steps" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText(/Suggested action/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Insert into note" }));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    expect(editor?.value).toContain("- Suggested action");
+    expect(editor?.value).toContain("- Follow-up item");
   });
 });

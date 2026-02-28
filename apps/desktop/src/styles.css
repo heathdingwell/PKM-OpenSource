@@ -1690,11 +1690,33 @@ body.is-resizing {
 
 .ai-msg strong {
   display: block;
-  margin-bottom: 4px;
   color: #395478;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+
+.ai-msg-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ai-msg-insert {
+  border: 1px solid #c8dafc;
+  background: #ffffff;
+  color: #2f4f7f;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.ai-msg-insert:hover {
+  background: #edf3ff;
 }
 
 .ai-msg p {

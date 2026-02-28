@@ -367,6 +367,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-trash", label: "Open trash", keywords: ["trash", "deleted"] },
   { id: "empty-trash", label: "Empty trash", keywords: ["trash", "delete"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
+  { id: "insert-last-ai-reply", label: "Insert last AI reply into note", keywords: ["ai", "copilot", "insert"] },
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "toggle-density", label: "Toggle note density", keywords: ["density", "compact", "comfortable"] },
@@ -2605,6 +2606,33 @@ export default function App() {
     setAiError(null);
   }
 
+  function insertAiReplyIntoNote(message: AiChatMessage): void {
+    if (!activeNote) {
+      setToastMessage("Open a note before inserting AI output");
+      return;
+    }
+
+    const content = message.content.trim();
+    if (!content) {
+      setToastMessage("AI response is empty");
+      return;
+    }
+
+    const base = draftMarkdown.replace(/\s+$/, "");
+    const nextMarkdown = `${base}${base ? "\n\n" : ""}${content}\n`;
+    setDraftMarkdown(nextMarkdown);
+    setToastMessage("Inserted AI response into note");
+  }
+
+  function insertLastAiReplyIntoActiveNote(): void {
+    const latest = [...aiMessages].reverse().find((entry) => entry.role === "assistant" && entry.content.trim());
+    if (!latest) {
+      setToastMessage("No AI response to insert yet");
+      return;
+    }
+    insertAiReplyIntoNote(latest);
+  }
+
   function describeGitBackup(status: GitBackupStatus | null): string {
     if (!status) {
       return "Status unavailable";
@@ -3719,6 +3747,12 @@ export default function App() {
     if (actionId === "open-ai") {
       setAiPanelOpen(true);
       setMetadataOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "insert-last-ai-reply") {
+      insertLastAiReplyIntoActiveNote();
       setSearchOpen(false);
       return;
     }
@@ -7373,7 +7407,14 @@ export default function App() {
                       {aiMessages.length ? (
                         aiMessages.map((message) => (
                           <article key={message.id} className={message.role === "user" ? "ai-msg user" : "ai-msg assistant"}>
-                            <strong>{message.role === "user" ? "You" : "Copilot"}</strong>
+                            <div className="ai-msg-head">
+                              <strong>{message.role === "user" ? "You" : "Copilot"}</strong>
+                              {message.role === "assistant" ? (
+                                <button type="button" className="ai-msg-insert" onClick={() => insertAiReplyIntoNote(message)}>
+                                  Insert into note
+                                </button>
+                              ) : null}
+                            </div>
                             <p>{message.content}</p>
                           </article>
                         ))

@@ -35,6 +35,29 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Command palette", level: 4 })).toBeInTheDocument();
   });
 
+  it("creates and edits a saved search via modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "tag:meetings" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
+
+    expect(screen.getByRole("heading", { name: "Save search", level: 3 })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Meetings focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.getByRole("button", { name: "Edit saved search Meetings focus" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit saved search Meetings focus" }));
+    expect(screen.getByRole("heading", { name: "Edit saved search", level: 3 })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Meeting filter" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.queryByRole("button", { name: "Edit saved search Meetings focus" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit saved search Meeting filter" })).toBeInTheDocument();
+  });
+
   it("opens template picker from sidebar action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "New from template" }));

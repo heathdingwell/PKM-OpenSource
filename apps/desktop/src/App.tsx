@@ -225,6 +225,14 @@ interface SavedSearch {
   scope: "everywhere" | "current";
 }
 
+interface SavedSearchDialogState {
+  mode: "create" | "edit";
+  id: string | null;
+  label: string;
+  query: string;
+  scope: "everywhere" | "current";
+}
+
 interface CommandPaletteAction {
   id: string;
   label: string;
@@ -1341,6 +1349,7 @@ export default function App() {
     initialPrefs.notebookPinnedNoteIds ?? []
   );
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(initialPrefs.savedSearches ?? []);
+  const [savedSearchDialog, setSavedSearchDialog] = useState<SavedSearchDialogState | null>(null);
   const [backlinksPaneOpen, setBacklinksPaneOpen] = useState<boolean>(initialPrefs.backlinksPaneOpen ?? true);
   const [autoReciprocalLinks, setAutoReciprocalLinks] = useState<boolean>(initialPrefs.autoReciprocalLinks ?? false);
   const [notebookStacks, setNotebookStacks] = useState<Record<string, string>>(initialPrefs.notebookStacks ?? {});
@@ -3326,31 +3335,14 @@ export default function App() {
     }
 
     const defaultLabel = query.length > 28 ? `${query.slice(0, 28)}...` : query;
-    const input = window.prompt("Saved search name", defaultLabel);
-    const label = input?.trim();
-    if (!label) {
-      return;
-    }
-
-    setSavedSearches((previous) => {
-      const existing = previous.find(
-        (entry) => entry.query === query && entry.scope === searchScope && entry.label.toLowerCase() === label.toLowerCase()
-      );
-      if (existing) {
-        return previous;
-      }
-
-      return [
-        {
-          id: crypto.randomUUID(),
-          label,
-          query,
-          scope: searchScope
-        },
-        ...previous
-      ].slice(0, 40);
+    setSavedSearchDialog({
+      mode: "create",
+      id: null,
+      label: defaultLabel,
+      query,
+      scope: searchScope
     });
-    setToastMessage(`Saved search "${label}"`);
+    setSearchOpen(false);
   }
 
   function openSavedSearch(saved: SavedSearch): void {
@@ -3370,25 +3362,66 @@ export default function App() {
       return;
     }
 
-    const labelInput = window.prompt("Saved search name", existing.label);
-    const label = labelInput?.trim();
-    if (!label) {
+    setSavedSearchDialog({
+      mode: "edit",
+      id: existing.id,
+      label: existing.label,
+      query: existing.query,
+      scope: existing.scope
+    });
+  }
+
+  function saveSavedSearchDialog(): void {
+    if (!savedSearchDialog) {
       return;
     }
 
-    const queryInput = window.prompt("Search query", existing.query);
-    const query = queryInput?.trim();
-    if (!query) {
+    const label = savedSearchDialog.label.trim();
+    const query = savedSearchDialog.query.trim();
+    if (!label || !query) {
+      setToastMessage("Saved search needs both name and query");
       return;
     }
 
-    const scopeInput = window.prompt('Scope: "everywhere" or "current"', existing.scope);
-    const scope = scopeInput?.trim().toLowerCase() === "current" ? "current" : "everywhere";
+    if (savedSearchDialog.mode === "create") {
+      setSavedSearches((previous) => {
+        const existing = previous.find(
+          (entry) =>
+            entry.query === query &&
+            entry.scope === savedSearchDialog.scope &&
+            entry.label.toLowerCase() === label.toLowerCase()
+        );
+        if (existing) {
+          return previous;
+        }
+
+        return [
+          {
+            id: crypto.randomUUID(),
+            label,
+            query,
+            scope: savedSearchDialog.scope
+          },
+          ...previous
+        ].slice(0, 40);
+      });
+      setToastMessage(`Saved search "${label}"`);
+      setSavedSearchDialog(null);
+      return;
+    }
+
+    if (!savedSearchDialog.id) {
+      setSavedSearchDialog(null);
+      return;
+    }
 
     setSavedSearches((previous) =>
-      previous.map((entry) => (entry.id === id ? { ...entry, label, query, scope } : entry))
+      previous.map((entry) =>
+        entry.id === savedSearchDialog.id ? { ...entry, label, query, scope: savedSearchDialog.scope } : entry
+      )
     );
     setToastMessage(`Saved search "${label}" updated`);
+    setSavedSearchDialog(null);
   }
 
   function completeOpenTask(task: OpenTaskItem): void {
@@ -8268,6 +8301,64 @@ export default function App() {
               </button>
               <button type="button" className="primary" onClick={saveEventDialog}>
                 {eventDialog.mode === "edit" ? "Save" : "Create event"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {savedSearchDialog ? (
+        <div className="overlay" onClick={() => setSavedSearchDialog(null)}>
+          <section className="rename-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>{savedSearchDialog.mode === "create" ? "Save search" : "Edit saved search"}</h3>
+            <label className="template-field">
+              <span>Name</span>
+              <input
+                autoFocus
+                value={savedSearchDialog.label}
+                onChange={(event) => setSavedSearchDialog({ ...savedSearchDialog, label: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    saveSavedSearchDialog();
+                  }
+                }}
+              />
+            </label>
+            <label className="template-field">
+              <span>Query</span>
+              <input
+                value={savedSearchDialog.query}
+                onChange={(event) => setSavedSearchDialog({ ...savedSearchDialog, query: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    saveSavedSearchDialog();
+                  }
+                }}
+              />
+            </label>
+            <label className="template-field">
+              <span>Scope</span>
+              <select
+                value={savedSearchDialog.scope}
+                onChange={(event) =>
+                  setSavedSearchDialog({
+                    ...savedSearchDialog,
+                    scope: event.target.value === "current" ? "current" : "everywhere"
+                  })
+                }
+              >
+                <option value="everywhere">Everywhere</option>
+                <option value="current">Current notebook</option>
+              </select>
+            </label>
+            <footer>
+              <button type="button" onClick={() => setSavedSearchDialog(null)}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={saveSavedSearchDialog}>
+                Save
               </button>
             </footer>
           </section>

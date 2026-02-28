@@ -2193,7 +2193,8 @@ body.is-resizing {
 
 .move-modal input,
 .move-modal select,
-.rename-modal input {
+.rename-modal input,
+.rename-modal select {
   width: 100%;
   height: 38px;
   margin-bottom: 10px;

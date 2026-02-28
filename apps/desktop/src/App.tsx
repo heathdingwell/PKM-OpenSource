@@ -152,6 +152,7 @@ interface AppPrefs {
   notebookPinnedNoteIds?: string[];
   savedSearches?: SavedSearch[];
   backlinksPaneOpen?: boolean;
+  autoReciprocalLinks?: boolean;
   notebookStacks?: Record<string, string>;
   collapsedStacks?: string[];
 }
@@ -370,6 +371,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "toggle-density", label: "Toggle note density", keywords: ["density", "compact", "comfortable"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
+  { id: "toggle-auto-links", label: "Toggle auto reciprocal links", keywords: ["links", "backlinks", "reciprocal"] },
   { id: "cycle-theme", label: "Cycle theme", keywords: ["theme", "color", "palette"] },
   { id: "toggle-git-backup", label: "Toggle Git backups", keywords: ["git", "backup", "versioning"] },
   { id: "git-backup-now", label: "Run Git backup now", keywords: ["git", "backup", "commit"] },
@@ -927,6 +929,7 @@ function defaultPrefs(): AppPrefs {
     notebookPinnedNoteIds: [],
     savedSearches: [],
     backlinksPaneOpen: true,
+    autoReciprocalLinks: false,
     notebookStacks: {},
     collapsedStacks: []
   };
@@ -993,6 +996,7 @@ function loadPrefs(): AppPrefs {
           )
         : [],
       backlinksPaneOpen: typeof parsed.backlinksPaneOpen === "boolean" ? parsed.backlinksPaneOpen : true,
+      autoReciprocalLinks: typeof parsed.autoReciprocalLinks === "boolean" ? parsed.autoReciprocalLinks : false,
       notebookStacks:
         parsed.notebookStacks && typeof parsed.notebookStacks === "object"
           ? Object.fromEntries(
@@ -1337,6 +1341,7 @@ export default function App() {
   );
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(initialPrefs.savedSearches ?? []);
   const [backlinksPaneOpen, setBacklinksPaneOpen] = useState<boolean>(initialPrefs.backlinksPaneOpen ?? true);
+  const [autoReciprocalLinks, setAutoReciprocalLinks] = useState<boolean>(initialPrefs.autoReciprocalLinks ?? false);
   const [notebookStacks, setNotebookStacks] = useState<Record<string, string>>(initialPrefs.notebookStacks ?? {});
   const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(
     () => new Set(initialPrefs.collapsedStacks ?? [])
@@ -2175,6 +2180,7 @@ export default function App() {
       notebookPinnedNoteIds,
       savedSearches,
       backlinksPaneOpen,
+      autoReciprocalLinks,
       notebookStacks,
       collapsedStacks: Array.from(collapsedStacks)
     };
@@ -2197,6 +2203,7 @@ export default function App() {
     notebookPinnedNoteIds,
     savedSearches,
     backlinksPaneOpen,
+    autoReciprocalLinks,
     notebookStacks,
     collapsedStacksKey
   ]);
@@ -3175,6 +3182,57 @@ export default function App() {
     setAiPanelOpen(false);
   }
 
+  function openLinkedNote(targetNote: AppNote): void {
+    insertReciprocalLink(targetNote.id, activeNote);
+    focusNote(targetNote.id);
+  }
+
+  function openOrCreateLinkedNote(title: string): void {
+    const linked = ensureLinkedNote(title);
+    insertReciprocalLink(linked.id, activeNote);
+    focusNote(linked.id);
+  }
+
+  function insertReciprocalLink(targetNoteId: string, sourceNote: AppNote | null): void {
+    if (!autoReciprocalLinks || !sourceNote) {
+      return;
+    }
+    if (sourceNote.id === targetNoteId || sourceNote.trashedAt) {
+      return;
+    }
+
+    const backlinkTitle = sourceNote.title.trim();
+    if (!backlinkTitle) {
+      return;
+    }
+
+    let inserted = false;
+    const backlinkLower = backlinkTitle.toLowerCase();
+    const now = new Date().toISOString();
+
+    setNotes((previous) =>
+      previous.map((note) => {
+        if (note.id !== targetNoteId || note.trashedAt) {
+          return note;
+        }
+
+        const hasBackReference = note.linksOut.some((link) => link.toLowerCase() === backlinkLower);
+        if (hasBackReference) {
+          return note;
+        }
+
+        const base = note.markdown.replace(/\s+$/, "");
+        const nextMarkdown = `${base}${base ? "\n\n" : ""}[[${backlinkTitle}]]\n`;
+        inserted = true;
+        return noteFromMarkdown(note, nextMarkdown, now);
+      })
+    );
+
+    if (inserted) {
+      setToastMessage(`Inserted backlink to "${backlinkTitle}"`);
+    }
+  }
+
   function onCardClick(noteId: string, event: React.MouseEvent<HTMLButtonElement>): void {
     const isToggle = event.metaKey || event.ctrlKey;
     const isRange = event.shiftKey && lastSelectedId;
@@ -3686,6 +3744,16 @@ export default function App() {
         setLiteEditMode(false);
       }
       setEditorMode((previous) => (previous === "markdown" ? "rich" : "markdown"));
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-auto-links") {
+      setAutoReciprocalLinks((previous) => {
+        const next = !previous;
+        setToastMessage(next ? "Auto reciprocal links enabled" : "Auto reciprocal links disabled");
+        return next;
+      });
       setSearchOpen(false);
       return;
     }
@@ -4886,10 +4954,9 @@ export default function App() {
           className="inline-link"
           onClick={() => {
             if (target) {
-              focusNote(target.id);
+              openLinkedNote(target);
             } else {
-              const created = ensureLinkedNote(label);
-              focusNote(created.id);
+              openOrCreateLinkedNote(label);
             }
           }}
         >
@@ -6509,7 +6576,7 @@ export default function App() {
                               onClick={() => {
                                 setBrowseMode("all");
                                 setSelectedNotebook(note.notebook);
-                                focusNote(note.id);
+                                openLinkedNote(note);
                               }}
                             >
                               <strong>{note.title}</strong>
@@ -6999,10 +7066,9 @@ export default function App() {
                                     type="button"
                                     onClick={() => {
                                       if (entry.target) {
-                                        focusNote(entry.target.id);
+                                        openLinkedNote(entry.target);
                                       } else {
-                                        const created = ensureLinkedNote(entry.title);
-                                        focusNote(created.id);
+                                        openOrCreateLinkedNote(entry.title);
                                       }
                                     }}
                                   >
@@ -7021,7 +7087,7 @@ export default function App() {
                             {backlinks.length ? (
                               backlinks.map((entry) => (
                                 <li key={entry.id}>
-                                  <button type="button" onClick={() => focusNote(entry.id)}>
+                                  <button type="button" onClick={() => openLinkedNote(entry)}>
                                     {entry.title}
                                   </button>
                                 </li>

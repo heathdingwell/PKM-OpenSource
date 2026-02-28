@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import App from "./App";
 
 describe("App", () => {
@@ -183,5 +183,28 @@ describe("App", () => {
     confirmSpy.mockRestore();
 
     expect(screen.getByText("Trash is empty.")).toBeInTheDocument();
+  });
+
+  it("inserts a reciprocal wikilink when auto reciprocal links is enabled", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), { target: { value: ">auto reciprocal" } });
+    fireEvent.click(screen.getByText("Toggle auto reciprocal links"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Markdown" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[[Daily Journal]]" }
+    });
+
+    const sourceOutgoingSection = screen.getByRole("heading", { name: "Outgoing links", level: 5 }).closest("section");
+    expect(sourceOutgoingSection).toBeTruthy();
+    fireEvent.click(within(sourceOutgoingSection as HTMLElement).getByRole("button", { name: "Daily Journal" }));
+
+    expect(screen.getByRole("heading", { name: "Daily Journal", level: 2 })).toBeInTheDocument();
+    const targetOutgoingSection = screen.getByRole("heading", { name: "Outgoing links", level: 5 }).closest("section");
+    expect(targetOutgoingSection).toBeTruthy();
+    expect(within(targetOutgoingSection as HTMLElement).getByRole("button", { name: "Agenda" })).toBeInTheDocument();
   });
 });

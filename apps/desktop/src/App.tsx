@@ -134,6 +134,11 @@ interface EventDialogState {
   origin: EventInsertOrigin | null;
 }
 
+interface QuickTaskDialogState {
+  text: string;
+  noteId: string;
+}
+
 interface AppPrefs {
   selectedNotebook: string;
   activeId: string;
@@ -1314,6 +1319,7 @@ export default function App() {
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
+  const [quickTaskDialog, setQuickTaskDialog] = useState<QuickTaskDialogState | null>(null);
   const [stackDialog, setStackDialog] = useState<StackDialogState | null>(null);
   const [templateDialog, setTemplateDialog] = useState<TemplateDialogState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -3645,21 +3651,61 @@ export default function App() {
   }
 
   function quickCreateTask(): void {
-    const rawInput = window.prompt("Task text");
-    const taskText = rawInput?.trim();
-    if (!taskText) {
-      return;
-    }
-    if (!activeNote) {
-      setToastMessage("Open a note before creating a task");
+    const fallbackNoteId = activeNote?.id ?? activeNotes[0]?.id ?? "";
+    if (!fallbackNoteId) {
+      setToastMessage("Create a note before adding tasks");
       return;
     }
 
-    const base = draftMarkdown.replace(/\s+$/, "");
-    const separator = base.length ? "\n\n" : "";
-    const nextMarkdown = `${base}${separator}- [ ] ${taskText}\n`;
-    setDraftMarkdown(nextMarkdown);
-    setSaveState("dirty");
+    setQuickTaskDialog({
+      text: "",
+      noteId: fallbackNoteId
+    });
+  }
+
+  function saveQuickTaskDialog(): void {
+    if (!quickTaskDialog) {
+      return;
+    }
+
+    const taskText = quickTaskDialog.text.trim();
+    if (!taskText) {
+      setToastMessage("Enter task text");
+      return;
+    }
+
+    const targetNote = notes.find((note) => note.id === quickTaskDialog.noteId && !note.trashedAt);
+    if (!targetNote) {
+      setToastMessage("Select a valid note for this task");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    let nextTargetMarkdown: string | null = null;
+
+    setNotes((previous) =>
+      previous.map((note) => {
+        if (note.id !== targetNote.id) {
+          return note;
+        }
+
+        const source = note.id === activeId ? draftMarkdown : note.markdown;
+        const base = source.replace(/\s+$/, "");
+        const separator = base.length ? "\n\n" : "";
+        const nextMarkdown = `${base}${separator}- [ ] ${taskText}\n`;
+        nextTargetMarkdown = nextMarkdown;
+        return noteFromMarkdown(note, nextMarkdown, now);
+      })
+    );
+
+    if (activeId === targetNote.id && nextTargetMarkdown !== null) {
+      setDraftMarkdown(nextTargetMarkdown);
+      setSaveState("dirty");
+    }
+
+    setQuickTaskDialog(null);
+    setSelectedNotebook(targetNote.notebook);
+    focusNote(targetNote.id);
     openTasksPanel();
     setToastMessage(`Task "${taskText}" added`);
   }
@@ -8359,6 +8405,50 @@ export default function App() {
               </button>
               <button type="button" className="primary" onClick={saveSavedSearchDialog}>
                 Save
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {quickTaskDialog ? (
+        <div className="overlay" onClick={() => setQuickTaskDialog(null)}>
+          <section className="rename-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>New task</h3>
+            <label className="template-field">
+              <span>Task</span>
+              <input
+                autoFocus
+                placeholder="Task text"
+                value={quickTaskDialog.text}
+                onChange={(event) => setQuickTaskDialog({ ...quickTaskDialog, text: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    saveQuickTaskDialog();
+                  }
+                }}
+              />
+            </label>
+            <label className="template-field">
+              <span>Note</span>
+              <select
+                value={quickTaskDialog.noteId}
+                onChange={(event) => setQuickTaskDialog({ ...quickTaskDialog, noteId: event.target.value })}
+              >
+                {activeNotes.map((note) => (
+                  <option key={note.id} value={note.id}>
+                    {note.title} - {note.notebook}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <footer>
+              <button type="button" onClick={() => setQuickTaskDialog(null)}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={saveQuickTaskDialog}>
+                Add task
               </button>
             </footer>
           </section>

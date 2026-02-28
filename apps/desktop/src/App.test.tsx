@@ -79,12 +79,14 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Template Result Note", level: 2 })).toBeInTheDocument();
   });
 
-  it("opens tasks panel from create task button", () => {
+  it("creates a task from the task dialog", () => {
     render(<App />);
-    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("Quick task");
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    expect(screen.getByRole("heading", { name: "New task", level: 3 })).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Quick task" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
     expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
-    promptSpy.mockRestore();
+    expect(screen.getByText("Quick task")).toBeInTheDocument();
   });
 
   it("toggles backlinks dock in notes view", () => {

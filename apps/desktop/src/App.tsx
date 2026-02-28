@@ -148,6 +148,13 @@ interface ScratchNoteDialogState {
   notebook: string;
 }
 
+interface SlashInputDialogState {
+  kind: "linked-note" | "url";
+  editor: EditorMode;
+  value: string;
+  markdownRange?: { start: number; end: number };
+}
+
 interface AppPrefs {
   selectedNotebook: string;
   activeId: string;
@@ -1400,6 +1407,7 @@ export default function App() {
   const [linkSuggestion, setLinkSuggestion] = useState<LinkSuggestionState | null>(null);
   const [mentionSuggestion, setMentionSuggestion] = useState<MentionSuggestionState | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
+  const [slashInputDialog, setSlashInputDialog] = useState<SlashInputDialogState | null>(null);
 
   const activeNotes = useMemo(() => notes.filter((note) => !note.trashedAt), [notes]);
   const trashedNotes = useMemo(() => notes.filter((note) => Boolean(note.trashedAt)), [notes]);
@@ -2291,6 +2299,7 @@ export default function App() {
         !noteHistoryDialog &&
         !eventDialog &&
         !templateDialog &&
+        !slashInputDialog &&
         sidebarView === "notes" &&
         browseMode !== "home";
 
@@ -2406,6 +2415,7 @@ export default function App() {
         setAttachmentDropTarget(null);
         setSidebarView("notes");
         setSearchOpen(false);
+        setSlashInputDialog(null);
         setSlashMenu(null);
         setMentionSuggestion(null);
       }
@@ -2429,6 +2439,7 @@ export default function App() {
     noteHistoryDialog,
     eventDialog,
     templateDialog,
+    slashInputDialog,
     sidebarView,
     browseMode,
     visibleNotes,
@@ -5461,6 +5472,66 @@ export default function App() {
     setEditorContextMenu(null);
   }
 
+  function submitSlashInputDialog(): void {
+    if (!slashInputDialog) {
+      return;
+    }
+
+    const value = slashInputDialog.value.trim();
+    if (!value) {
+      return;
+    }
+
+    if (slashInputDialog.kind === "linked-note") {
+      const linked = ensureLinkedNoteWithReciprocal(value);
+      const reference = `[[${linked.title}]]`;
+
+      if (slashInputDialog.editor === "markdown") {
+        const range = slashInputDialog.markdownRange;
+        if (!range) {
+          setSlashInputDialog(null);
+          return;
+        }
+
+        const next = `${draftMarkdown.slice(0, range.start)}${reference}${draftMarkdown.slice(range.end)}`;
+        setDraftMarkdown(next);
+        setSlashInputDialog(null);
+        setSlashMenu(null);
+        setLinkSuggestion(null);
+
+        window.requestAnimationFrame(() => {
+          const current = markdownEditorRef.current;
+          if (!current) {
+            return;
+          }
+          const cursor = range.start + reference.length;
+          current.focus();
+          current.setSelectionRange(cursor, cursor);
+        });
+        return;
+      }
+
+      richEditorRef.current?.insertContent(reference);
+      setSlashInputDialog(null);
+      setSlashMenu(null);
+      setLinkSuggestion(null);
+      window.requestAnimationFrame(() => {
+        richEditorRef.current?.focus();
+      });
+      return;
+    }
+
+    if (slashInputDialog.kind === "url") {
+      richEditorRef.current?.setLink(value);
+      setSlashInputDialog(null);
+      setSlashMenu(null);
+      setLinkSuggestion(null);
+      window.requestAnimationFrame(() => {
+        richEditorRef.current?.focus();
+      });
+    }
+  }
+
   function applyMarkdownSlashCommand(command: SlashCommand): void {
     const editor = markdownEditorRef.current;
     if (!editor) {
@@ -5549,15 +5620,16 @@ export default function App() {
         wrap("[", "](https://)", "link text");
         break;
       case "new-linked-note":
-      case "link-to-note": {
-        const title = window.prompt("Linked note title");
-        if (!title?.trim()) {
-          return;
-        }
-        const linked = ensureLinkedNoteWithReciprocal(title.trim());
-        insert(`[[${linked.title}]]`);
-        break;
-      }
+      case "link-to-note":
+        setSlashInputDialog({
+          kind: "linked-note",
+          editor: "markdown",
+          value: selectedText.trim(),
+          markdownRange: { start: replaceStart, end: replaceEnd }
+        });
+        setSlashMenu(null);
+        setLinkSuggestion(null);
+        return;
       case "table":
         insert("| Column | Value |\n| --- | --- |\n|  |  |\n");
         break;
@@ -5706,24 +5778,23 @@ export default function App() {
       case "numbered-list":
         richEditorRef.current?.toggleOrderedList();
         break;
-      case "link": {
-        const href = window.prompt("Enter a URL for this link");
-        if (!href?.trim()) {
-          return;
-        }
-        richEditorRef.current?.setLink(href.trim());
-        break;
-      }
+      case "link":
+        setSlashInputDialog({
+          kind: "url",
+          editor: "rich",
+          value: "https://"
+        });
+        setSlashMenu(null);
+        return;
       case "new-linked-note":
-      case "link-to-note": {
-        const title = window.prompt("Linked note title");
-        if (!title?.trim()) {
-          return;
-        }
-        const linked = ensureLinkedNoteWithReciprocal(title.trim());
-        richEditorRef.current?.insertContent(`[[${linked.title}]]`);
-        break;
-      }
+      case "link-to-note":
+        setSlashInputDialog({
+          kind: "linked-note",
+          editor: "rich",
+          value: ""
+        });
+        setSlashMenu(null);
+        return;
       case "table":
         richEditorRef.current?.insertContent("| Column | Value |\n| --- | --- |\n|  |  |");
         break;
@@ -5840,6 +5911,7 @@ export default function App() {
         setCalendarDialogOpen(false);
         setEventDialog(null);
         setAttachmentDropTarget(null);
+        setSlashInputDialog(null);
         setSlashMenu(null);
         setMentionSuggestion(null);
       }}
@@ -6870,7 +6942,13 @@ export default function App() {
                 Rich
               </button>
               <span className="toolbar-divider" />
-              <button type="button" onClick={openSlashMenuFromInsert}>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openSlashMenuFromInsert();
+                }}
+              >
                 Insert
               </button>
               <button
@@ -8386,6 +8464,37 @@ export default function App() {
               </button>
               <button type="button" className="primary" onClick={saveEventDialog}>
                 {eventDialog.mode === "edit" ? "Save" : "Create event"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {slashInputDialog ? (
+        <div className="overlay" onClick={() => setSlashInputDialog(null)}>
+          <section className="rename-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>{slashInputDialog.kind === "url" ? "Insert link" : "Link to note"}</h3>
+            <label className="template-field">
+              <span>{slashInputDialog.kind === "url" ? "URL" : "Note title"}</span>
+              <input
+                autoFocus
+                placeholder={slashInputDialog.kind === "url" ? "https://example.com" : "Note title"}
+                value={slashInputDialog.value}
+                onChange={(event) => setSlashInputDialog({ ...slashInputDialog, value: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    submitSlashInputDialog();
+                  }
+                }}
+              />
+            </label>
+            <footer>
+              <button type="button" onClick={() => setSlashInputDialog(null)}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={submitSlashInputDialog}>
+                Insert link
               </button>
             </footer>
           </section>

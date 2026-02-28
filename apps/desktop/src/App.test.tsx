@@ -70,6 +70,35 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Edit saved search Meeting filter" })).toBeInTheDocument();
   });
 
+
+  it("inserts a markdown linked note from typed slash menu via modal", () => {
+    const promptSpy = vi.spyOn(window, "prompt");
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    const slashCommand = `${editor?.value ?? ""}
+/link`;
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: slashCommand, selectionStart: slashCommand.length }
+    });
+
+    const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
+    expect(slashMenu).toBeTruthy();
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Link to note" }));
+
+    expect(screen.getByRole("heading", { name: "Link to note", level: 3 })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "Roadmap Hub" } });
+    fireEvent.click(screen.getByRole("button", { name: "Insert link" }));
+
+    const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(updatedEditor?.value).toContain("[[Roadmap Hub]]");
+    expect(promptSpy).not.toHaveBeenCalled();
+    promptSpy.mockRestore();
+  });
+
   it("opens template picker from sidebar action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "New from template" }));

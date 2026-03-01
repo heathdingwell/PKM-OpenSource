@@ -292,6 +292,31 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Backlinks", level: 2 })).not.toBeInTheDocument();
   });
 
+  it("updates backlinks from unsaved active note title edits", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    const sourceEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(sourceEditor).toBeTruthy();
+    fireEvent.change(sourceEditor as HTMLTextAreaElement, {
+      target: { value: "# Link Source\n\n[[Focus Board]]" }
+    });
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.click(agendaCard as HTMLButtonElement);
+
+    const targetEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(targetEditor).toBeTruthy();
+    fireEvent.change(targetEditor as HTMLTextAreaElement, {
+      target: { value: "# Focus Board\n\nUnsaved title change" }
+    });
+
+    const backlinksDock = screen.getByLabelText("Backlinks dock");
+    expect(within(backlinksDock).getByRole("button", { name: /Link Source/i })).toBeInTheDocument();
+  });
+
   it("opens a note in lite edit mode from context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

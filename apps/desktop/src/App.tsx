@@ -2016,16 +2016,24 @@ export default function App() {
     }));
   }, [activeNote, draftMarkdown, activeNotes]);
 
-  const backlinks = useMemo(() => {
+  const activeBacklinkTitle = useMemo(() => {
     if (!activeNote) {
+      return "";
+    }
+
+    const draftTitle = draftPreview.title.trim();
+    return (draftTitle || activeNote.title).toLowerCase();
+  }, [activeNote, draftPreview.title]);
+
+  const backlinks = useMemo(() => {
+    if (!activeNote || !activeBacklinkTitle) {
       return [];
     }
 
-    const title = activeNote.title.toLowerCase();
     return activeNotes.filter(
-      (note) => note.id !== activeNote.id && note.linksOut.some((link) => link.toLowerCase() === title)
+      (note) => note.id !== activeNote.id && note.linksOut.some((link) => link.toLowerCase() === activeBacklinkTitle)
     );
-  }, [activeNotes, activeNote]);
+  }, [activeNotes, activeNote, activeBacklinkTitle]);
 
   const draftWordCount = useMemo(() => {
     const text = draftMarkdown.trim();

@@ -6962,6 +6962,13 @@ export default function App() {
                         event.preventDefault();
                         openCardMenu(note.id, event.clientX, event.clientY);
                       }}
+                      onKeyDown={(event) => {
+                        if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                          event.preventDefault();
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          openCardMenu(note.id, rect.left + 12, rect.bottom - 12);
+                        }
+                      }}
                     >
                       <span className="note-card-actions">
                         {showQuickAction ? (

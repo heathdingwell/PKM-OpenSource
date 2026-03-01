@@ -244,6 +244,17 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
+  it("opens note context menu from keyboard context-menu key", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
+    expect(noteCard).toBeTruthy();
+    fireEvent.keyDown(noteCard as HTMLButtonElement, { key: "ContextMenu" });
+
+    expect(screen.getByRole("button", { name: /Open in new window/i })).toBeInTheDocument();
+  });
+
   it("supports arrow navigation and enter for focused editor mode", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

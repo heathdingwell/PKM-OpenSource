@@ -291,6 +291,17 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Rename notebook" })).toBeInTheDocument();
   });
 
+  it("opens editor context menu from keyboard context-menu key", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    (editor as HTMLTextAreaElement).focus();
+    fireEvent.keyDown(editor as HTMLTextAreaElement, { key: "ContextMenu" });
+    expect(screen.getByRole("button", { name: "Bold" })).toBeInTheDocument();
+  });
+
   it("supports arrow navigation and enter for focused editor mode", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

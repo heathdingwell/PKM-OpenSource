@@ -2558,6 +2558,19 @@ export default function App() {
         return;
       }
 
+      const isEditorFocusTarget =
+        eventTarget === markdownEditorRef.current ||
+        (eventTarget instanceof HTMLElement &&
+          (eventTarget.classList.contains("rich-editor-content") || Boolean(eventTarget.closest(".rich-editor-content"))));
+      if (activeNote && (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) && isEditorFocusTarget) {
+        event.preventDefault();
+        const anchor = editorMainRef.current?.getBoundingClientRect();
+        if (anchor) {
+          openEditorContextMenu(anchor.left + 28, anchor.top + 120);
+        }
+        return;
+      }
+
       if (event.key === "Escape") {
         activeResizeRef.current = null;
         document.body.classList.remove("is-resizing");

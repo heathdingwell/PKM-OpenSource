@@ -478,7 +478,7 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Remove notebook shortcut Journal Hub" })).toBeInTheDocument();
     expect(screen.getByText("In Journal Hub")).toBeInTheDocument();
 
-    const otherNotebook = notebookItems().find((entry) => entry.textContent?.includes("[aNote] No Folder"));
+    const otherNotebook = notebookItems().find((entry) => entry.textContent?.includes("Inbox"));
     expect(otherNotebook).toBeTruthy();
     fireEvent.click(otherNotebook as HTMLButtonElement);
     expect(screen.queryByRole("heading", { name: "Journal Hub", level: 1 })).not.toBeInTheDocument();

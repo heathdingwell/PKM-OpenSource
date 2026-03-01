@@ -373,24 +373,24 @@ const seedNotes: SeedNote[] = [
       "# Daily Journal\n\nAM fill this section first thing in the morning to set yourself up for success.\n\n## Wins\n- Closed key tasks\n- Did a focused review"
   },
   {
-    notebook: "Readwise",
-    fileName: "Tweets From Eric Cole.md",
+    notebook: "Clippings",
+    fileName: "Founder Advice excerpt.md",
     updatedAt: "2026-02-25T15:00:00.000Z",
     markdown:
-      "# Tweets From Eric Cole\n\nhttps://twitter.com/erichustls\n\nIf I wanted to quit my job and use AI to get rich by Summer, here is exactly what I would do."
+      "# Founder Advice excerpt\n\nhttps://example.com/founder-advice\n\nA short excerpt on compounding skills, shipping often, and documenting learnings."
   },
   {
-    notebook: "Readwise",
-    fileName: "Tweets From Dickie Bush.md",
+    notebook: "Clippings",
+    fileName: "Newsletter insight.md",
     updatedAt: "2026-02-25T14:00:00.000Z",
     markdown:
-      "# Tweets From Dickie Bush\n\nWild how this newsletter generates 3k what I made on Wall Street under fluorescent lights."
+      "# Newsletter insight\n\nSummary notes from a weekly newsletter with key tactics worth testing."
   },
   {
-    notebook: "[aNote] No Folder",
-    fileName: "Second test.md",
+    notebook: "Inbox",
+    fileName: "Scratch note.md",
     updatedAt: "2026-02-24T12:00:00.000Z",
-    markdown: "# Second test\n\nUntitled\n\n/"
+    markdown: "# Scratch note\n\nUntitled\n\n/"
   },
   {
     notebook: "Recipes",

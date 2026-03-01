@@ -104,6 +104,28 @@ describe("App", () => {
     expect(within(homeDashboard as HTMLElement).getByText("No saved searches yet")).toBeInTheDocument();
   });
 
+  it("reopens notebook-scoped saved search in its saved notebook", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "agenda" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Daily scoped" } });
+    fireEvent.change(screen.getByLabelText("Scope"), { target: { value: "current" } });
+    fireEvent.change(screen.getByLabelText("Notebook"), { target: { value: "Daily Notes" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const notebookItems = Array.from(document.querySelectorAll(".notebook-item"));
+    const alternateNotebook = notebookItems.find((entry) => !entry.textContent?.includes("Daily Notes"));
+    expect(alternateNotebook).toBeTruthy();
+    fireEvent.click(alternateNotebook as HTMLButtonElement);
+
+    expect(screen.queryByRole("heading", { name: "Daily Notes", level: 1 })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Daily scoped/i }));
+    expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
+  });
+
 
   it("inserts a markdown linked note from typed slash menu via modal", () => {
     const promptSpy = vi.spyOn(window, "prompt");

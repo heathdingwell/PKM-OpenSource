@@ -261,6 +261,7 @@ interface SavedSearch {
   label: string;
   query: string;
   scope: "everywhere" | "current";
+  notebook?: string;
 }
 
 interface SavedSearchDialogState {
@@ -269,6 +270,7 @@ interface SavedSearchDialogState {
   label: string;
   query: string;
   scope: "everywhere" | "current";
+  notebook: string;
 }
 
 interface CommandPaletteAction {
@@ -3689,17 +3691,26 @@ export default function App() {
     }
 
     const defaultLabel = query.length > 28 ? `${query.slice(0, 28)}...` : query;
+    const fallbackNotebook = selectedNotebook === "All Notes" ? notebookList[0] ?? "All Notes" : selectedNotebook;
     setSavedSearchDialog({
       mode: "create",
       id: null,
       label: defaultLabel,
       query,
-      scope: searchScope
+      scope: searchScope,
+      notebook: searchScope === "current" ? fallbackNotebook : ""
     });
     setSearchOpen(false);
   }
 
   function openSavedSearch(saved: SavedSearch): void {
+    if (saved.scope === "current") {
+      const preferredNotebook =
+        typeof saved.notebook === "string" && saved.notebook.trim().length > 0 ? saved.notebook : selectedNotebook;
+      if (preferredNotebook !== "All Notes" && notebookList.includes(preferredNotebook)) {
+        setSelectedNotebook(preferredNotebook);
+      }
+    }
     setBrowseMode("all");
     setSearchScope(saved.scope);
     setQuickQuery(saved.query);
@@ -3721,7 +3732,8 @@ export default function App() {
       id: existing.id,
       label: existing.label,
       query: existing.query,
-      scope: existing.scope
+      scope: existing.scope,
+      notebook: existing.notebook ?? (selectedNotebook === "All Notes" ? notebookList[0] ?? "All Notes" : selectedNotebook)
     });
   }
 
@@ -3732,6 +3744,10 @@ export default function App() {
 
     const label = savedSearchDialog.label.trim();
     const query = savedSearchDialog.query.trim();
+    const notebook =
+      savedSearchDialog.scope === "current"
+        ? savedSearchDialog.notebook.trim() || (selectedNotebook === "All Notes" ? notebookList[0] ?? "All Notes" : selectedNotebook)
+        : "";
     if (!label || !query) {
       setToastMessage("Saved search needs both name and query");
       return;
@@ -3743,6 +3759,7 @@ export default function App() {
           (entry) =>
             entry.query === query &&
             entry.scope === savedSearchDialog.scope &&
+            (savedSearchDialog.scope !== "current" || (entry.notebook ?? "") === notebook) &&
             entry.label.toLowerCase() === label.toLowerCase()
         );
         if (existing) {
@@ -3754,7 +3771,8 @@ export default function App() {
             id: crypto.randomUUID(),
             label,
             query,
-            scope: savedSearchDialog.scope
+            scope: savedSearchDialog.scope,
+            notebook: savedSearchDialog.scope === "current" ? notebook : undefined
           },
           ...previous
         ].slice(0, 40);
@@ -3771,7 +3789,15 @@ export default function App() {
 
     setSavedSearches((previous) =>
       previous.map((entry) =>
-        entry.id === savedSearchDialog.id ? { ...entry, label, query, scope: savedSearchDialog.scope } : entry
+        entry.id === savedSearchDialog.id
+          ? {
+              ...entry,
+              label,
+              query,
+              scope: savedSearchDialog.scope,
+              notebook: savedSearchDialog.scope === "current" ? notebook : undefined
+            }
+          : entry
       )
     );
     setToastMessage(`Saved search "${label}" updated`);
@@ -4497,6 +4523,14 @@ export default function App() {
 
   function removeShortcutTag(tag: string): void {
     setShortcutTags((previous) => previous.filter((entry) => entry !== tag));
+  }
+
+  function savedSearchScopeLabel(saved: SavedSearch): string {
+    if (saved.scope !== "current") {
+      return "Everywhere";
+    }
+    const notebook = typeof saved.notebook === "string" && saved.notebook.trim().length > 0 ? saved.notebook : "Current notebook";
+    return `In ${notebook}`;
   }
 
   function removePinnedNote(noteId: string, scope: "home" | "notebook"): void {
@@ -6667,7 +6701,7 @@ export default function App() {
                 <li key={saved.id} className="shortcut-row">
                   <button type="button" className="shortcut-item" onClick={() => openSavedSearch(saved)}>
                     <span>{saved.label}</span>
-                    <small>{saved.scope === "current" ? `In ${selectedNotebook}` : "Everywhere"}</small>
+                    <small>{savedSearchScopeLabel(saved)}</small>
                   </button>
                   <span className="shortcut-actions">
                     <button
@@ -7066,7 +7100,7 @@ export default function App() {
                     <li key={saved.id} className="home-list-row">
                       <button type="button" className="home-list-main" onClick={() => openSavedSearch(saved)}>
                         <strong>{saved.label}</strong>
-                        <small>{saved.scope === "current" ? `In ${selectedNotebook}` : "Everywhere"}</small>
+                        <small>{savedSearchScopeLabel(saved)}</small>
                       </button>
                       <span className="home-list-actions">
                         <button
@@ -9217,7 +9251,11 @@ export default function App() {
                 onChange={(event) =>
                   setSavedSearchDialog({
                     ...savedSearchDialog,
-                    scope: event.target.value === "current" ? "current" : "everywhere"
+                    scope: event.target.value === "current" ? "current" : "everywhere",
+                    notebook:
+                      event.target.value === "current"
+                        ? savedSearchDialog.notebook || (selectedNotebook === "All Notes" ? notebookList[0] ?? "All Notes" : selectedNotebook)
+                        : ""
                   })
                 }
               >
@@ -9225,6 +9263,21 @@ export default function App() {
                 <option value="current">Current notebook</option>
               </select>
             </label>
+            {savedSearchDialog.scope === "current" ? (
+              <label className="template-field">
+                <span>Notebook</span>
+                <select
+                  value={savedSearchDialog.notebook}
+                  onChange={(event) => setSavedSearchDialog({ ...savedSearchDialog, notebook: event.target.value })}
+                >
+                  {notebookList.map((notebook) => (
+                    <option key={notebook} value={notebook}>
+                      {notebook}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <footer>
               <button type="button" onClick={() => setSavedSearchDialog(null)}>
                 Cancel

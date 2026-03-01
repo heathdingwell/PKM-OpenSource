@@ -295,6 +295,30 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Template Result Note", level: 2 })).toBeInTheDocument();
   });
 
+  it("expands template variables when creating a note", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\nDate {{date}}\nTime {{time}}\nWhen {{datetime}}\nStamp {{timestamp}}\nTitle {{title}}" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Use this template" }));
+    fireEvent.change(screen.getByPlaceholderText("New note title"), { target: { value: "Template Vars Note" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create note" }));
+
+    expect(await screen.findByRole("heading", { name: "Template Vars Note", level: 2 })).toBeInTheDocument();
+    const resultEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(resultEditor?.value).toContain("Title Template Vars Note");
+    expect(resultEditor?.value).not.toContain("{{date}}");
+    expect(resultEditor?.value).not.toContain("{{time}}");
+    expect(resultEditor?.value).not.toContain("{{datetime}}");
+    expect(resultEditor?.value).not.toContain("{{timestamp}}");
+    expect(resultEditor?.value).not.toContain("{{title}}");
+  });
+
   it("creates a task from the task dialog", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));

@@ -1024,6 +1024,30 @@ function rewriteHeading(markdown: string, title: string): string {
   return `# ${title}\n\n${body}`;
 }
 
+function expandTemplateVariables(markdown: string, options: { title: string; now: Date }): string {
+  const date = toDateInputValue(options.now);
+  const time = toTimeInputValue(options.now);
+  const datetime = `${date} ${time}`;
+  const timestamp = options.now.toISOString();
+
+  return markdown.replace(/\{\{\s*(title|date|time|datetime|timestamp)\s*\}\}/gi, (_match, key: string) => {
+    const normalized = key.toLowerCase();
+    if (normalized === "title") {
+      return options.title;
+    }
+    if (normalized === "date") {
+      return date;
+    }
+    if (normalized === "time") {
+      return time;
+    }
+    if (normalized === "datetime") {
+      return datetime;
+    }
+    return timestamp;
+  });
+}
+
 function rewriteWikilinks(markdown: string, titleMap: ReadonlyMap<string, string>): string {
   if (!titleMap.size) {
     return markdown;
@@ -4808,17 +4832,19 @@ export default function App() {
   }
 
   async function createNoteFromTemplate(templateId: string, nextTitle: string, notebook: string): Promise<boolean> {
-    const note = notes.find((entry) => entry.id === templateId);
+    const note = liveNotesById.get(templateId) ?? notes.find((entry) => entry.id === templateId);
     const safeTitle = nextTitle.trim();
     const safeNotebook = notebook.trim();
     if (!note || !note.isTemplate || !safeTitle || !safeNotebook) {
       return false;
     }
 
-    const now = new Date().toISOString();
+    const nowDate = new Date();
+    const now = nowDate.toISOString();
     const path = `${safeNotebook}/${toFileName(safeTitle)}`;
     const rewrittenHeading = rewriteHeading(note.markdown, safeTitle);
-    const markdown = await cloneNoteAttachmentsForCopy(note.path, path, rewrittenHeading);
+    const expanded = expandTemplateVariables(rewrittenHeading, { title: safeTitle, now: nowDate });
+    const markdown = await cloneNoteAttachmentsForCopy(note.path, path, expanded);
     const created = noteFromMarkdown(
       {
         ...note,

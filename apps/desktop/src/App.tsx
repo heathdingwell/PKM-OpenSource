@@ -1904,8 +1904,17 @@ export default function App() {
     return groups;
   }, [quickResults]);
 
-  const openTasks = useMemo(() => extractOpenTasks(activeNotes), [activeNotes]);
-  const attachmentItems = useMemo(() => extractAttachments(activeNotes), [activeNotes]);
+  const liveDerivedNotes = useMemo(() => {
+    if (!activeNote || activeNote.trashedAt || draftMarkdown === activeNote.markdown) {
+      return activeNotes;
+    }
+    return activeNotes.map((note) =>
+      note.id === activeNote.id ? noteFromMarkdown(note, draftMarkdown, note.updatedAt) : note
+    );
+  }, [activeNotes, activeNote, draftMarkdown]);
+
+  const openTasks = useMemo(() => extractOpenTasks(liveDerivedNotes), [liveDerivedNotes]);
+  const attachmentItems = useMemo(() => extractAttachments(liveDerivedNotes), [liveDerivedNotes]);
   const calendarEventsById = useMemo(() => new Map(calendarEvents.map((event) => [event.id, event])), [calendarEvents]);
   const calendarGroups = useMemo(() => {
     const sorted = [...calendarEvents].sort((left, right) => left.startAt.localeCompare(right.startAt));
@@ -3291,7 +3300,7 @@ export default function App() {
   }
 
   function flushActiveDraft(): void {
-    if (!activeNote || draftMarkdown === activeNote.markdown) {
+    if (!activeNote || !activeId || activeId !== activeNote.id || draftMarkdown === activeNote.markdown) {
       return;
     }
 
@@ -4068,8 +4077,12 @@ export default function App() {
       return;
     }
 
+    const targetIsCurrent = activeNote?.id === targetNote.id;
     const now = new Date().toISOString();
-    let nextTargetMarkdown: string | null = null;
+    const source = targetIsCurrent ? draftMarkdown : targetNote.markdown;
+    const base = source.replace(/\s+$/, "");
+    const separator = base.length ? "\n\n" : "";
+    const nextTargetMarkdown = `${base}${separator}- [ ] ${taskText}\n`;
 
     setNotes((previous) =>
       previous.map((note) => {
@@ -4077,23 +4090,22 @@ export default function App() {
           return note;
         }
 
-        const source = note.id === activeId ? draftMarkdown : note.markdown;
-        const base = source.replace(/\s+$/, "");
-        const separator = base.length ? "\n\n" : "";
-        const nextMarkdown = `${base}${separator}- [ ] ${taskText}\n`;
-        nextTargetMarkdown = nextMarkdown;
-        return noteFromMarkdown(note, nextMarkdown, now);
+        return noteFromMarkdown(note, nextTargetMarkdown, now);
       })
     );
 
-    if (activeId === targetNote.id && nextTargetMarkdown !== null) {
+    if (targetIsCurrent) {
       setDraftMarkdown(nextTargetMarkdown);
       setSaveState("dirty");
     }
 
     setQuickTaskDialog(null);
     setSelectedNotebook(targetNote.notebook);
-    focusNote(targetNote.id);
+    if (!targetIsCurrent) {
+      focusNote(targetNote.id);
+    } else {
+      touchRecent(targetNote.id);
+    }
     openTasksPanel();
     setToastMessage(`Task "${taskText}" added`);
   }

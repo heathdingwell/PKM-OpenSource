@@ -302,7 +302,22 @@ describe("App", () => {
     fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Quick task" } });
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
     expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
-    expect(screen.getByText("Quick task")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Quick task/i })).toBeInTheDocument();
+  });
+
+  it("shows unsaved markdown checklist items in tasks view", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Draft Task Note\n\n- [ ] Unsaved task from draft" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
+    expect(screen.getByRole("button", { name: /Unsaved task from draft/i })).toBeInTheDocument();
   });
 
   it("toggles backlinks dock in notes view", () => {

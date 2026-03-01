@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { SearchIndex } from "@pkm-os/indexer";
 import { type NoteRecord, VaultService } from "@pkm-os/vault-core";
+import TurndownService from "turndown";
 import RichMarkdownEditor, { type RichMarkdownEditorHandle } from "./RichMarkdownEditor";
 
 interface SeedNote {
@@ -626,6 +627,50 @@ function buildTableOfContents(markdown: string): string {
     .join("\n");
 
   return `## Table of contents\n${items}\n`;
+}
+
+function createClipboardTurndownService(): TurndownService {
+  const service = new TurndownService({
+    headingStyle: "atx",
+    codeBlockStyle: "fenced",
+    bulletListMarker: "-"
+  });
+  service.keep(["u", "sup", "sub"]);
+  return service;
+}
+
+function sanitizeClipboardHtml(html: string): string {
+  if (typeof DOMParser === "undefined") {
+    return html;
+  }
+
+  const parsed = new DOMParser().parseFromString(html, "text/html");
+  parsed.querySelectorAll("script,style,iframe,object,embed,meta,link").forEach((node) => node.remove());
+
+  const nodes = Array.from(parsed.querySelectorAll<HTMLElement>("*"));
+  for (const element of nodes) {
+    for (const attr of Array.from(element.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith("on") || name === "style" || name === "class" || name === "id") {
+        element.removeAttribute(attr.name);
+        continue;
+      }
+      if ((name === "href" || name === "src") && /^\s*javascript:/i.test(attr.value)) {
+        element.removeAttribute(attr.name);
+      }
+    }
+  }
+
+  return parsed.body.innerHTML;
+}
+
+function normalizePastedMarkdown(content: string): string {
+  return content
+    .replace(/\u00a0/g, " ")
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function findMarkdownTextRanges(markdown: string, query: string): FindMatchRange[] {
@@ -1410,6 +1455,7 @@ function loadCalendarEvents(): CalendarEvent[] {
 export default function App() {
   const initialPrefs = useMemo(() => loadPrefs(), []);
   const initialAiSettings = useMemo(() => loadAiSettings(), []);
+  const clipboardTurndown = useMemo(() => createClipboardTurndownService(), []);
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(() =>
     clampPaneWidth(initialPrefs.sidebarWidth ?? 240, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH)
@@ -4151,6 +4197,14 @@ export default function App() {
     setEditorContextMenu(null);
   }
 
+  function openNotebookContextMenu(notebook: string, clientX: number, clientY: number): void {
+    const position = clampMenuPosition(clientX, clientY);
+    setNotebookMenu({ notebook, x: position.x, y: position.y });
+    setContextMenu(null);
+    setEditorContextMenu(null);
+    setNoteListMenu(null);
+  }
+
   function toggleTagFilter(tag: string): void {
     setTagFilters((previous) => {
       if (previous.includes(tag)) {
@@ -5360,8 +5414,14 @@ export default function App() {
           }}
           onContextMenu={(event) => {
             event.preventDefault();
-            const position = clampMenuPosition(event.clientX, event.clientY);
-            setNotebookMenu({ notebook, x: position.x, y: position.y });
+            openNotebookContextMenu(notebook, event.clientX, event.clientY);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+              event.preventDefault();
+              const rect = event.currentTarget.getBoundingClientRect();
+              openNotebookContextMenu(notebook, rect.left + 12, rect.bottom - 12);
+            }
           }}
           onDragOver={(event) => {
             if (!draggingNoteId) {
@@ -5443,6 +5503,9 @@ export default function App() {
     const editor = markdownEditorRef.current;
     if (!editor) {
       setDraftMarkdown((previous) => `${previous}\n${content}`);
+      setLinkSuggestion(null);
+      setMentionSuggestion(null);
+      setSlashMenu(null);
       return;
     }
 
@@ -5450,6 +5513,9 @@ export default function App() {
     const end = editor.selectionEnd;
     const next = `${draftMarkdown.slice(0, start)}${content}${draftMarkdown.slice(end)}`;
     setDraftMarkdown(next);
+    setLinkSuggestion(null);
+    setMentionSuggestion(null);
+    setSlashMenu(null);
 
     window.requestAnimationFrame(() => {
       const current = markdownEditorRef.current;
@@ -5459,6 +5525,9 @@ export default function App() {
       const cursor = start + content.length;
       current.focus();
       current.setSelectionRange(cursor, cursor);
+      syncLinkSuggestion(next, cursor);
+      syncMentionSuggestion(next, cursor);
+      syncSlashSuggestion(next, cursor);
     });
   }
 
@@ -5617,6 +5686,15 @@ export default function App() {
     setContextMenu(null);
     setNotebookMenu(null);
     setSlashMenu(null);
+  }
+
+  function convertClipboardHtmlToMarkdown(html: string, plainText = ""): string {
+    const sanitized = sanitizeClipboardHtml(html);
+    const markdown = normalizePastedMarkdown(clipboardTurndown.turndown(sanitized));
+    if (markdown) {
+      return markdown;
+    }
+    return normalizePastedMarkdown(plainText);
   }
 
   function openFindInNote(): void {
@@ -7355,6 +7433,19 @@ export default function App() {
                       onPaste={async (event) => {
                         const files = event.clipboardData?.files ? Array.from(event.clipboardData.files) : [];
                         if (!files.length) {
+                          const html = event.clipboardData?.getData("text/html") ?? "";
+                          if (!html.trim()) {
+                            return;
+                          }
+
+                          event.preventDefault();
+                          const plainText = event.clipboardData?.getData("text/plain") ?? "";
+                          const pasted = convertClipboardHtmlToMarkdown(html, plainText);
+                          if (!pasted) {
+                            return;
+                          }
+
+                          insertMarkdownAtSelection(pasted);
                           return;
                         }
                         event.preventDefault();

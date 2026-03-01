@@ -158,6 +158,33 @@ describe("App", () => {
     promptSpy.mockRestore();
   });
 
+  it("normalizes HTML paste into markdown in markdown editor", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    const clipboardData = {
+      files: [],
+      getData: (type: string) => {
+        if (type === "text/html") {
+          return "<h2>Agenda</h2><p>Visit <a href=\"https://example.com\">Example</a></p><script>alert(1)</script>";
+        }
+        if (type === "text/plain") {
+          return "Agenda\nVisit Example";
+        }
+        return "";
+      }
+    } as unknown as DataTransfer;
+
+    fireEvent.paste(editor as HTMLTextAreaElement, { clipboardData });
+
+    const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(updatedEditor?.value).toContain("## Agenda");
+    expect(updatedEditor?.value).toContain("[Example](https://example.com)");
+    expect(updatedEditor?.value).not.toContain("alert(1)");
+  });
+
 
   it("generates table of contents links from markdown headings", () => {
     render(<App />);
@@ -253,6 +280,15 @@ describe("App", () => {
     fireEvent.keyDown(noteCard as HTMLButtonElement, { key: "ContextMenu" });
 
     expect(screen.getByRole("button", { name: /Open in new window/i })).toBeInTheDocument();
+  });
+
+  it("opens notebook context menu from keyboard context-menu key", () => {
+    render(<App />);
+    const notebookItem = document.querySelector(".notebook-item") as HTMLButtonElement | null;
+    expect(notebookItem).toBeTruthy();
+
+    fireEvent.keyDown(notebookItem as HTMLButtonElement, { key: "ContextMenu" });
+    expect(screen.getByRole("button", { name: "Rename notebook" })).toBeInTheDocument();
   });
 
   it("supports arrow navigation and enter for focused editor mode", () => {

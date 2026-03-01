@@ -17,4 +17,9 @@ describe("doc-engine markdown helpers", () => {
     expect(extractTags(markdown)).toEqual(["tag"]);
     expect(extractWikiLinks(markdown)).toEqual(["Next Note"]);
   });
+
+  it("normalizes aliased and anchored wikilinks", () => {
+    const markdown = "# T\n\n[[Roadmap|Plan]] [[Roadmap#Milestones]] [[event:abc123|Standup]]";
+    expect(extractWikiLinks(markdown)).toEqual(["Roadmap"]);
+  });
 });

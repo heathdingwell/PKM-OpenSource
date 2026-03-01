@@ -13,4 +13,14 @@ describe("VaultService", () => {
     expect(note.tags).toContain("tag");
     expect(note.linksOut).toContain("Second note");
   });
+
+  it("normalizes aliased and anchored wikilinks in note metadata", () => {
+    const vault = new VaultService();
+    const note = vault.upsertNoteFromMarkdown(
+      "Inbox/First.md",
+      "# First note\n\n[[Second note|Alias]] [[Second note#Heading]] [[event:abc123|Standup]]"
+    );
+
+    expect(note.linksOut).toEqual(["Second note"]);
+  });
 });

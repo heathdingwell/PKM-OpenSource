@@ -355,6 +355,25 @@ describe("App", () => {
     expect(within(backlinksDock).getByRole("button", { name: /Link Source/i })).toBeInTheDocument();
   });
 
+  it("matches backlinks for aliased and anchored wikilinks", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    const sourceEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(sourceEditor).toBeTruthy();
+    fireEvent.change(sourceEditor as HTMLTextAreaElement, {
+      target: { value: "# Link Source\n\n[[Agenda|Today Plan]]\n[[Agenda#Appointments]]\n[[event:abc123|Standup]]" }
+    });
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.click(agendaCard as HTMLButtonElement);
+
+    const backlinksDock = screen.getByLabelText("Backlinks dock");
+    expect(within(backlinksDock).getByRole("button", { name: /Link Source/i })).toBeInTheDocument();
+  });
+
   it("opens a note in lite edit mode from context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

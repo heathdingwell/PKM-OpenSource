@@ -4,6 +4,23 @@ const TITLE_PATTERN = /^#\s+(.*)$/m;
 const TAG_PATTERN = /(^|\s)#([a-zA-Z0-9/_-]+)/g;
 const WIKILINK_PATTERN = /\[\[([^\]]+)\]\]/g;
 
+function parseWikiLinkTarget(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed || /^event:/i.test(trimmed)) {
+    return null;
+  }
+
+  const aliasIndex = trimmed.indexOf("|");
+  const target = (aliasIndex === -1 ? trimmed : trimmed.slice(0, aliasIndex)).trim();
+  if (!target) {
+    return null;
+  }
+
+  const anchorIndex = target.search(/[#^]/);
+  const title = (anchorIndex === -1 ? target : target.slice(0, anchorIndex)).trim();
+  return title || null;
+}
+
 function normalizeMarkdown(markdown: string): string {
   return markdown.replace(/\r\n/g, "\n").trimEnd() + "\n";
 }
@@ -32,7 +49,10 @@ function extractTags(markdown: string): string[] {
 function extractWikiLinks(markdown: string): string[] {
   const links = new Set<string>();
   for (const match of markdown.matchAll(WIKILINK_PATTERN)) {
-    links.add(match[1].trim());
+    const target = parseWikiLinkTarget(match[1] ?? "");
+    if (target) {
+      links.add(target);
+    }
   }
   return [...links.values()];
 }

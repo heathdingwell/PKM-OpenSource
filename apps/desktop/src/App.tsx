@@ -705,12 +705,39 @@ function findMarkdownTextRanges(markdown: string, query: string): FindMatchRange
 function extractWikilinks(markdown: string): string[] {
   const links = new Set<string>();
   for (const match of markdown.matchAll(/\[\[([^\]]+)\]\]/g)) {
-    const value = match[1]?.trim();
-    if (value) {
-      links.add(value);
+    const parsed = parseWikilinkTarget(match[1] ?? "");
+    if (parsed) {
+      links.add(parsed.title);
     }
   }
   return [...links];
+}
+
+function parseWikilinkTarget(raw: string): { title: string; tail: string; alias: string } | null {
+  const trimmed = raw.trim();
+  if (!trimmed || /^event:/i.test(trimmed)) {
+    return null;
+  }
+
+  const aliasIndex = trimmed.indexOf("|");
+  const target = (aliasIndex === -1 ? trimmed : trimmed.slice(0, aliasIndex)).trim();
+  const alias = aliasIndex === -1 ? "" : trimmed.slice(aliasIndex);
+  if (!target) {
+    return null;
+  }
+
+  const tailIndex = target.search(/[#^]/);
+  const title = (tailIndex === -1 ? target : target.slice(0, tailIndex)).trim();
+  const tail = tailIndex === -1 ? "" : target.slice(tailIndex);
+  if (!title) {
+    return null;
+  }
+
+  return {
+    title,
+    tail,
+    alias
+  };
 }
 
 function formatRelativeTime(iso: string): string {
@@ -1002,13 +1029,16 @@ function rewriteWikilinks(markdown: string, titleMap: ReadonlyMap<string, string
     return markdown;
   }
 
-  return markdown.replace(/\[\[([^\]|]+)(\|[^\]]+)?\]\]/g, (match, rawTarget: string, suffix?: string) => {
-    const target = rawTarget.trim().toLowerCase();
-    const renamed = titleMap.get(target);
+  return markdown.replace(/\[\[([^\]]+)\]\]/g, (match, rawValue: string) => {
+    const parsed = parseWikilinkTarget(rawValue);
+    if (!parsed) {
+      return match;
+    }
+    const renamed = titleMap.get(parsed.title.toLowerCase());
     if (!renamed) {
       return match;
     }
-    return `[[${renamed}${suffix ?? ""}]]`;
+    return `[[${renamed}${parsed.tail}${parsed.alias}]]`;
   });
 }
 
@@ -5590,19 +5620,26 @@ export default function App() {
         return <span key={`${part}-${index}`}>{part}</span>;
       }
 
-      const label = noteMatch[1].trim();
-      const target = activeNotes.find((note) => note.title.toLowerCase() === label.toLowerCase());
+      const parsed = parseWikilinkTarget(noteMatch[1] ?? "");
+      if (!parsed) {
+        const fallback = noteMatch[1].trim();
+        return <span key={`${fallback}-${index}`}>{`[[${fallback}]]`}</span>;
+      }
+
+      const target = activeNotes.find((note) => note.title.toLowerCase() === parsed.title.toLowerCase());
+      const aliasLabel = parsed.alias.startsWith("|") ? parsed.alias.slice(1).trim() : parsed.alias.trim();
+      const label = aliasLabel || `${parsed.title}${parsed.tail}`;
 
       return (
         <button
-          key={`${label}-${index}`}
+          key={`${parsed.title}-${index}`}
           type="button"
           className="inline-link"
           onClick={() => {
             if (target) {
               openLinkedNote(target);
             } else {
-              openOrCreateLinkedNote(label);
+              openOrCreateLinkedNote(parsed.title);
             }
           }}
         >

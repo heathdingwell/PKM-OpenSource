@@ -1105,6 +1105,53 @@ body.is-resizing {
   font-weight: 600;
 }
 
+.find-note-bar {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.find-note-bar input {
+  width: min(320px, 48vw);
+  height: 28px;
+  border: 1px solid #c9d8ef;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #1f2937;
+  background: #ffffff;
+  font-size: 13px;
+}
+
+.find-note-bar input:focus {
+  outline: none;
+  border-color: #8cb0f0;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+}
+
+.find-note-count {
+  min-width: 80px;
+  color: #607391;
+  font-size: 12px;
+}
+
+.find-note-bar button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #c9d8ef;
+  border-radius: 8px;
+  color: #395478;
+  background: #f4f8ff;
+  font-size: 12px;
+}
+
+.find-note-bar button:disabled {
+  opacity: 0.55;
+}
+
 .editor-content {
   flex: 1;
   position: relative;

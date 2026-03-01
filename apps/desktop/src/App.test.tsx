@@ -255,6 +255,43 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
+  it("opens find in note from keyboard and cycles matches", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\nalpha test\n\nalpha repeat" }
+    });
+
+    fireEvent.keyDown(window, { key: "f", metaKey: true });
+    const findBar = screen.getByRole("search", { name: "Find in note" });
+    expect(findBar).toBeInTheDocument();
+
+    const findInput = within(findBar).getByRole("textbox", { name: "Find in note" });
+    fireEvent.change(findInput, { target: { value: "alpha" } });
+    expect(screen.getByText("1 of 2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next match" }));
+    expect(screen.getByText("2 of 2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Previous match" }));
+    expect(screen.getByText("1 of 2")).toBeInTheDocument();
+  });
+
+  it("opens find in note from note context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
+    expect(noteCard).toBeTruthy();
+    fireEvent.contextMenu(noteCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Find in note/i }));
+
+    expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
+  });
+
   it("shows bulk actions for multi-select and can trash selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

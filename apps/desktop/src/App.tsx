@@ -201,6 +201,11 @@ interface MentionSuggestionState {
   selected: number;
 }
 
+interface FindMatchRange {
+  start: number;
+  end: number;
+}
+
 type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
 type NoteDensityMode = "comfortable" | "compact";
@@ -520,6 +525,7 @@ const editorContextRows: Array<{ id: string; label: string; divider?: boolean }>
   { id: "checklist", label: "Checklist" },
   { id: "divider-2", label: "", divider: true },
   { id: "link", label: "Insert link" },
+  { id: "find", label: "Find in note" },
   { id: "divider-3", label: "", divider: true },
   { id: "copy-note-link", label: "Copy note link" }
 ];
@@ -620,6 +626,31 @@ function buildTableOfContents(markdown: string): string {
     .join("\n");
 
   return `## Table of contents\n${items}\n`;
+}
+
+function findMarkdownTextRanges(markdown: string, query: string): FindMatchRange[] {
+  const source = markdown.toLowerCase();
+  const needle = query.trim().toLowerCase();
+  if (!needle) {
+    return [];
+  }
+
+  const ranges: FindMatchRange[] = [];
+  let index = 0;
+  while (index < source.length) {
+    const found = source.indexOf(needle, index);
+    if (found === -1) {
+      break;
+    }
+
+    ranges.push({
+      start: found,
+      end: found + needle.length
+    });
+    index = found + Math.max(needle.length, 1);
+  }
+
+  return ranges;
 }
 
 function extractWikilinks(markdown: string): string[] {
@@ -1478,6 +1509,10 @@ export default function App() {
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const [slashInputDialog, setSlashInputDialog] = useState<SlashInputDialogState | null>(null);
   const [mediaInsertDialog, setMediaInsertDialog] = useState<MediaInsertDialogState | null>(null);
+  const [findInNoteOpen, setFindInNoteOpen] = useState(false);
+  const [findInNoteQuery, setFindInNoteQuery] = useState("");
+  const [findInNoteMatches, setFindInNoteMatches] = useState<FindMatchRange[]>([]);
+  const [findInNoteIndex, setFindInNoteIndex] = useState(0);
 
   const activeNotes = useMemo(() => notes.filter((note) => !note.trashedAt), [notes]);
   const trashedNotes = useMemo(() => notes.filter((note) => Boolean(note.trashedAt)), [notes]);
@@ -1496,6 +1531,7 @@ export default function App() {
   const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
   const editorMainRef = useRef<HTMLDivElement | null>(null);
   const activeResizeRef = useRef<ResizeState | null>(null);
+  const findInNoteInputRef = useRef<HTMLInputElement | null>(null);
 
   const notebooks = useMemo(() => {
     const names = Array.from(new Set(activeNotes.map((note) => note.notebook))).sort((left, right) =>
@@ -2452,12 +2488,20 @@ export default function App() {
 
       if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "k") {
         event.preventDefault();
+        setFindInNoteOpen(false);
         openCommandPalette();
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f" && activeNote) {
+        event.preventDefault();
+        openFindInNote();
         return;
       }
 
       if ((event.metaKey || event.ctrlKey) && ["k", "p"].includes(event.key.toLowerCase())) {
         event.preventDefault();
+        setFindInNoteOpen(false);
         setSearchOpen(true);
         return;
       }
@@ -2486,6 +2530,7 @@ export default function App() {
         setAttachmentDropTarget(null);
         setSidebarView("notes");
         setSearchOpen(false);
+        setFindInNoteOpen(false);
         setSlashInputDialog(null);
         setMediaInsertDialog(null);
         setSlashMenu(null);
@@ -2513,11 +2558,85 @@ export default function App() {
     templateDialog,
     slashInputDialog,
     mediaInsertDialog,
+    findInNoteOpen,
     sidebarView,
     browseMode,
     visibleNotes,
     activeId
   ]);
+
+  useEffect(() => {
+    if (!findInNoteOpen) {
+      setFindInNoteMatches([]);
+      return;
+    }
+
+    const query = findInNoteQuery.trim();
+    if (!query || !activeNote) {
+      setFindInNoteMatches([]);
+      return;
+    }
+
+    if (editorMode === "markdown") {
+      setFindInNoteMatches(findMarkdownTextRanges(draftMarkdown, query));
+      return;
+    }
+
+    setFindInNoteMatches(richEditorRef.current?.findTextRanges(query) ?? []);
+  }, [findInNoteOpen, findInNoteQuery, draftMarkdown, editorMode, activeNote?.id]);
+
+  useEffect(() => {
+    if (!findInNoteOpen) {
+      return;
+    }
+    setFindInNoteIndex(0);
+  }, [findInNoteOpen, findInNoteQuery, editorMode, activeNote?.id]);
+
+  useEffect(() => {
+    if (!findInNoteOpen || !findInNoteMatches.length) {
+      return;
+    }
+
+    const clampedIndex = Math.min(findInNoteIndex, findInNoteMatches.length - 1);
+    if (clampedIndex !== findInNoteIndex) {
+      setFindInNoteIndex(clampedIndex);
+      return;
+    }
+
+    const match = findInNoteMatches[clampedIndex];
+    if (!match) {
+      return;
+    }
+
+    if (editorMode === "markdown") {
+      window.requestAnimationFrame(() => {
+        const editor = markdownEditorRef.current;
+        if (!editor) {
+          return;
+        }
+        editor.focus();
+        editor.setSelectionRange(match.start, match.end);
+      });
+      return;
+    }
+
+    richEditorRef.current?.focusRange(match.start, match.end);
+  }, [findInNoteOpen, findInNoteMatches, findInNoteIndex, editorMode]);
+
+  useEffect(() => {
+    if (!findInNoteOpen) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      const input = findInNoteInputRef.current;
+      if (!input) {
+        return;
+      }
+      input.focus();
+      input.select();
+    });
+  }, [findInNoteOpen, activeNote?.id]);
 
   useEffect(() => {
     if (!toastMessage) {
@@ -2542,6 +2661,7 @@ export default function App() {
     if (!searchOpen) {
       return;
     }
+    setFindInNoteOpen(false);
     setSearchSelected(0);
   }, [searchOpen, quickQuery, searchScope, searchFilters]);
 
@@ -4903,9 +5023,10 @@ export default function App() {
     }
 
     if (action === "find") {
-      setSearchScope("current");
-      setQuickQuery(activeNote?.title ?? "");
-      setSearchOpen(true);
+      if (targetId && targetId !== activeId) {
+        focusNote(targetId);
+      }
+      openFindInNote();
       setContextMenu(null);
       return;
     }
@@ -5498,6 +5619,39 @@ export default function App() {
     setSlashMenu(null);
   }
 
+  function openFindInNote(): void {
+    if (!activeNote) {
+      return;
+    }
+
+    setSearchOpen(false);
+    setFindInNoteOpen(true);
+    setContextMenu(null);
+    setEditorContextMenu(null);
+    setNotebookMenu(null);
+    setNoteListMenu(null);
+    setSlashMenu(null);
+    setLinkSuggestion(null);
+    setMentionSuggestion(null);
+  }
+
+  function stepFindInNote(direction: 1 | -1): void {
+    if (!findInNoteMatches.length) {
+      return;
+    }
+
+    setFindInNoteIndex((previous) => {
+      const next = previous + direction;
+      if (next < 0) {
+        return findInNoteMatches.length - 1;
+      }
+      if (next >= findInNoteMatches.length) {
+        return 0;
+      }
+      return next;
+    });
+  }
+
   function applyMarkdownInlineFormat(
     prefix: string,
     suffix: string,
@@ -5550,6 +5704,12 @@ export default function App() {
       if (activeNote) {
         void copyNoteLink(activeNote.id);
       }
+      setEditorContextMenu(null);
+      return;
+    }
+
+    if (action === "find") {
+      openFindInNote();
       setEditorContextMenu(null);
       return;
     }
@@ -7086,6 +7246,56 @@ export default function App() {
               </div>
             ) : null}
 
+            {findInNoteOpen ? (
+              <div className="find-note-bar" role="search" aria-label="Find in note">
+                <input
+                  id="find-in-note-input"
+                  ref={findInNoteInputRef}
+                  value={findInNoteQuery}
+                  placeholder="Find in note..."
+                  aria-label="Find in note"
+                  onChange={(event) => setFindInNoteQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      stepFindInNote(event.shiftKey ? -1 : 1);
+                      return;
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setFindInNoteOpen(false);
+                    }
+                  }}
+                />
+                <span className="find-note-count" aria-live="polite">
+                  {findInNoteQuery.trim()
+                    ? findInNoteMatches.length
+                      ? `${findInNoteIndex + 1} of ${findInNoteMatches.length}`
+                      : "No matches"
+                    : "Type to search"}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Previous match"
+                  disabled={!findInNoteMatches.length}
+                  onClick={() => stepFindInNote(-1)}
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next match"
+                  disabled={!findInNoteMatches.length}
+                  onClick={() => stepFindInNote(1)}
+                >
+                  Next
+                </button>
+                <button type="button" onClick={() => setFindInNoteOpen(false)}>
+                  Close
+                </button>
+              </div>
+            ) : null}
+
             <div ref={editorMainRef} className="editor-main" style={editorMainStyle}>
               <article className={metadataOpen || aiPanelOpen ? "editor-content with-metadata" : "editor-content"}>
               <div className={liteEditMode ? "editor-workbench lite" : "editor-workbench"}>
@@ -7340,6 +7550,7 @@ export default function App() {
                       markdown={draftMarkdown}
                       onMarkdownChange={(nextMarkdown) => setDraftMarkdown(nextMarkdown)}
                       onSlashQueryChange={syncRichSlashSuggestion}
+                      onRequestLink={() => runRichToolbarAction("link")}
                       onContextMenu={(event) => {
                         event.preventDefault();
                         openEditorContextMenu(event.clientX, event.clientY);

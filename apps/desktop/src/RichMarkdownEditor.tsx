@@ -92,6 +92,8 @@ export interface RichMarkdownEditorHandle {
   replaceRange: (from: number, to: number, content: string) => void;
   setLink: (href: string) => void;
   unsetLink: () => void;
+  findTextRanges: (query: string) => Array<{ start: number; end: number }>;
+  focusRange: (start: number, end: number) => void;
 }
 
 interface RichMarkdownEditorProps {
@@ -99,10 +101,11 @@ interface RichMarkdownEditorProps {
   onMarkdownChange: (markdown: string) => void;
   onSlashQueryChange?: (state: { query: string; from: number; to: number } | null) => void;
   onContextMenu?: (event: MouseEvent<HTMLDivElement>) => void;
+  onRequestLink?: () => void;
 }
 
 function RichMarkdownEditorInner(
-  { markdown, onMarkdownChange, onSlashQueryChange, onContextMenu }: RichMarkdownEditorProps,
+  { markdown, onMarkdownChange, onSlashQueryChange, onContextMenu, onRequestLink }: RichMarkdownEditorProps,
   ref: ForwardedRef<RichMarkdownEditorHandle>
 ) {
   const turndownService = useMemo(() => createTurndownService(), []);
@@ -151,6 +154,43 @@ function RichMarkdownEditorInner(
 
     lastSlashKeyRef.current = key;
     onSlashQueryChange(match);
+  }
+
+  function findTextRanges(editorText: ReturnType<typeof useEditor>, query: string): Array<{ start: number; end: number }> {
+    if (!editorText) {
+      return [];
+    }
+
+    const needle = query.trim().toLowerCase();
+    if (!needle) {
+      return [];
+    }
+
+    const ranges: Array<{ start: number; end: number }> = [];
+    editorText.state.doc.descendants((node, pos) => {
+      if (!node.isText || !node.text) {
+        return true;
+      }
+
+      const haystack = node.text.toLowerCase();
+      let offset = 0;
+      while (offset < haystack.length) {
+        const index = haystack.indexOf(needle, offset);
+        if (index === -1) {
+          break;
+        }
+
+        ranges.push({
+          start: pos + index,
+          end: pos + index + needle.length
+        });
+        offset = index + Math.max(needle.length, 1);
+      }
+
+      return true;
+    });
+
+    return ranges;
   }
 
   const editor = useEditor({
@@ -267,6 +307,24 @@ function RichMarkdownEditorInner(
       },
       unsetLink: () => {
         editor?.chain().focus().unsetLink().run();
+      },
+      findTextRanges: (query: string) => {
+        return findTextRanges(editor, query);
+      },
+      focusRange: (start: number, end: number) => {
+        if (!editor) {
+          return;
+        }
+
+        editor
+          .chain()
+          .focus()
+          .setTextSelection({
+            from: Math.max(1, start),
+            to: Math.max(1, end)
+          })
+          .scrollIntoView()
+          .run();
       }
     }),
     [editor]
@@ -324,11 +382,7 @@ function RichMarkdownEditorInner(
             <button
               type="button"
               onClick={() => {
-                const href = window.prompt("Enter a URL for this link");
-                if (!href?.trim()) {
-                  return;
-                }
-                editor.chain().focus().setLink({ href: href.trim() }).run();
+                onRequestLink?.();
               }}
             >
               Link

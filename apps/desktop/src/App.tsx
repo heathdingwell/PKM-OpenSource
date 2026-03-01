@@ -2016,14 +2016,16 @@ export default function App() {
     }));
   }, [activeNote, draftMarkdown, activeNotes]);
 
-  const activeBacklinkTitle = useMemo(() => {
+  const activeBacklinkLabel = useMemo(() => {
     if (!activeNote) {
       return "";
     }
 
     const draftTitle = draftPreview.title.trim();
-    return (draftTitle || activeNote.title).toLowerCase();
+    return draftTitle || activeNote.title;
   }, [activeNote, draftPreview.title]);
+
+  const activeBacklinkTitle = useMemo(() => activeBacklinkLabel.toLowerCase(), [activeBacklinkLabel]);
 
   const backlinks = useMemo(() => {
     if (!activeNote || !activeBacklinkTitle) {
@@ -7353,7 +7355,7 @@ export default function App() {
                 </header>
                 {activeNote ? (
                   <>
-                    <p className="note-backlinks-context">Notes linking to "{activeNote.title}"</p>
+                    <p className="note-backlinks-context">Notes linking to "{activeBacklinkLabel}"</p>
                     {backlinks.length ? (
                       <ul>
                         {backlinks.map((note) => (

@@ -314,6 +314,7 @@ describe("App", () => {
     });
 
     const backlinksDock = screen.getByLabelText("Backlinks dock");
+    expect(within(backlinksDock).getByText(/Notes linking to "Focus Board"/i)).toBeInTheDocument();
     expect(within(backlinksDock).getByRole("button", { name: /Link Source/i })).toBeInTheDocument();
   });
 

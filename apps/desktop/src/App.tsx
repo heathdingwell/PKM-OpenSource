@@ -6861,11 +6861,29 @@ export default function App() {
               {savedSearches.length ? (
                 <ul className="home-list">
                   {savedSearches.slice(0, 8).map((saved) => (
-                    <li key={saved.id}>
-                      <button type="button" onClick={() => openSavedSearch(saved)}>
+                    <li key={saved.id} className="home-list-row">
+                      <button type="button" className="home-list-main" onClick={() => openSavedSearch(saved)}>
                         <strong>{saved.label}</strong>
                         <small>{saved.scope === "current" ? `In ${selectedNotebook}` : "Everywhere"}</small>
                       </button>
+                      <span className="home-list-actions">
+                        <button
+                          type="button"
+                          className="home-list-icon"
+                          aria-label={`Edit home saved search ${saved.label}`}
+                          onClick={() => editSavedSearch(saved.id)}
+                        >
+                          ✎
+                        </button>
+                        <button
+                          type="button"
+                          className="home-list-icon"
+                          aria-label={`Remove home saved search ${saved.label}`}
+                          onClick={() => removeSavedSearch(saved.id)}
+                        >
+                          ×
+                        </button>
+                      </span>
                     </li>
                   ))}
                 </ul>

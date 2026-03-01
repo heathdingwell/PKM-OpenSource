@@ -70,6 +70,21 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Edit saved search Meeting filter" })).toBeInTheDocument();
   });
 
+  it("opens home saved search edit action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "tag:meetings" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Meetings focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit home saved search Meetings focus" }));
+    expect(screen.getByRole("heading", { name: "Edit saved search", level: 3 })).toBeInTheDocument();
+  });
+
 
   it("inserts a markdown linked note from typed slash menu via modal", () => {
     const promptSpy = vi.spyOn(window, "prompt");

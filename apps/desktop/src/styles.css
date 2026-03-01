@@ -620,6 +620,38 @@ body.is-resizing {
   background: #eaf1ff;
 }
 
+.home-list-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.home-list-row .home-list-main {
+  flex: 1;
+}
+
+.home-list-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.home-list-actions .home-list-icon {
+  width: 28px;
+  min-width: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #c9d8ef;
+  border-radius: 8px;
+  color: #4f6b93;
+  background: #f4f8ff;
+}
+
+.home-list-actions .home-list-icon:hover {
+  background: #e8f0ff;
+}
+
 .home-list strong {
   font-size: 13px;
   white-space: nowrap;

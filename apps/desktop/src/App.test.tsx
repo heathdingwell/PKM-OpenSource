@@ -389,6 +389,46 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
   });
 
+  it("keeps notebook references in shortcuts and saved searches after notebook rename", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+
+    expect(dailyNotebook()).toBeTruthy();
+    fireEvent.click(dailyNotebook() as HTMLButtonElement);
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Add notebook shortcut" }));
+    expect(screen.getByRole("button", { name: "Remove notebook shortcut Daily Notes" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "agenda" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Daily scoped" } });
+    fireEvent.change(screen.getByLabelText("Scope"), { target: { value: "current" } });
+    fireEvent.change(screen.getByLabelText("Notebook"), { target: { value: "Daily Notes" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Rename notebook" }));
+    const renameModalHeading = screen.getByRole("heading", { name: "Rename notebook", level: 3 });
+    const renameModal = renameModalHeading.closest("section") as HTMLElement;
+    fireEvent.change(within(renameModal).getByRole("textbox"), { target: { value: "Journal Hub" } });
+    fireEvent.click(within(renameModal).getByRole("button", { name: "Save" }));
+
+    expect(screen.getByRole("button", { name: "Remove notebook shortcut Journal Hub" })).toBeInTheDocument();
+    expect(screen.getByText("In Journal Hub")).toBeInTheDocument();
+
+    const otherNotebook = notebookItems().find((entry) => entry.textContent?.includes("[aNote] No Folder"));
+    expect(otherNotebook).toBeTruthy();
+    fireEvent.click(otherNotebook as HTMLButtonElement);
+    expect(screen.queryByRole("heading", { name: "Journal Hub", level: 1 })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Daily scoped/i }));
+    expect(screen.getByRole("heading", { name: "Journal Hub", level: 1 })).toBeInTheDocument();
+  });
+
   it("adds tag shortcuts and applies tag filter from shortcut", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

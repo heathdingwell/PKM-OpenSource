@@ -1172,15 +1172,29 @@ function loadPrefs(): AppPrefs {
         ? parsed.notebookPinnedNoteIds.filter((noteId): noteId is string => typeof noteId === "string")
         : [],
       savedSearches: Array.isArray(parsed.savedSearches)
-        ? parsed.savedSearches.filter(
-            (entry): entry is SavedSearch =>
-              Boolean(entry) &&
-              typeof entry === "object" &&
-              typeof (entry as SavedSearch).id === "string" &&
-              typeof (entry as SavedSearch).label === "string" &&
-              typeof (entry as SavedSearch).query === "string" &&
-              ((entry as SavedSearch).scope === "everywhere" || (entry as SavedSearch).scope === "current")
-          )
+        ? parsed.savedSearches.flatMap((entry) => {
+            if (!entry || typeof entry !== "object") {
+              return [];
+            }
+            const candidate = entry as SavedSearch;
+            if (
+              typeof candidate.id !== "string" ||
+              typeof candidate.label !== "string" ||
+              typeof candidate.query !== "string" ||
+              (candidate.scope !== "everywhere" && candidate.scope !== "current")
+            ) {
+              return [];
+            }
+            return [
+              {
+                id: candidate.id,
+                label: candidate.label,
+                query: candidate.query,
+                scope: candidate.scope,
+                notebook: typeof candidate.notebook === "string" ? candidate.notebook : undefined
+              }
+            ];
+          })
         : [],
       backlinksPaneOpen: typeof parsed.backlinksPaneOpen === "boolean" ? parsed.backlinksPaneOpen : true,
       autoReciprocalLinks: typeof parsed.autoReciprocalLinks === "boolean" ? parsed.autoReciprocalLinks : false,
@@ -5410,10 +5424,11 @@ export default function App() {
       return;
     }
 
+    const oldName = renameDialog.oldName;
     const renamed = renameDialog.newName.trim();
     setNotes((previous) =>
       previous.map((note) => {
-        if (note.notebook !== renameDialog.oldName) {
+        if (note.notebook !== oldName) {
           return note;
         }
 
@@ -5425,17 +5440,51 @@ export default function App() {
       })
     );
 
-    if (selectedNotebook === renameDialog.oldName) {
+    if (selectedNotebook === oldName) {
       setSelectedNotebook(renamed);
     }
 
+    setShortcutNotebooks((previous) => {
+      let changed = false;
+      const mapped = previous.map((name) => {
+        if (name !== oldName) {
+          return name;
+        }
+        changed = true;
+        return renamed;
+      });
+      if (!changed) {
+        return previous;
+      }
+      return Array.from(new Set(mapped));
+    });
+
+    setSavedSearches((previous) => {
+      let changed = false;
+      const next = previous.map((entry) => {
+        if (entry.scope !== "current" || entry.notebook !== oldName) {
+          return entry;
+        }
+        changed = true;
+        return { ...entry, notebook: renamed };
+      });
+      return changed ? next : previous;
+    });
+
+    setSavedSearchDialog((previous) => {
+      if (!previous || previous.scope !== "current" || previous.notebook !== oldName) {
+        return previous;
+      }
+      return { ...previous, notebook: renamed };
+    });
+
     setNotebookStacks((previous) => {
-      if (!(renameDialog.oldName in previous)) {
+      if (!(oldName in previous)) {
         return previous;
       }
       const next = { ...previous };
-      const stack = next[renameDialog.oldName];
-      delete next[renameDialog.oldName];
+      const stack = next[oldName];
+      delete next[oldName];
       next[renamed] = stack;
       return next;
     });

@@ -305,6 +305,8 @@ interface AiConnectionState {
 
 interface GitBackupStatus {
   enabled: boolean;
+  commitPrefix: string;
+  autosaveDelayMs: number;
   available: boolean | null;
   repoReady: boolean;
   dirty: boolean;
@@ -766,6 +768,16 @@ function toDateBucketLabel(iso: string): string {
     return "Yesterday";
   }
   return targetDate.toLocaleDateString();
+}
+
+function formatAutosaveDelay(autosaveDelayMs: number): string {
+  if (autosaveDelayMs < 1000) {
+    return `${autosaveDelayMs}ms`;
+  }
+  if (autosaveDelayMs % 1000 === 0) {
+    return `${Math.round(autosaveDelayMs / 1000)}s`;
+  }
+  return `${(autosaveDelayMs / 1000).toFixed(1)}s`;
 }
 
 function toDateInputValue(date: Date): string {
@@ -1622,6 +1634,8 @@ export default function App() {
   const [aiModels, setAiModels] = useState<string[]>([]);
   const [gitBackupStatus, setGitBackupStatus] = useState<GitBackupStatus | null>(null);
   const [gitBackupBusy, setGitBackupBusy] = useState(false);
+  const [gitBackupCommitPrefix, setGitBackupCommitPrefix] = useState("Vault backup");
+  const [gitBackupDelaySeconds, setGitBackupDelaySeconds] = useState("4");
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [shortcutTagInput, setShortcutTagInput] = useState("");
@@ -3076,6 +3090,17 @@ export default function App() {
     insertAiReplyIntoNote(latest);
   }
 
+  function applyGitBackupStatus(status: GitBackupStatus | null): void {
+    if (!status) {
+      setGitBackupStatus(null);
+      return;
+    }
+
+    setGitBackupStatus(status);
+    setGitBackupCommitPrefix(status.commitPrefix || "Vault backup");
+    setGitBackupDelaySeconds(String(Math.max(1, Math.round(status.autosaveDelayMs / 1000))));
+  }
+
   function describeGitBackup(status: GitBackupStatus | null): string {
     if (!status) {
       return "Status unavailable";
@@ -3088,7 +3113,7 @@ export default function App() {
     }
     if (status.lastCommitAt) {
       const hash = status.lastCommitHash ? ` (${status.lastCommitHash})` : "";
-      return `Last commit ${new Date(status.lastCommitAt).toLocaleString()}${hash}`;
+      return `Last commit ${new Date(status.lastCommitAt).toLocaleString()}${hash} · ${formatAutosaveDelay(status.autosaveDelayMs)} delay`;
     }
     if (status.dirty) {
       return "Pending changes";
@@ -3106,9 +3131,7 @@ export default function App() {
     }
 
     const status = (await window.pkmShell.getGitBackupStatus()) as GitBackupStatus | null;
-    if (status) {
-      setGitBackupStatus(status);
-    }
+    applyGitBackupStatus(status);
     return status;
   }
 
@@ -3122,7 +3145,7 @@ export default function App() {
       setGitBackupBusy(true);
       const status = (await window.pkmShell.backupVaultToGit()) as GitBackupStatus | null;
       if (status) {
-        setGitBackupStatus(status);
+        applyGitBackupStatus(status);
         if (status.lastError) {
           setToastMessage(`Git backup failed: ${status.lastError}`);
         } else if (!status.enabled) {
@@ -3152,12 +3175,37 @@ export default function App() {
     try {
       setGitBackupBusy(true);
       const status = (await window.pkmShell.setGitBackupEnabled(nextEnabled)) as GitBackupStatus | null;
-      if (status) {
-        setGitBackupStatus(status);
-      }
+      applyGitBackupStatus(status);
       setToastMessage(nextEnabled ? "Git backups enabled" : "Git backups disabled");
     } catch (error) {
       setToastMessage(error instanceof Error ? error.message : "Failed to update Git backup setting");
+    } finally {
+      setGitBackupBusy(false);
+    }
+  }
+
+  async function saveGitBackupSettings(): Promise<void> {
+    if (!window.pkmShell?.setGitBackupSettings) {
+      setToastMessage("Git backup settings are only available in the desktop app");
+      return;
+    }
+
+    const seconds = Number.parseInt(gitBackupDelaySeconds.trim(), 10);
+    if (!Number.isFinite(seconds) || seconds < 1 || seconds > 120) {
+      setToastMessage("Autosave delay must be between 1 and 120 seconds");
+      return;
+    }
+
+    try {
+      setGitBackupBusy(true);
+      const status = (await window.pkmShell.setGitBackupSettings({
+        commitPrefix: gitBackupCommitPrefix,
+        autosaveDelayMs: seconds * 1000
+      })) as GitBackupStatus | null;
+      applyGitBackupStatus(status);
+      setToastMessage("Git backup settings saved");
+    } catch (error) {
+      setToastMessage(error instanceof Error ? error.message : "Failed to update Git backup settings");
     } finally {
       setGitBackupBusy(false);
     }
@@ -8331,6 +8379,31 @@ export default function App() {
                               Refresh
                             </button>
                           </div>
+                          <label className="vault-backup-field">
+                            <span>Commit prefix</span>
+                            <input
+                              aria-label="Commit prefix"
+                              value={gitBackupCommitPrefix}
+                              onChange={(event) => setGitBackupCommitPrefix(event.target.value)}
+                              disabled={gitBackupBusy}
+                              placeholder="Vault backup"
+                            />
+                          </label>
+                          <label className="vault-backup-field">
+                            <span>Autosave delay (seconds)</span>
+                            <input
+                              aria-label="Autosave delay (seconds)"
+                              type="number"
+                              min={1}
+                              max={120}
+                              value={gitBackupDelaySeconds}
+                              onChange={(event) => setGitBackupDelaySeconds(event.target.value)}
+                              disabled={gitBackupBusy}
+                            />
+                          </label>
+                          <button type="button" onClick={() => void saveGitBackupSettings()} disabled={gitBackupBusy}>
+                            Save backup settings
+                          </button>
                           <p className={`vault-backup-status ${gitBackupStatus?.lastError ? "error" : ""}`}>
                             {describeGitBackup(gitBackupStatus)}
                           </p>

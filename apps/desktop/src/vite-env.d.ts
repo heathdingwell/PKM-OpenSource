@@ -25,6 +25,8 @@ declare global {
       } | null>;
       getGitBackupStatus?: () => Promise<{
         enabled: boolean;
+        commitPrefix: string;
+        autosaveDelayMs: number;
         available: boolean | null;
         repoReady: boolean;
         dirty: boolean;
@@ -36,6 +38,24 @@ declare global {
       } | null>;
       setGitBackupEnabled?: (enabled: boolean) => Promise<{
         enabled: boolean;
+        commitPrefix: string;
+        autosaveDelayMs: number;
+        available: boolean | null;
+        repoReady: boolean;
+        dirty: boolean;
+        busy: boolean;
+        lastRunAt: string | null;
+        lastCommitAt: string | null;
+        lastCommitHash: string;
+        lastError: string;
+      } | null>;
+      setGitBackupSettings?: (payload: {
+        commitPrefix?: string;
+        autosaveDelayMs?: number;
+      }) => Promise<{
+        enabled: boolean;
+        commitPrefix: string;
+        autosaveDelayMs: number;
         available: boolean | null;
         repoReady: boolean;
         dirty: boolean;
@@ -47,6 +67,8 @@ declare global {
       } | null>;
       backupVaultToGit?: () => Promise<{
         enabled: boolean;
+        commitPrefix: string;
+        autosaveDelayMs: number;
         available: boolean | null;
         repoReady: boolean;
         dirty: boolean;

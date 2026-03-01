@@ -12,7 +12,10 @@ const VAULT_INDEX_NAME = ".vault-index.json";
 const GIT_BACKUP_STATE_NAME = ".vault-git-backup.json";
 const GIT_BACKUP_AUTHOR_NAME = "PKM OpenSource";
 const GIT_BACKUP_AUTHOR_EMAIL = "backup@pkm-open-source.local";
-const GIT_BACKUP_AUTOSAVE_DELAY_MS = 4000;
+const GIT_BACKUP_DEFAULT_COMMIT_PREFIX = "Vault backup";
+const GIT_BACKUP_DEFAULT_AUTOSAVE_DELAY_MS = 4000;
+const GIT_BACKUP_MIN_AUTOSAVE_DELAY_MS = 1000;
+const GIT_BACKUP_MAX_AUTOSAVE_DELAY_MS = 120000;
 
 function vaultRootPath() {
   return path.join(app.getPath("userData"), VAULT_DIR_NAME);
@@ -33,6 +36,8 @@ let gitBackupPending = false;
 let gitBackupInFlight = false;
 let lastGitBackupStatus = {
   enabled: true,
+  commitPrefix: GIT_BACKUP_DEFAULT_COMMIT_PREFIX,
+  autosaveDelayMs: GIT_BACKUP_DEFAULT_AUTOSAVE_DELAY_MS,
   available: null,
   repoReady: false,
   dirty: false,
@@ -57,10 +62,21 @@ function asString(value) {
 
 function normalizeGitBackupState(value) {
   if (!isObject(value)) {
-    return { enabled: true };
+    return {
+      enabled: true,
+      commitPrefix: GIT_BACKUP_DEFAULT_COMMIT_PREFIX,
+      autosaveDelayMs: GIT_BACKUP_DEFAULT_AUTOSAVE_DELAY_MS
+    };
   }
+  const rawPrefix = asString(value.commitPrefix).trim();
+  const rawDelay = Number.isFinite(value.autosaveDelayMs) ? Math.round(value.autosaveDelayMs) : Number.NaN;
+  const autosaveDelayMs = Number.isFinite(rawDelay)
+    ? Math.max(GIT_BACKUP_MIN_AUTOSAVE_DELAY_MS, Math.min(rawDelay, GIT_BACKUP_MAX_AUTOSAVE_DELAY_MS))
+    : GIT_BACKUP_DEFAULT_AUTOSAVE_DELAY_MS;
   return {
-    enabled: value.enabled !== false
+    enabled: value.enabled !== false,
+    commitPrefix: rawPrefix || GIT_BACKUP_DEFAULT_COMMIT_PREFIX,
+    autosaveDelayMs
   };
 }
 
@@ -71,10 +87,10 @@ async function readGitBackupState() {
     return normalizeGitBackupState(parsed);
   } catch (error) {
     if (error && typeof error === "object" && error.code === "ENOENT") {
-      return { enabled: true };
+      return normalizeGitBackupState(null);
     }
     console.error("Failed to read git backup state", error);
-    return { enabled: true };
+    return normalizeGitBackupState(null);
   }
 }
 
@@ -95,11 +111,35 @@ async function getGitBackupState() {
 }
 
 async function setGitBackupEnabled(enabled) {
-  const next = await writeGitBackupState({ enabled: Boolean(enabled) });
+  const current = await getGitBackupState();
+  const next = await writeGitBackupState({
+    ...current,
+    enabled: Boolean(enabled)
+  });
   cachedGitBackupState = next;
   lastGitBackupStatus = {
     ...lastGitBackupStatus,
     enabled: next.enabled,
+    commitPrefix: next.commitPrefix,
+    autosaveDelayMs: next.autosaveDelayMs,
+    lastError: next.enabled ? lastGitBackupStatus.lastError : ""
+  };
+  return next;
+}
+
+async function updateGitBackupSettings(payload) {
+  const current = await getGitBackupState();
+  const candidate = {
+    ...current,
+    ...(isObject(payload) ? payload : {})
+  };
+  const next = await writeGitBackupState(candidate);
+  cachedGitBackupState = next;
+  lastGitBackupStatus = {
+    ...lastGitBackupStatus,
+    enabled: next.enabled,
+    commitPrefix: next.commitPrefix,
+    autosaveDelayMs: next.autosaveDelayMs,
     lastError: next.enabled ? lastGitBackupStatus.lastError : ""
   };
   return next;
@@ -159,9 +199,10 @@ async function ensureVaultGitRepo(rootDir) {
   return { ok: true };
 }
 
-function nextGitBackupMessage(reason) {
+function nextGitBackupMessage(reason, prefix) {
   const suffix = asString(reason).trim() || "autosave";
-  return `Vault backup (${suffix}) ${new Date().toISOString()}`;
+  const head = asString(prefix).trim() || GIT_BACKUP_DEFAULT_COMMIT_PREFIX;
+  return `${head} (${suffix}) ${new Date().toISOString()}`;
 }
 
 async function performVaultGitBackup(reason = "autosave") {
@@ -170,6 +211,8 @@ async function performVaultGitBackup(reason = "autosave") {
   lastGitBackupStatus = {
     ...lastGitBackupStatus,
     enabled: state.enabled,
+    commitPrefix: state.commitPrefix,
+    autosaveDelayMs: state.autosaveDelayMs,
     lastRunAt
   };
 
@@ -238,7 +281,7 @@ async function performVaultGitBackup(reason = "autosave") {
     return { ...lastGitBackupStatus };
   }
 
-  const committed = await runGitCommand(["commit", "-m", nextGitBackupMessage(reason)], rootDir);
+  const committed = await runGitCommand(["commit", "-m", nextGitBackupMessage(reason, state.commitPrefix)], rootDir);
   if (!committed.ok) {
     const combined = `${committed.stdout}\n${committed.stderr}`.toLowerCase();
     if (combined.includes("nothing to commit")) {
@@ -276,6 +319,7 @@ async function performVaultGitBackup(reason = "autosave") {
 }
 
 function scheduleVaultGitBackup(reason = "autosave") {
+  const state = normalizeGitBackupState(cachedGitBackupState);
   gitBackupPending = true;
   gitBackupQueuedReason = reason;
 
@@ -286,7 +330,7 @@ function scheduleVaultGitBackup(reason = "autosave") {
   gitBackupTimer = setTimeout(() => {
     gitBackupTimer = null;
     void flushVaultGitBackups();
-  }, GIT_BACKUP_AUTOSAVE_DELAY_MS);
+  }, state.autosaveDelayMs);
 }
 
 async function flushVaultGitBackups(reason) {
@@ -337,6 +381,8 @@ async function gitBackupStatus() {
   return {
     ...lastGitBackupStatus,
     enabled: state.enabled,
+    commitPrefix: state.commitPrefix,
+    autosaveDelayMs: state.autosaveDelayMs,
     busy: gitBackupInFlight || Boolean(gitBackupTimer)
   };
 }
@@ -1345,6 +1391,20 @@ app.whenReady().then(() => {
         enabled: Boolean(payload),
         busy: false,
         lastError: "Failed to update Git backup setting"
+      };
+    }
+  });
+
+  ipcMain.handle("vault:git-update-settings", async (_event, payload) => {
+    try {
+      await updateGitBackupSettings(payload);
+      return await gitBackupStatus();
+    } catch (error) {
+      console.error("Failed to update git backup settings", error);
+      return {
+        ...lastGitBackupStatus,
+        busy: false,
+        lastError: "Failed to update Git backup settings"
       };
     }
   });

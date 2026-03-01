@@ -1750,7 +1750,8 @@ body.is-resizing {
 }
 
 .vault-backup-head button,
-.vault-backup-actions button {
+.vault-backup-actions button,
+.vault-backup-settings > button {
   height: 28px;
   padding: 0 8px;
   border: 1px solid #c7d8f4;
@@ -1762,7 +1763,8 @@ body.is-resizing {
 }
 
 .vault-backup-head button:disabled,
-.vault-backup-actions button:disabled {
+.vault-backup-actions button:disabled,
+.vault-backup-settings > button:disabled {
   opacity: 0.55;
 }
 
@@ -1780,6 +1782,27 @@ body.is-resizing {
 
 .vault-backup-status.error {
   color: #be123c;
+}
+
+.vault-backup-field {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.vault-backup-field span {
+  font-size: 11px;
+  color: #4b5f7f;
+}
+
+.vault-backup-field input {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #c7d8f4;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #15233d;
+  font-size: 12px;
 }
 
 .ai-chat-log {

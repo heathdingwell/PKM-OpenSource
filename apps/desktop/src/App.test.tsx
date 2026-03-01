@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import App from "./App";
 
 describe("App", () => {
@@ -734,6 +734,55 @@ describe("App", () => {
     expect(editor).toBeTruthy();
     expect(editor?.value).toContain("- Suggested action");
     expect(editor?.value).toContain("- Follow-up item");
+  });
+
+  it("saves configurable git backup settings", async () => {
+    const getGitBackupStatus = vi.fn().mockResolvedValue({
+      enabled: true,
+      commitPrefix: "Vault backup",
+      autosaveDelayMs: 4000,
+      available: true,
+      repoReady: true,
+      dirty: false,
+      busy: false,
+      lastRunAt: null,
+      lastCommitAt: null,
+      lastCommitHash: "",
+      lastError: ""
+    });
+    const setGitBackupSettings = vi.fn().mockResolvedValue({
+      enabled: true,
+      commitPrefix: "Snapshots",
+      autosaveDelayMs: 7000,
+      available: true,
+      repoReady: true,
+      dirty: false,
+      busy: false,
+      lastRunAt: null,
+      lastCommitAt: null,
+      lastCommitHash: "",
+      lastError: ""
+    });
+    (window as unknown as { pkmShell?: unknown }).pkmShell = {
+      getGitBackupStatus,
+      setGitBackupSettings
+    };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+
+    const prefixInput = await screen.findByLabelText("Commit prefix");
+    fireEvent.change(prefixInput, { target: { value: "Snapshots" } });
+    fireEvent.change(screen.getByLabelText("Autosave delay (seconds)"), { target: { value: "7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save backup settings" }));
+
+    await waitFor(() =>
+      expect(setGitBackupSettings).toHaveBeenCalledWith({
+        commitPrefix: "Snapshots",
+        autosaveDelayMs: 7000
+      })
+    );
   });
 
 });

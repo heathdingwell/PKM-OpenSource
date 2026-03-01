@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("pkmShell", {
   cloneAttachmentLinks: (payload) => ipcRenderer.invoke("vault:clone-attachments", payload),
   getGitBackupStatus: () => ipcRenderer.invoke("vault:git-status"),
   setGitBackupEnabled: (enabled) => ipcRenderer.invoke("vault:git-set-enabled", enabled),
+  setGitBackupSettings: (payload) => ipcRenderer.invoke("vault:git-update-settings", payload),
   backupVaultToGit: () => ipcRenderer.invoke("vault:git-backup"),
   chatWithLlm: (payload) => ipcRenderer.invoke("llm:chat", payload),
   testLlmConnection: (payload) => ipcRenderer.invoke("llm:test-connection", payload),

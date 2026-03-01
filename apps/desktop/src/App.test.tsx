@@ -341,6 +341,22 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
   });
 
+  it("adds tag shortcuts and applies tag filter from shortcut", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    fireEvent.change(document.getElementById("tag-input") as HTMLInputElement, { target: { value: "focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.change(screen.getByLabelText("Add tag shortcut"), { target: { value: "focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(screen.getByRole("button", { name: "Remove tag shortcut focus" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Tag: #focus/i }));
+    expect(screen.getByRole("button", { name: "#focus ×" })).toBeInTheDocument();
+  });
+
   it("opens editor context menu from keyboard context-menu key", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

@@ -180,6 +180,7 @@ interface AppPrefs {
   recentNoteIds?: string[];
   shortcutNoteIds?: string[];
   shortcutNotebooks?: string[];
+  shortcutTags?: string[];
   homePinnedNoteIds?: string[];
   notebookPinnedNoteIds?: string[];
   savedSearches?: SavedSearch[];
@@ -1102,6 +1103,7 @@ function defaultPrefs(): AppPrefs {
     recentNoteIds: [],
     shortcutNoteIds: [],
     shortcutNotebooks: [],
+    shortcutTags: [],
     homePinnedNoteIds: [],
     notebookPinnedNoteIds: [],
     savedSearches: [],
@@ -1157,6 +1159,9 @@ function loadPrefs(): AppPrefs {
         : [],
       shortcutNotebooks: Array.isArray(parsed.shortcutNotebooks)
         ? parsed.shortcutNotebooks.filter((name): name is string => typeof name === "string")
+        : [],
+      shortcutTags: Array.isArray(parsed.shortcutTags)
+        ? parsed.shortcutTags.filter((name): name is string => typeof name === "string")
         : [],
       homePinnedNoteIds: Array.isArray(parsed.homePinnedNoteIds)
         ? parsed.homePinnedNoteIds.filter((noteId): noteId is string => typeof noteId === "string")
@@ -1520,6 +1525,7 @@ export default function App() {
   const [recentNoteIds, setRecentNoteIds] = useState<string[]>(initialPrefs.recentNoteIds ?? []);
   const [shortcutNoteIds, setShortcutNoteIds] = useState<string[]>(initialPrefs.shortcutNoteIds ?? []);
   const [shortcutNotebooks, setShortcutNotebooks] = useState<string[]>(initialPrefs.shortcutNotebooks ?? []);
+  const [shortcutTags, setShortcutTags] = useState<string[]>(initialPrefs.shortcutTags ?? []);
   const [homePinnedNoteIds, setHomePinnedNoteIds] = useState<string[]>(initialPrefs.homePinnedNoteIds ?? []);
   const [notebookPinnedNoteIds, setNotebookPinnedNoteIds] = useState<string[]>(
     initialPrefs.notebookPinnedNoteIds ?? []
@@ -1548,6 +1554,7 @@ export default function App() {
   const [gitBackupBusy, setGitBackupBusy] = useState(false);
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [shortcutTagInput, setShortcutTagInput] = useState("");
   const [homeScratchPad, setHomeScratchPad] = useState<string>(() => loadScratchPad());
   const [vaultReady, setVaultReady] = useState(false);
   const [queryNoteHandled, setQueryNoteHandled] = useState(false);
@@ -1639,7 +1646,13 @@ export default function App() {
             ? (() => {
                 const shortcutIds = new Set(shortcutNoteIds);
                 const shortcutNotebookNames = new Set(shortcutNotebooks);
-                return scoped.filter((note) => shortcutIds.has(note.id) || shortcutNotebookNames.has(note.notebook));
+                const shortcutTagNames = new Set(shortcutTags);
+                return scoped.filter(
+                  (note) =>
+                    shortcutIds.has(note.id) ||
+                    shortcutNotebookNames.has(note.notebook) ||
+                    note.tags.some((tag) => shortcutTagNames.has(tag))
+                );
               })()
             : scoped;
 
@@ -1668,7 +1681,7 @@ export default function App() {
     });
 
     return sorted;
-  }, [activeNotes, trashedNotes, selectedNotebook, browseMode, tagFilters, sortMode, shortcutNoteIds, shortcutNotebooks]);
+  }, [activeNotes, trashedNotes, selectedNotebook, browseMode, tagFilters, sortMode, shortcutNoteIds, shortcutNotebooks, shortcutTags]);
 
   const availableTags = useMemo(() => {
     const sourceNotes = browseMode === "trash" ? trashedNotes : activeNotes;
@@ -1687,11 +1700,17 @@ export default function App() {
             ? (() => {
                 const shortcutIds = new Set(shortcutNoteIds);
                 const shortcutNotebookNames = new Set(shortcutNotebooks);
-                return scoped.filter((note) => shortcutIds.has(note.id) || shortcutNotebookNames.has(note.notebook));
+                const shortcutTagNames = new Set(shortcutTags);
+                return scoped.filter(
+                  (note) =>
+                    shortcutIds.has(note.id) ||
+                    shortcutNotebookNames.has(note.notebook) ||
+                    note.tags.some((tag) => shortcutTagNames.has(tag))
+                );
               })()
             : scoped;
     return Array.from(new Set(source.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
-  }, [activeNotes, trashedNotes, selectedNotebook, browseMode, shortcutNoteIds, shortcutNotebooks]);
+  }, [activeNotes, trashedNotes, selectedNotebook, browseMode, shortcutNoteIds, shortcutNotebooks, shortcutTags]);
 
   const selectedVisibleNoteIds = useMemo(
     () => visibleNotes.filter((note) => selectedIds.has(note.id)).map((note) => note.id),
@@ -1710,6 +1729,10 @@ export default function App() {
       .map((noteId) => activeNotes.find((note) => note.id === noteId))
       .filter((note): note is AppNote => Boolean(note));
   }, [shortcutNoteIds, activeNotes]);
+
+  const allTags = useMemo(() => {
+    return Array.from(new Set(activeNotes.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
+  }, [activeNotes]);
 
   const shortcutNotebookItems = useMemo(() => {
     const valid = new Set(notebookList);
@@ -1742,6 +1765,7 @@ export default function App() {
   const notebookPinnedSet = useMemo(() => new Set(notebookPinnedNoteIds), [notebookPinnedNoteIds]);
   const shortcutSet = useMemo(() => new Set(shortcutNoteIds), [shortcutNoteIds]);
   const shortcutNotebookSet = useMemo(() => new Set(shortcutNotebooks), [shortcutNotebooks]);
+  const shortcutTagSet = useMemo(() => new Set(shortcutTags), [shortcutTags]);
 
   const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
 
@@ -2137,6 +2161,14 @@ export default function App() {
   }, [notebookList]);
 
   useEffect(() => {
+    const validTags = new Set(allTags);
+    setShortcutTags((previous) => {
+      const next = previous.filter((name) => validTags.has(name));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [allTags]);
+
+  useEffect(() => {
     const knownStacks = new Set(stackNames);
     setCollapsedStacks((previous) => {
       let changed = false;
@@ -2386,6 +2418,7 @@ export default function App() {
       recentNoteIds,
       shortcutNoteIds,
       shortcutNotebooks,
+      shortcutTags,
       homePinnedNoteIds,
       notebookPinnedNoteIds,
       savedSearches,
@@ -2410,6 +2443,7 @@ export default function App() {
     recentNoteIds,
     shortcutNoteIds,
     shortcutNotebooks,
+    shortcutTags,
     homePinnedNoteIds,
     notebookPinnedNoteIds,
     savedSearches,
@@ -3515,7 +3549,8 @@ export default function App() {
       browseMode === "shortcuts" &&
       target &&
       !shortcutSet.has(target.id) &&
-      !shortcutNotebookSet.has(target.notebook)
+      !shortcutNotebookSet.has(target.notebook) &&
+      !target.tags.some((tag) => shortcutTagSet.has(tag))
     ) {
       setBrowseMode("all");
     }
@@ -4428,6 +4463,30 @@ export default function App() {
 
   function removeShortcutNotebook(notebook: string): void {
     setShortcutNotebooks((previous) => previous.filter((entry) => entry !== notebook));
+  }
+
+  function addShortcutTag(rawTag: string): void {
+    const normalized = rawTag.trim().replace(/^#/, "");
+    if (!normalized) {
+      return;
+    }
+    if (!allTags.includes(normalized)) {
+      setToastMessage(`Tag #${normalized} does not exist yet`);
+      return;
+    }
+
+    if (shortcutTagSet.has(normalized)) {
+      setShortcutTagInput("");
+      return;
+    }
+
+    setShortcutTags((previous) => [...previous, normalized]);
+    setShortcutTagInput("");
+    setToastMessage(`#${normalized} added to shortcuts`);
+  }
+
+  function removeShortcutTag(tag: string): void {
+    setShortcutTags((previous) => previous.filter((entry) => entry !== tag));
   }
 
   function removePinnedNote(noteId: string, scope: "home" | "notebook"): void {
@@ -6475,7 +6534,7 @@ export default function App() {
 
         <section className="sidebar-section">
           <h2>Shortcuts</h2>
-          {shortcutNotes.length || shortcutNotebookItems.length ? (
+          {shortcutNotes.length || shortcutNotebookItems.length || shortcutTags.length || allTags.length ? (
             <>
               {shortcutNotes.length ? (
                 <>
@@ -6538,6 +6597,52 @@ export default function App() {
                   </ul>
                 </>
               ) : null}
+              <p className="shortcut-subhead">Tags</p>
+              {shortcutTags.length ? (
+                <ul className="shortcut-list">
+                  {shortcutTags.map((tag) => (
+                    <li key={tag} className="shortcut-row">
+                      <button
+                        type="button"
+                        className="shortcut-item"
+                        onClick={() => {
+                          setBrowseMode("all");
+                          setSelectedNotebook("All Notes");
+                          setTagFilters([tag]);
+                        }}
+                      >
+                        <span>Tag: #{tag}</span>
+                        <small>Shortcut</small>
+                      </button>
+                      <button
+                        type="button"
+                        className="shortcut-remove"
+                        aria-label={`Remove tag shortcut ${tag}`}
+                        onClick={() => removeShortcutTag(tag)}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="shortcut-empty">No tag shortcuts yet</p>
+              )}
+              <form
+                className="shortcut-add-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  addShortcutTag(shortcutTagInput);
+                }}
+              >
+                <input
+                  value={shortcutTagInput}
+                  placeholder="tag"
+                  aria-label="Add tag shortcut"
+                  onChange={(event) => setShortcutTagInput(event.target.value)}
+                />
+                <button type="submit">Add</button>
+              </form>
             </>
           ) : (
             <p className="shortcut-empty">No shortcuts yet</p>

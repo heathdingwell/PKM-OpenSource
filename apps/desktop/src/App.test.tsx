@@ -659,6 +659,36 @@ describe("App", () => {
     expect(autoLinksButton).toHaveClass("active");
   });
 
+  it("uses unsaved draft content for AI note context", async () => {
+    const chatWithLlm = vi.fn().mockResolvedValue({
+      message: "Draft context received"
+    });
+    (window as unknown as { pkmShell?: { chatWithLlm: typeof chatWithLlm } }).pkmShell = { chatWithLlm };
+
+    render(<App />);
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Draft AI Context\n\nUnsaved sentence for AI context." }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.change(screen.getByPlaceholderText("Ask about this note or your vault..."), {
+      target: { value: "What should I do next?" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText(/Draft context received/)).toBeInTheDocument();
+    expect(chatWithLlm).toHaveBeenCalledTimes(1);
+    const payload = chatWithLlm.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const contextMessage = payload.messages.find(
+      (entry) => entry.role === "system" && entry.content.includes("Vault context (use only if relevant):")
+    );
+    expect(contextMessage?.content).toContain("Title: Draft AI Context");
+    expect(contextMessage?.content).toContain("Unsaved sentence for AI context.");
+  });
+
   it("inserts AI response content into the active note", async () => {
     const chatWithLlm = vi.fn().mockResolvedValue({
       message: "- Suggested action\n- Follow-up item"

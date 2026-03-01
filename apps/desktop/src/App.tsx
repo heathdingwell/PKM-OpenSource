@@ -1824,6 +1824,13 @@ export default function App() {
     [draftMarkdown, activeNote?.markdown]
   );
 
+  const liveActiveNote = useMemo(() => {
+    if (!activeNote || activeNote.trashedAt || draftMarkdown === activeNote.markdown) {
+      return activeNote;
+    }
+    return noteFromMarkdown(activeNote, draftMarkdown, activeNote.updatedAt);
+  }, [activeNote, draftMarkdown]);
+
   const searchIndex = useMemo(() => {
     const index = new SearchIndex();
     for (const note of activeNotes) {
@@ -1935,13 +1942,13 @@ export default function App() {
   }, [quickResults]);
 
   const liveDerivedNotes = useMemo(() => {
-    if (!activeNote || activeNote.trashedAt || draftMarkdown === activeNote.markdown) {
+    if (!liveActiveNote || liveActiveNote.trashedAt) {
       return activeNotes;
     }
-    return activeNotes.map((note) =>
-      note.id === activeNote.id ? noteFromMarkdown(note, draftMarkdown, note.updatedAt) : note
-    );
-  }, [activeNotes, activeNote, draftMarkdown]);
+    return activeNotes.map((note) => (note.id === liveActiveNote.id ? liveActiveNote : note));
+  }, [activeNotes, liveActiveNote]);
+
+  const liveNotesById = useMemo(() => new Map(liveDerivedNotes.map((note) => [note.id, note])), [liveDerivedNotes]);
 
   const openTasks = useMemo(() => extractOpenTasks(liveDerivedNotes), [liveDerivedNotes]);
   const attachmentItems = useMemo(() => extractAttachments(liveDerivedNotes), [liveDerivedNotes]);
@@ -3223,19 +3230,19 @@ export default function App() {
   function buildAiContext(question: string): string {
     const sections: string[] = [];
 
-    if (aiSettings.includeActiveNote && activeNote) {
-      const truncated = activeNote.markdown.slice(0, 12000);
+    if (aiSettings.includeActiveNote && liveActiveNote) {
+      const truncated = liveActiveNote.markdown.slice(0, 12000);
       sections.push(
-        `Active note:\nTitle: ${activeNote.title}\nNotebook: ${activeNote.notebook}\nPath: ${activeNote.path}\nContent:\n${truncated}`
+        `Active note:\nTitle: ${liveActiveNote.title}\nNotebook: ${liveActiveNote.notebook}\nPath: ${liveActiveNote.path}\nContent:\n${truncated}`
       );
     }
 
     if (aiSettings.includeRelatedNotes) {
       const related = searchIndex
         .search(question)
-        .map((result) => notes.find((note) => note.id === result.noteId))
+        .map((result) => liveNotesById.get(result.noteId))
         .filter((note): note is AppNote => Boolean(note))
-        .filter((note) => note.id !== activeNote?.id)
+        .filter((note) => note.id !== liveActiveNote?.id)
         .slice(0, aiSettings.relatedCount);
 
       if (related.length) {

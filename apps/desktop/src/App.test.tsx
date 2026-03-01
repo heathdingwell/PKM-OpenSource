@@ -325,6 +325,22 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Rename notebook" })).toBeInTheDocument();
   });
 
+  it("adds notebook shortcuts from notebook context menu", () => {
+    render(<App />);
+    const notebookItems = document.querySelectorAll(".notebook-item");
+    expect(notebookItems.length).toBeGreaterThan(1);
+
+    const dailyNotebook = Array.from(notebookItems).find((entry) => entry.textContent?.includes("Daily Notes"));
+    expect(dailyNotebook).toBeTruthy();
+    fireEvent.contextMenu(dailyNotebook as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Add notebook shortcut" }));
+
+    expect(screen.getByRole("button", { name: "Remove notebook shortcut Daily Notes" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));
+    expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
+  });
+
   it("opens editor context menu from keyboard context-menu key", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

@@ -12,6 +12,25 @@ export default defineConfig({
       "@pkm-os/ui-features": resolve(__dirname, "../../packages/ui-features/src/index.ts")
     }
   },
+  build: {
+    chunkSizeWarningLimit: 550,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          tiptap: [
+            "@tiptap/react",
+            "@tiptap/starter-kit",
+            "@tiptap/extension-link",
+            "@tiptap/extension-placeholder",
+            "@tiptap/extension-task-item",
+            "@tiptap/extension-task-list",
+            "@tiptap/extension-underline"
+          ],
+          markdown: ["markdown-it", "markdown-it-task-lists", "turndown"]
+        }
+      }
+    }
+  },
   test: {
     globals: true,
     environment: "jsdom",

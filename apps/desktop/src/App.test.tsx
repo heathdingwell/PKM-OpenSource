@@ -158,6 +158,30 @@ describe("App", () => {
     promptSpy.mockRestore();
   });
 
+
+  it("generates table of contents links from markdown headings", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    const source = "# Project Plan\n\n## Milestones\n\n### Phase 1\n\n/table";
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: source, selectionStart: source.length }
+    });
+
+    const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
+    expect(slashMenu).toBeTruthy();
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Table of contents" }));
+
+    const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(updatedEditor?.value).toContain("## Table of contents");
+    expect(updatedEditor?.value).toContain("- [Project Plan](#project-plan)");
+    expect(updatedEditor?.value).toContain("  - [Milestones](#milestones)");
+    expect(updatedEditor?.value).toContain("    - [Phase 1](#phase-1)");
+  });
+
   it("opens template picker from sidebar action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "New from template" }));

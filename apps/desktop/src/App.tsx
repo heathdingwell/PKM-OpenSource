@@ -562,6 +562,66 @@ function parseForPreview(markdown: string): { title: string; body: string[] } {
   return { title: fallback, body: lines };
 }
 
+function toHeadingAnchor(rawHeading: string, counts: Map<string, number>): string {
+  const base = rawHeading
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-") || "section";
+  const count = (counts.get(base) ?? 0) + 1;
+  counts.set(base, count);
+  return count === 1 ? base : `${base}-${count}`;
+}
+
+function buildTableOfContents(markdown: string): string {
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  const entries: Array<{ level: number; text: string; anchor: string }> = [];
+  const anchorCounts = new Map<string, number>();
+  let inCodeFence = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      inCodeFence = !inCodeFence;
+      continue;
+    }
+
+    if (inCodeFence) {
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,6})\s+(.+)$/);
+    if (!heading) {
+      continue;
+    }
+
+    const text = heading[2].trim();
+    if (!text || text.toLowerCase() === "table of contents") {
+      continue;
+    }
+
+    entries.push({
+      level: heading[1].length,
+      text,
+      anchor: toHeadingAnchor(text, anchorCounts)
+    });
+  }
+
+  if (!entries.length) {
+    return "## Table of contents\n- (Add headings to generate links)\n";
+  }
+
+  const items = entries
+    .map((entry) => {
+      const indent = "  ".repeat(Math.max(0, entry.level - 1));
+      const label = entry.text.replace(/]/g, "\\]");
+      return `${indent}- [${label}](#${entry.anchor})`;
+    })
+    .join("\n");
+
+  return `## Table of contents\n${items}\n`;
+}
+
 function extractWikilinks(markdown: string): string[] {
   const links = new Set<string>();
   for (const match of markdown.matchAll(/\[\[([^\]]+)\]\]/g)) {
@@ -5696,7 +5756,7 @@ export default function App() {
         insert("| Column | Value |\n| --- | --- |\n|  |  |\n");
         break;
       case "table-of-contents":
-        insert("## Table of contents\n- \n");
+        insert(buildTableOfContents(draftMarkdown));
         break;
       case "image":
         openMediaInsertDialog("image", "markdown", { start: replaceStart, end: replaceEnd });
@@ -5841,7 +5901,7 @@ export default function App() {
         richEditorRef.current?.insertContent("| Column | Value |\n| --- | --- |\n|  |  |");
         break;
       case "table-of-contents":
-        richEditorRef.current?.insertContent("## Table of contents\n- ");
+        richEditorRef.current?.insertContent(buildTableOfContents(draftMarkdown));
         break;
       case "image":
         openMediaInsertDialog("image", "rich");

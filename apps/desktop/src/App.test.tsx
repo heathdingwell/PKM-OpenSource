@@ -124,6 +124,16 @@ describe("App", () => {
     expect(shell).not.toHaveClass("focus-mode");
   });
 
+  it("exits focus mode with escape", () => {
+    render(<App />);
+    const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });
+    fireEvent.click(screen.getByRole("button", { name: "Focus" }));
+    expect(shell).toHaveClass("focus-mode");
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(shell).not.toHaveClass("focus-mode");
+  });
+
   it("opens notes from graph node clicks", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));

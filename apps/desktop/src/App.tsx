@@ -3440,6 +3440,9 @@ export default function App() {
         setMediaInsertDialog(null);
         setSlashMenu(null);
         setMentionSuggestion(null);
+        if (focusMode && !searchOpen && !findInNoteOpen) {
+          setFocusMode(false);
+        }
       }
     };
 
@@ -3452,6 +3455,7 @@ export default function App() {
     slashMenu,
     slashResults,
     searchOpen,
+    focusMode,
     editorMode,
     tasksDialogOpen,
     filesDialogOpen,

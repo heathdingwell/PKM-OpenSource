@@ -222,7 +222,7 @@ type NoteViewMode = "cards" | "list";
 type NoteDensityMode = "comfortable" | "compact";
 type NoteGroupMode = "none" | "updated-date";
 type SidebarView = "notes" | "tasks" | "calendar";
-type NoteBrowseMode = "all" | "templates" | "shortcuts" | "home" | "trash";
+type NoteBrowseMode = "all" | "templates" | "shortcuts" | "home" | "trash" | "graph";
 type ThemeId = "cobalt" | "sky" | "slate";
 type AiProvider = "openai" | "anthropic" | "gemini" | "perplexity" | "openai-compatible" | "ollama";
 type NoteSortMode =
@@ -415,7 +415,7 @@ const seedNotes: SeedNote[] = [
   }
 ];
 
-const sidePinned = ["Home", "Shortcuts", "Notes", "Trash", "Tasks", "Files", "Calendar", "Templates"];
+const sidePinned = ["Home", "Shortcuts", "Notes", "Trash", "Tasks", "Files", "Calendar", "Graph", "Templates"];
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -427,6 +427,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
+  { id: "open-graph", label: "Open graph", keywords: ["graph", "links", "network"] },
   { id: "open-trash", label: "Open trash", keywords: ["trash", "deleted"] },
   { id: "empty-trash", label: "Empty trash", keywords: ["trash", "delete"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
@@ -1590,7 +1591,8 @@ function loadPrefs(): AppPrefs {
         parsed.browseMode === "templates" ||
         parsed.browseMode === "shortcuts" ||
         parsed.browseMode === "home" ||
-        parsed.browseMode === "trash"
+        parsed.browseMode === "trash" ||
+        parsed.browseMode === "graph"
           ? parsed.browseMode
           : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
@@ -2206,6 +2208,45 @@ export default function App() {
       notes: groups.get(label) ?? []
     }));
   }, [visibleNotes, noteGroupMode]);
+
+  const graphModel = useMemo(() => {
+    const scoped = [...visibleNotes].sort((left, right) => left.title.localeCompare(right.title));
+    if (!scoped.length) {
+      return { nodes: [], edges: [] as Array<{ id: string; from: string; to: string }> };
+    }
+
+    const notesByTitle = new Map(scoped.map((note) => [note.title.toLowerCase(), note]));
+    const edgeSeen = new Set<string>();
+    const edges: Array<{ id: string; from: string; to: string }> = [];
+
+    for (const note of scoped) {
+      for (const link of note.linksOut) {
+        const target = notesByTitle.get(link.toLowerCase());
+        if (!target || target.id === note.id) {
+          continue;
+        }
+        const edgeId = [note.id, target.id].sort().join("::");
+        if (edgeSeen.has(edgeId)) {
+          continue;
+        }
+        edgeSeen.add(edgeId);
+        edges.push({ id: edgeId, from: note.id, to: target.id });
+      }
+    }
+
+    const total = scoped.length;
+    const ring = total === 1 ? 0 : Math.max(24, Math.min(40, 46 - total * 1.1));
+    const nodes = scoped.map((note, index) => {
+      const angle = total <= 1 ? 0 : (Math.PI * 2 * index) / total - Math.PI / 2;
+      const x = total <= 1 ? 50 : 50 + Math.cos(angle) * ring;
+      const y = total <= 1 ? 50 : 50 + Math.sin(angle) * ring;
+      return { note, x, y };
+    });
+
+    return { nodes, edges };
+  }, [visibleNotes]);
+
+  const graphNodeById = useMemo(() => new Map(graphModel.nodes.map((node) => [node.note.id, node])), [graphModel.nodes]);
 
   const recentNotes = useMemo(() => {
     return recentNoteIds
@@ -4845,6 +4886,17 @@ export default function App() {
       return;
     }
 
+    if (actionId === "open-graph") {
+      setSidebarView("notes");
+      setBrowseMode("graph");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
     if (actionId === "open-trash") {
       setSidebarView("notes");
       setBrowseMode("trash");
@@ -7265,6 +7317,12 @@ export default function App() {
                 (item === "Tasks" && sidebarView === "tasks") ||
                 (item === "Files" && filesDialogOpen) ||
                 (item === "Calendar" && calendarDialogOpen) ||
+                (item === "Graph" &&
+                  sidebarView === "notes" &&
+                  browseMode === "graph" &&
+                  !filesDialogOpen &&
+                  !tasksDialogOpen &&
+                  !calendarDialogOpen) ||
                 (item === "Templates" &&
                   browseMode === "templates" &&
                   !filesDialogOpen &&
@@ -7328,6 +7386,14 @@ export default function App() {
                   setTasksDialogOpen(false);
                   setFilesDialogOpen(false);
                   setCalendarDialogOpen(true);
+                  return;
+                }
+                if (item === "Graph") {
+                  setSidebarView("notes");
+                  setBrowseMode("graph");
+                  setTasksDialogOpen(false);
+                  setFilesDialogOpen(false);
+                  setCalendarDialogOpen(false);
                   return;
                 }
                 if (item === "Templates") {
@@ -7668,6 +7734,8 @@ export default function App() {
             <h1>
               {browseMode === "home"
                 ? "Home"
+                : browseMode === "graph"
+                  ? "Graph"
                 : browseMode === "templates"
                   ? "Templates"
                   : browseMode === "shortcuts"
@@ -7676,9 +7744,15 @@ export default function App() {
                       ? "Trash"
                     : selectedNotebook}
             </h1>
-            <small>{browseMode === "home" ? "Dashboard" : visibleNotes.length}</small>
+            <small>
+              {browseMode === "home"
+                ? "Dashboard"
+                : browseMode === "graph"
+                  ? `${graphModel.nodes.length} nodes · ${graphModel.edges.length} links`
+                  : visibleNotes.length}
+            </small>
           </div>
-          {browseMode !== "home" ? (
+          {browseMode !== "home" && browseMode !== "graph" ? (
             <div className="header-actions">
               <button
                 type="button"
@@ -7959,6 +8033,46 @@ export default function App() {
               )}
             </section>
           </div>
+        ) : browseMode === "graph" ? (
+          <section className="graph-view" aria-label="Graph view">
+            <header className="graph-view-header">
+              <h2>Connections</h2>
+              <small>Click a node to open its note</small>
+            </header>
+            {graphModel.nodes.length ? (
+              <div className="graph-canvas" role="img" aria-label={`Graph with ${graphModel.nodes.length} nodes`}>
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                  {graphModel.edges.map((edge) => {
+                    const from = graphNodeById.get(edge.from);
+                    const to = graphNodeById.get(edge.to);
+                    if (!from || !to) {
+                      return null;
+                    }
+                    return <line key={edge.id} x1={from.x} y1={from.y} x2={to.x} y2={to.y} />;
+                  })}
+                </svg>
+                {graphModel.nodes.map((node) => (
+                  <button
+                    key={node.note.id}
+                    type="button"
+                    className="graph-node"
+                    style={{ left: `${node.x}%`, top: `${node.y}%` }}
+                    onClick={() => {
+                      setSidebarView("notes");
+                      setBrowseMode("all");
+                      setSelectedNotebook(node.note.notebook);
+                      focusNote(node.note.id);
+                    }}
+                    title={node.note.title}
+                  >
+                    {node.note.title}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="graph-empty">No notes available for graph view in this scope.</p>
+            )}
+          </section>
         ) : (
           <>
             {tagFilters.length ? (

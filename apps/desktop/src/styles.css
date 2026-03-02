@@ -766,6 +766,87 @@ body.is-resizing {
   padding: 10px;
 }
 
+.graph-view {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.graph-view-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.graph-view-header h2 {
+  margin: 0;
+  color: #395478;
+  font-size: 18px;
+}
+
+.graph-view-header small {
+  color: #6b7f9e;
+  font-size: 12px;
+}
+
+.graph-canvas {
+  position: relative;
+  min-height: 420px;
+  border: 1px solid #d3deee;
+  border-radius: 14px;
+  background: radial-gradient(circle at 25% 20%, #f7fbff, #eef5ff 56%, #e8f0ff);
+  overflow: hidden;
+}
+
+.graph-canvas svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.graph-canvas line {
+  stroke: #a9bcdf;
+  stroke-width: 0.5;
+  opacity: 0.9;
+}
+
+.graph-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-width: 150px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #86a7df;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #284978;
+  font: 12px/1.2 var(--font-ui);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.12);
+}
+
+.graph-node:hover {
+  background: #f1f7ff;
+}
+
+.graph-node:focus-visible {
+  outline: 2px solid #4d8cf0;
+  outline-offset: 2px;
+}
+
+.graph-empty {
+  margin: 0;
+  padding: 20px;
+  border: 1px dashed #c9d8ef;
+  border-radius: 12px;
+  color: #5f78a6;
+  background: #f8fbff;
+}
+
 .note-group-section {
   display: contents;
 }

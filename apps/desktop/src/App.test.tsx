@@ -29,6 +29,22 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Saved searches", level: 2 })).toBeInTheDocument();
   });
 
+  it("opens graph mode from the sidebar", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
+    expect(screen.getByLabelText("Graph view")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agenda" })).toBeInTheDocument();
+  });
+
+  it("opens notes from graph node clicks", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    fireEvent.click(screen.getByRole("button", { name: "To-do list" }));
+    expect(screen.queryByLabelText("Graph view")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
+  });
+
   it("toggles note grouping by updated date and persists preference", () => {
     const first = render(<App />);
     expect(document.querySelectorAll(".note-group-heading").length).toBe(0);

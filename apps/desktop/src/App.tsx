@@ -280,6 +280,7 @@ type SearchFilterKind =
 type SearchUpdatedPreset = "none" | "today" | "week" | "month";
 type SearchCreatedPreset = "none" | "today" | "week" | "month";
 type AttachmentKind = "image" | "pdf" | "video" | "audio" | "other";
+type CalendarSortMode = "soonest" | "latest";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 
@@ -2314,6 +2315,7 @@ export default function App() {
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [calendarQuery, setCalendarQuery] = useState("");
   const [calendarFilter, setCalendarFilter] = useState("all");
+  const [calendarSortMode, setCalendarSortMode] = useState<CalendarSortMode>("soonest");
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
   const [quickTaskDialog, setQuickTaskDialog] = useState<QuickTaskDialogState | null>(null);
   const [scratchNoteDialog, setScratchNoteDialog] = useState<ScratchNoteDialogState | null>(null);
@@ -3085,7 +3087,12 @@ export default function App() {
     });
   }, [calendarEvents, calendarFilter, calendarQuery, liveNotesById]);
   const calendarGroups = useMemo(() => {
-    const sorted = [...filteredCalendarEvents].sort((left, right) => left.startAt.localeCompare(right.startAt));
+    const sorted = [...filteredCalendarEvents].sort((left, right) => {
+      if (calendarSortMode === "latest") {
+        return right.startAt.localeCompare(left.startAt);
+      }
+      return left.startAt.localeCompare(right.startAt);
+    });
     const groups: Array<{ label: string; events: CalendarEvent[] }> = [];
 
     for (const event of sorted) {
@@ -3099,7 +3106,7 @@ export default function App() {
     }
 
     return groups;
-  }, [filteredCalendarEvents]);
+  }, [calendarSortMode, filteredCalendarEvents]);
   const homeRecentNotes = useMemo(() => {
     if (recentNotes.length) {
       return recentNotes.slice(0, 6);
@@ -3612,6 +3619,7 @@ export default function App() {
     if (!calendarDialogOpen) {
       setCalendarQuery("");
       setCalendarFilter("all");
+      setCalendarSortMode("soonest");
     }
   }, [calendarDialogOpen]);
 
@@ -12279,6 +12287,20 @@ export default function App() {
               />
             </label>
             <div className="search-chips calendar-filter-chips">
+              <button
+                type="button"
+                className={calendarSortMode === "soonest" ? "chip active" : "chip"}
+                onClick={() => setCalendarSortMode("soonest")}
+              >
+                Soonest
+              </button>
+              <button
+                type="button"
+                className={calendarSortMode === "latest" ? "chip active" : "chip"}
+                onClick={() => setCalendarSortMode("latest")}
+              >
+                Latest
+              </button>
               <button
                 type="button"
                 className={calendarFilter === "all" ? "chip active" : "chip"}

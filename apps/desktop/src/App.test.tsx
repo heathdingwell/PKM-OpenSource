@@ -1852,6 +1852,12 @@ describe("App", () => {
     expect(calendarModal).toBeTruthy();
     expect(within(calendarModal as HTMLElement).getByText("Weekly planning")).toBeInTheDocument();
     expect(within(calendarModal as HTMLElement).getByText("Research block")).toBeInTheDocument();
+    const eventRows = Array.from((calendarModal as HTMLElement).querySelectorAll<HTMLElement>(".calendar-row strong"));
+    expect(eventRows[0]?.textContent).toBe("Weekly planning");
+    fireEvent.click(within(calendarModal as HTMLElement).getByRole("button", { name: "Latest" }));
+    const latestRows = Array.from((calendarModal as HTMLElement).querySelectorAll<HTMLElement>(".calendar-row strong"));
+    expect(latestRows[0]?.textContent).toBe("Template review");
+    fireEvent.click(within(calendarModal as HTMLElement).getByRole("button", { name: "Soonest" }));
     fireEvent.click(within(calendarModal as HTMLElement).getByRole("button", { name: /^Deep Work \(/ }));
     expect(within(calendarModal as HTMLElement).getByText("Research block")).toBeInTheDocument();
     expect(within(calendarModal as HTMLElement).queryByText("Weekly planning")).not.toBeInTheDocument();

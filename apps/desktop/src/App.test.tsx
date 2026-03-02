@@ -1734,6 +1734,22 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Bold" })).toBeInTheDocument();
   });
 
+  it("inserts a table from rich editor context menu", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Rich" }));
+    const editor = document.querySelector(".rich-editor-content") as HTMLElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.contextMenu(editor as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Insert table" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Markdown" }));
+    await waitFor(() => {
+      const markdownEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+      expect(markdownEditor?.value).toContain("| --- | --- |");
+    });
+  });
+
   it("supports arrow navigation and enter for focused editor mode", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

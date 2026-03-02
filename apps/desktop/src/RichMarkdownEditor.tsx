@@ -128,6 +128,9 @@ export interface RichMarkdownEditorHandle {
   toggleOrderedList: () => void;
   toggleTaskList: () => void;
   insertTable: () => void;
+  addTableRowAfter: () => void;
+  addTableColumnAfter: () => void;
+  deleteTable: () => void;
   setHeading: (level: 1 | 2 | 3) => void;
   setParagraph: () => void;
   toggleCodeBlock: () => void;
@@ -341,6 +344,15 @@ function RichMarkdownEditorInner(
         if (!inserted) {
           editor?.chain().focus().insertContent("| Column | Value |\n| --- | --- |\n|  |  |").run();
         }
+      },
+      addTableRowAfter: () => {
+        editor?.chain().focus().addRowAfter().run();
+      },
+      addTableColumnAfter: () => {
+        editor?.chain().focus().addColumnAfter().run();
+      },
+      deleteTable: () => {
+        editor?.chain().focus().deleteTable().run();
       },
       setHeading: (level: 1 | 2 | 3) => {
         editor?.chain().focus().toggleHeading({ level }).run();

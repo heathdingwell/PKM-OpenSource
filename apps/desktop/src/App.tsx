@@ -646,9 +646,14 @@ const editorContextRows: Array<{ id: string; label: string; divider?: boolean }>
   { id: "bullet", label: "Bullet list" },
   { id: "checklist", label: "Checklist" },
   { id: "divider-2", label: "", divider: true },
+  { id: "table", label: "Insert table" },
+  { id: "table-row-after", label: "Add table row below" },
+  { id: "table-column-after", label: "Add table column right" },
+  { id: "table-delete", label: "Delete table" },
+  { id: "divider-3", label: "", divider: true },
   { id: "link", label: "Insert link" },
   { id: "find", label: "Find in note" },
-  { id: "divider-3", label: "", divider: true },
+  { id: "divider-4", label: "", divider: true },
   { id: "copy-note-link", label: "Copy note link" }
 ];
 
@@ -7993,6 +7998,14 @@ export default function App() {
         richEditorRef.current?.toggleBulletList();
       } else if (action === "checklist") {
         richEditorRef.current?.toggleTaskList();
+      } else if (action === "table") {
+        richEditorRef.current?.insertTable();
+      } else if (action === "table-row-after") {
+        richEditorRef.current?.addTableRowAfter();
+      } else if (action === "table-column-after") {
+        richEditorRef.current?.addTableColumnAfter();
+      } else if (action === "table-delete") {
+        richEditorRef.current?.deleteTable();
       } else if (action === "link") {
         runRichToolbarAction("link");
       }
@@ -8013,6 +8026,10 @@ export default function App() {
       applyMarkdownInlineFormat("", "", "item", { linePrefix: "- " });
     } else if (action === "checklist") {
       applyMarkdownInlineFormat("", "", "task", { linePrefix: "- [ ] " });
+    } else if (action === "table") {
+      applyMarkdownSlashCommand({ id: "table", label: "Table", section: "Essentials", keywords: ["table"] });
+    } else if (action === "table-row-after" || action === "table-column-after" || action === "table-delete") {
+      setToastMessage("Table row and column actions are available in Rich editor");
     } else if (action === "link") {
       applyMarkdownInlineFormat("[", "](https://)", "link text");
     }
@@ -8394,6 +8411,22 @@ export default function App() {
   }
 
   const activeEditorFont = editorFontFamilies.find((entry) => entry.id === editorFontFamily)?.value ?? editorFontFamilies[0].value;
+  const visibleEditorContextRows = useMemo(() => {
+    const filtered =
+      editorMode === "rich"
+        ? editorContextRows
+        : editorContextRows.filter(
+            (row) => row.id !== "table-row-after" && row.id !== "table-column-after" && row.id !== "table-delete"
+          );
+    return filtered.filter((row, index) => {
+      if (!row.divider) {
+        return true;
+      }
+      const previous = filtered[index - 1];
+      const next = filtered[index + 1];
+      return Boolean(previous && !previous.divider && next && !next.divider);
+    });
+  }, [editorMode]);
 
   const editorMainStyle = {
     "--tag-pane-height": `${tagPaneHeight}px`,
@@ -11084,7 +11117,7 @@ export default function App() {
           style={{ left: editorContextMenu.x, top: editorContextMenu.y }}
           onClick={(event) => event.stopPropagation()}
         >
-          {editorContextRows.map((row) =>
+          {visibleEditorContextRows.map((row) =>
             row.divider ? (
               <div key={row.id} className="context-divider" />
             ) : (

@@ -343,6 +343,33 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Template Result Note", level: 2 })).toBeInTheDocument();
   });
 
+  it("allocates unique paths when creating untitled notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const readPath = (): string => {
+      const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+      expect(metadataPanel).toBeTruthy();
+      const pathRow = Array.from((metadataPanel as HTMLElement).querySelectorAll("div")).find(
+        (entry) => entry.querySelector("dt")?.textContent?.trim() === "Path"
+      );
+      const value = pathRow?.querySelector("dd")?.textContent?.trim();
+      expect(value).toBeTruthy();
+      return value as string;
+    };
+
+    const firstPath = readPath();
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    const secondPath = readPath();
+
+    expect(firstPath).toMatch(/untitled\.md$/);
+    expect(secondPath).toMatch(/untitled-2\.md$/);
+    expect(secondPath).not.toBe(firstPath);
+  });
+
   it("expands template variables when creating a note", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

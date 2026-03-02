@@ -556,6 +556,29 @@ function toFileName(title: string): string {
   return `${base || "untitled"}.md`;
 }
 
+function createPathAllocator(notes: AppNote[], excludeIds: ReadonlySet<string> = new Set()): (notebook: string, title: string) => string {
+  const used = new Set(
+    notes
+      .filter((note) => !excludeIds.has(note.id))
+      .map((note) => note.path.trim().toLowerCase())
+      .filter((path) => path.length > 0)
+  );
+
+  return (notebook: string, title: string) => {
+    const fileName = toFileName(title);
+    const ext = ".md";
+    const stem = fileName.endsWith(ext) ? fileName.slice(0, -ext.length) : fileName;
+    let index = 1;
+    let candidate = `${notebook}/${fileName}`;
+    while (used.has(candidate.toLowerCase())) {
+      index += 1;
+      candidate = `${notebook}/${stem}-${index}${ext}`;
+    }
+    used.add(candidate.toLowerCase());
+    return candidate;
+  };
+}
+
 function clampMenuPosition(x: number, y: number): { x: number; y: number } {
   const maxX = window.innerWidth - 260;
   const maxY = window.innerHeight - 420;
@@ -1108,12 +1131,20 @@ function rewriteWikilinks(markdown: string, titleMap: ReadonlyMap<string, string
   });
 }
 
-function noteFromMarkdown(base: AppNote, markdown: string, nowIso?: string): AppNote {
+function noteFromMarkdown(
+  base: AppNote,
+  markdown: string,
+  nowIso?: string,
+  options?: { pathOverride?: string }
+): AppNote {
   const parser = new VaultService();
   const parsed = parser.upsertNoteFromMarkdown(base.path, markdown);
   const mergedTags = Array.from(new Set([...(base.tags ?? []), ...parsed.tags])).sort((left, right) =>
     left.localeCompare(right)
   );
+  const path =
+    options?.pathOverride ||
+    (parsed.title === base.title ? base.path : `${base.notebook}/${toFileName(parsed.title)}`);
   return {
     ...base,
     title: parsed.title,
@@ -1121,8 +1152,26 @@ function noteFromMarkdown(base: AppNote, markdown: string, nowIso?: string): App
     tags: mergedTags,
     linksOut: parsed.linksOut,
     markdown,
-    path: `${base.notebook}/${toFileName(parsed.title)}`,
+    path,
     updatedAt: nowIso ?? new Date().toISOString()
+  };
+}
+
+function applyNoteMarkdownWithUniquePath(
+  note: AppNote,
+  markdown: string,
+  notes: AppNote[],
+  nowIso?: string
+): AppNote {
+  const updated = noteFromMarkdown(note, markdown, nowIso, { pathOverride: note.path });
+  if (updated.title === note.title) {
+    return updated;
+  }
+
+  const allocatePath = createPathAllocator(notes, new Set([note.id]));
+  return {
+    ...updated,
+    path: allocatePath(note.notebook, updated.title)
   };
 }
 
@@ -2396,7 +2445,9 @@ export default function App() {
     autosaveTimerRef.current = window.setTimeout(() => {
       setSaveState("saving");
       setNotes((previous) =>
-        previous.map((note) => (note.id === activeNote.id ? noteFromMarkdown(note, draftMarkdown) : note))
+        previous.map((note) =>
+          note.id === activeNote.id ? applyNoteMarkdownWithUniquePath(note, draftMarkdown, previous) : note
+        )
       );
       setSaveState("saved");
       touchRecent(activeNote.id);
@@ -3455,7 +3506,9 @@ export default function App() {
     }
 
     setNotes((previous) =>
-      previous.map((note) => (note.id === activeNote.id ? noteFromMarkdown(note, draftMarkdown) : note))
+      previous.map((note) =>
+        note.id === activeNote.id ? applyNoteMarkdownWithUniquePath(note, draftMarkdown, previous) : note
+      )
     );
     setSaveState("saved");
     touchRecent(activeNote.id);
@@ -3653,6 +3706,7 @@ export default function App() {
     const notebook = resolveDefaultNotebook();
     const now = new Date().toISOString();
     const markdown = `# ${title}\n\n`;
+    const allocatePath = createPathAllocator(notes);
     const created: AppNote = {
       id: crypto.randomUUID(),
       title,
@@ -3662,7 +3716,7 @@ export default function App() {
       createdAt: now,
       updatedAt: now,
       notebook,
-      path: `${notebook}/${toFileName(title)}`,
+      path: allocatePath(notebook, title),
       markdown
     };
 
@@ -4549,6 +4603,7 @@ export default function App() {
 
     const now = new Date().toISOString();
     const markdown = "# Untitled\n\n";
+    const allocatePath = createPathAllocator(notes);
     const seed: AppNote = {
       id: crypto.randomUUID(),
       title: "Untitled",
@@ -4558,7 +4613,7 @@ export default function App() {
       createdAt: now,
       updatedAt: now,
       notebook,
-      path: `${notebook}/untitled.md`,
+      path: allocatePath(notebook, "Untitled"),
       markdown
     };
     const created = noteFromMarkdown(seed, markdown, now);
@@ -4603,6 +4658,7 @@ export default function App() {
 
     const now = new Date().toISOString();
     const markdown = `# ${title}\n\n${content}`;
+    const allocatePath = createPathAllocator(notes);
     const created = noteFromMarkdown(
       {
         id: crypto.randomUUID(),
@@ -4612,7 +4668,7 @@ export default function App() {
         linksOut: [],
         createdAt: now,
         updatedAt: now,
-        path: `${notebook}/${toFileName(title)}`,
+        path: allocatePath(notebook, title),
         notebook,
         markdown
       },
@@ -4788,23 +4844,25 @@ export default function App() {
       return;
     }
 
-    setNotes((previous) =>
-      previous.map((note) => {
+    const restoredAt = new Date().toISOString();
+    setNotes((previous) => {
+      const allocatePath = createPathAllocator(previous, new Set([noteId]));
+      return previous.map((note) => {
         if (note.id !== noteId) {
           return note;
         }
 
-        return noteFromMarkdown(
-          {
-            ...note,
-            title: snapshot.title,
-            path: `${note.notebook}/${toFileName(snapshot.title)}`
-          },
-          snapshot.markdown,
-          new Date().toISOString()
-        );
-      })
-    );
+        const restored = noteFromMarkdown(note, snapshot.markdown, restoredAt, { pathOverride: note.path });
+        if (restored.title === note.title) {
+          return restored;
+        }
+
+        return {
+          ...restored,
+          path: allocatePath(note.notebook, restored.title)
+        };
+      });
+    });
 
     if (activeId === noteId) {
       setDraftMarkdown(snapshot.markdown);
@@ -4873,8 +4931,11 @@ export default function App() {
       previousById[note.id] = { notebook: note.notebook, path: note.path };
     }
 
-    setNotes((previous) =>
-      previous.map((note) => {
+    const changedIds = new Set(changed.map((note) => note.id));
+    const movedAt = new Date().toISOString();
+    setNotes((previous) => {
+      const allocatePath = createPathAllocator(previous, changedIds);
+      return previous.map((note) => {
         if (!noteIds.includes(note.id)) {
           return note;
         }
@@ -4886,11 +4947,11 @@ export default function App() {
         return {
           ...note,
           notebook: destination,
-          path: `${destination}/${toFileName(note.title)}`,
-          updatedAt: new Date().toISOString()
+          path: allocatePath(destination, note.title),
+          updatedAt: movedAt
         };
-      })
-    );
+      });
+    });
 
     setLastMove({ previousById });
     setLastTrash(null);
@@ -4931,7 +4992,8 @@ export default function App() {
 
     const nowDate = new Date();
     const now = nowDate.toISOString();
-    const path = `${safeNotebook}/${toFileName(safeTitle)}`;
+    const allocatePath = createPathAllocator(notes);
+    const path = allocatePath(safeNotebook, safeTitle);
     const rewrittenHeading = rewriteHeading(note.markdown, safeTitle);
     const expanded = expandTemplateVariables(rewrittenHeading, { title: safeTitle, now: nowDate });
     const markdown = await cloneNoteAttachmentsForCopy(note.path, path, expanded);
@@ -5003,25 +5065,28 @@ export default function App() {
     }
 
     const now = new Date().toISOString();
-    const copies = await Promise.all(selected.map(async (source, index) => {
-      const suffix = selected.length > 1 ? ` copy ${index + 1}` : " copy";
-      const draft = parseForPreview(source.markdown);
-      const copyTitle = `${draft.title}${suffix}`;
-      const copyPath = `${destination}/${toFileName(copyTitle)}`;
-      const rewrittenHeading = source.markdown.replace(/^#\s+.*$/m, `# ${copyTitle}`);
-      const rewritten = await cloneNoteAttachmentsForCopy(source.path, copyPath, rewrittenHeading);
-      const copy: AppNote = {
-        ...source,
-        id: crypto.randomUUID(),
-        notebook: destination,
-        markdown: rewritten,
-        createdAt: now,
-        updatedAt: now,
-        path: copyPath,
-        title: copyTitle
-      };
-      return noteFromMarkdown(copy, rewritten, now);
-    }));
+    const allocatePath = createPathAllocator(notes);
+    const copies = await Promise.all(
+      selected.map(async (source, index) => {
+        const suffix = selected.length > 1 ? ` copy ${index + 1}` : " copy";
+        const draft = parseForPreview(source.markdown);
+        const copyTitle = `${draft.title}${suffix}`;
+        const copyPath = allocatePath(destination, copyTitle);
+        const rewrittenHeading = source.markdown.replace(/^#\s+.*$/m, `# ${copyTitle}`);
+        const rewritten = await cloneNoteAttachmentsForCopy(source.path, copyPath, rewrittenHeading);
+        const copy: AppNote = {
+          ...source,
+          id: crypto.randomUUID(),
+          notebook: destination,
+          markdown: rewritten,
+          createdAt: now,
+          updatedAt: now,
+          path: copyPath,
+          title: copyTitle
+        };
+        return noteFromMarkdown(copy, rewritten, now);
+      })
+    );
 
     setNotes((previous) => [...copies, ...previous]);
     setToastMessage(
@@ -5135,12 +5200,13 @@ export default function App() {
 
   async function duplicateNotes(noteIds: string[]): Promise<void> {
     const now = new Date().toISOString();
+    const allocatePath = createPathAllocator(notes);
     const duplicates = await Promise.all(
       notes
         .filter((note) => noteIds.includes(note.id))
         .map(async (note) => {
         const title = `${note.title} copy`;
-        const path = `${note.notebook}/${toFileName(title)}`;
+        const path = allocatePath(note.notebook, title);
         const rewrittenHeading = note.markdown.replace(/^#\s+.*$/m, `# ${title}`);
         const markdown = await cloneNoteAttachmentsForCopy(note.path, path, rewrittenHeading);
         const copy: AppNote = {
@@ -5180,18 +5246,21 @@ export default function App() {
     const now = new Date().toISOString();
     let nextDraft: string | null = null;
 
-    setNotes((previous) =>
-      previous.map((entry) => {
+    setNotes((previous) => {
+      const allocatePath = createPathAllocator(previous, new Set([note.id]));
+      return previous.map((entry) => {
         if (entry.id === note.id) {
           const renamedMarkdown = rewriteHeading(entry.markdown, trimmedTitle);
+          const renamedPath = allocatePath(entry.notebook, trimmedTitle);
           const renamed = noteFromMarkdown(
             {
               ...entry,
               title: trimmedTitle,
-              path: `${entry.notebook}/${toFileName(trimmedTitle)}`
+              path: renamedPath
             },
             renamedMarkdown,
-            now
+            now,
+            { pathOverride: renamedPath }
           );
           if (entry.id === activeId) {
             nextDraft = renamed.markdown;
@@ -5204,13 +5273,13 @@ export default function App() {
           return entry;
         }
 
-        const rewritten = noteFromMarkdown(entry, rewrittenMarkdown, now);
+        const rewritten = applyNoteMarkdownWithUniquePath(entry, rewrittenMarkdown, previous, now);
         if (entry.id === activeId) {
           nextDraft = rewritten.markdown;
         }
         return rewritten;
-      })
-    );
+      });
+    });
 
     if (nextDraft !== null) {
       setDraftMarkdown(nextDraft);
@@ -5563,6 +5632,7 @@ export default function App() {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     const markdown = "# Untitled\n\n";
+    const allocatePath = createPathAllocator(notes);
 
     const seed: AppNote = {
       id,
@@ -5573,7 +5643,7 @@ export default function App() {
       createdAt: now,
       updatedAt: now,
       notebook,
-      path: `${notebook}/untitled.md`,
+      path: allocatePath(notebook, "Untitled"),
       markdown
     };
 
@@ -5620,6 +5690,7 @@ export default function App() {
 
     const now = new Date().toISOString();
     const markdown = `# ${title}\n\n`;
+    const allocatePath = createPathAllocator(notes);
     const seed: AppNote = {
       id: crypto.randomUUID(),
       title,
@@ -5629,7 +5700,7 @@ export default function App() {
       createdAt: now,
       updatedAt: now,
       notebook: preferredNotebook,
-      path: `${preferredNotebook}/${toFileName(title)}`,
+      path: allocatePath(preferredNotebook, title),
       markdown
     };
     const note = noteFromMarkdown(seed, markdown, now);
@@ -5652,8 +5723,10 @@ export default function App() {
 
     const oldName = renameDialog.oldName;
     const renamed = renameDialog.newName.trim();
-    setNotes((previous) =>
-      previous.map((note) => {
+    setNotes((previous) => {
+      const renamedNoteIds = new Set(previous.filter((note) => note.notebook === oldName).map((note) => note.id));
+      const allocatePath = createPathAllocator(previous, renamedNoteIds);
+      return previous.map((note) => {
         if (note.notebook !== oldName) {
           return note;
         }
@@ -5661,10 +5734,10 @@ export default function App() {
         return {
           ...note,
           notebook: renamed,
-          path: `${renamed}/${toFileName(note.title)}`
+          path: allocatePath(renamed, note.title)
         };
-      })
-    );
+      });
+    });
 
     if (selectedNotebook === oldName) {
       setSelectedNotebook(renamed);

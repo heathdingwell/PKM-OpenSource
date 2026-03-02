@@ -1806,6 +1806,10 @@ describe("App", () => {
     expect(calendarModal).toBeTruthy();
     expect(within(calendarModal as HTMLElement).getByText("Weekly planning")).toBeInTheDocument();
     expect(within(calendarModal as HTMLElement).getByText("Research block")).toBeInTheDocument();
+    fireEvent.click(within(calendarModal as HTMLElement).getByRole("button", { name: /^Deep Work \(/ }));
+    expect(within(calendarModal as HTMLElement).getByText("Research block")).toBeInTheDocument();
+    expect(within(calendarModal as HTMLElement).queryByText("Weekly planning")).not.toBeInTheDocument();
+    fireEvent.click(within(calendarModal as HTMLElement).getByRole("button", { name: /^All \(/ }));
 
     fireEvent.change(within(calendarModal as HTMLElement).getByLabelText("Filter events"), {
       target: { value: "research" }
@@ -1824,6 +1828,7 @@ describe("App", () => {
     expect(calendarModal).toBeTruthy();
     const queryInput = within(calendarModal as HTMLElement).getByLabelText("Filter events") as HTMLInputElement;
     expect(queryInput.value).toBe("");
+    expect(within(calendarModal as HTMLElement).getByRole("button", { name: /^All \(/ })).toHaveClass("active");
   });
 
   it("derives note title from first markdown line when no heading exists", () => {

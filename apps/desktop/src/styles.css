@@ -2837,6 +2837,11 @@ body.is-resizing {
   margin-bottom: 0;
 }
 
+.calendar-filter-chips {
+  flex-wrap: wrap;
+  padding: 0 0 8px;
+}
+
 .calendar-actions {
   margin-bottom: 10px;
 }

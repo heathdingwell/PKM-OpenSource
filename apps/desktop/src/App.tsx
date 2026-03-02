@@ -2293,6 +2293,7 @@ export default function App() {
   const [filesFilterKind, setFilesFilterKind] = useState<"all" | AttachmentKind>("all");
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [calendarQuery, setCalendarQuery] = useState("");
+  const [calendarFilter, setCalendarFilter] = useState("all");
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
   const [quickTaskDialog, setQuickTaskDialog] = useState<QuickTaskDialogState | null>(null);
   const [scratchNoteDialog, setScratchNoteDialog] = useState<ScratchNoteDialogState | null>(null);
@@ -3024,20 +3025,29 @@ export default function App() {
     });
   }, [attachmentItems, filesFilterKind, filesQuery]);
   const calendarEventsById = useMemo(() => new Map(calendarEvents.map((event) => [event.id, event])), [calendarEvents]);
+  const calendarFilterCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const event of calendarEvents) {
+      counts.set(event.calendar, (counts.get(event.calendar) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort((left, right) => left[0].localeCompare(right[0]));
+  }, [calendarEvents]);
   const filteredCalendarEvents = useMemo(() => {
     const query = calendarQuery.trim().toLowerCase();
-    if (!query) {
-      return calendarEvents;
-    }
-
     return calendarEvents.filter((event) => {
+      if (calendarFilter !== "all" && event.calendar !== calendarFilter) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
       const linkedNote = event.noteId ? liveNotesById.get(event.noteId) ?? null : null;
       const haystack = `${event.title} ${event.calendar} ${formatCalendarTimeRange(event)} ${
         linkedNote?.title ?? ""
       } ${linkedNote?.notebook ?? ""}`.toLowerCase();
       return haystack.includes(query);
     });
-  }, [calendarEvents, calendarQuery, liveNotesById]);
+  }, [calendarEvents, calendarFilter, calendarQuery, liveNotesById]);
   const calendarGroups = useMemo(() => {
     const sorted = [...filteredCalendarEvents].sort((left, right) => left.startAt.localeCompare(right.startAt));
     const groups: Array<{ label: string; events: CalendarEvent[] }> = [];
@@ -3565,6 +3575,7 @@ export default function App() {
   useEffect(() => {
     if (!calendarDialogOpen) {
       setCalendarQuery("");
+      setCalendarFilter("all");
     }
   }, [calendarDialogOpen]);
 
@@ -12200,6 +12211,25 @@ export default function App() {
                 placeholder="Filter by event, calendar, note, or time"
               />
             </label>
+            <div className="search-chips calendar-filter-chips">
+              <button
+                type="button"
+                className={calendarFilter === "all" ? "chip active" : "chip"}
+                onClick={() => setCalendarFilter("all")}
+              >
+                All ({calendarEvents.length})
+              </button>
+              {calendarFilterCounts.map(([name, count]) => (
+                <button
+                  key={name}
+                  type="button"
+                  className={calendarFilter === name ? "chip active" : "chip"}
+                  onClick={() => setCalendarFilter(name)}
+                >
+                  {name} ({count})
+                </button>
+              ))}
+            </div>
             <div className="calendar-actions">
               <button
                 type="button"

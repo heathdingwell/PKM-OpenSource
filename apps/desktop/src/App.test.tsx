@@ -335,6 +335,37 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Planning/i })).toBeInTheDocument();
   });
 
+  it("opens move current notebook to stack from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">move current notebook to stack" }
+    });
+    fireEvent.click(screen.getByText("Move current notebook to stack"));
+
+    expect(screen.getByRole("heading", { name: /Move "Daily Notes" to stack/i, level: 3 })).toBeInTheDocument();
+  });
+
+  it("removes current notebook from stack from command palette", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+    expect(dailyNotebook()).toBeTruthy();
+
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Move to stack..." }));
+    fireEvent.change(screen.getByPlaceholderText("New stack name"), { target: { value: "Ops" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">remove current notebook from stack" }
+    });
+    fireEvent.click(screen.getByText("Remove current notebook from stack"));
+
+    expect(screen.getByText('Removed "Daily Notes" from stack')).toBeInTheDocument();
+  });
+
   it("opens note history from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

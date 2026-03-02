@@ -445,6 +445,8 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-from-template", label: "New from template", keywords: ["template", "clone"] },
   { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
   { id: "new-stack", label: "New stack", keywords: ["stack", "group", "notebook"] },
+  { id: "move-notebook-stack", label: "Move current notebook to stack", keywords: ["stack", "move", "notebook"] },
+  { id: "remove-notebook-stack", label: "Remove current notebook from stack", keywords: ["stack", "remove", "notebook"] },
   { id: "open-home", label: "Open home", keywords: ["home", "dashboard"] },
   { id: "open-notes", label: "Open notes", keywords: ["notes", "sidebar"] },
   { id: "open-note-info", label: "Open note info", keywords: ["metadata", "info", "note"] },
@@ -5323,6 +5325,31 @@ export default function App() {
     if (actionId === "new-stack") {
       setSearchOpen(false);
       createStack();
+      return;
+    }
+
+    if (actionId === "move-notebook-stack") {
+      if (selectedNotebook === "All Notes") {
+        setToastMessage("Select a notebook first");
+        setSearchOpen(false);
+        return;
+      }
+      setStackDialog({
+        notebook: selectedNotebook,
+        selectedStack: notebookStacks[selectedNotebook] ?? "",
+        newStackName: ""
+      });
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "remove-notebook-stack") {
+      if (selectedNotebook === "All Notes") {
+        setToastMessage("Select a notebook first");
+      } else {
+        removeNotebookFromStack(selectedNotebook);
+      }
+      setSearchOpen(false);
       return;
     }
 

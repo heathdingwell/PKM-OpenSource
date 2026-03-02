@@ -4805,6 +4805,14 @@ export default function App() {
     setRecentSearches((previous) => [value, ...previous.filter((entry) => entry !== value)].slice(0, 8));
   }
 
+  function removeRecentSearch(query: string): void {
+    setRecentSearches((previous) => previous.filter((entry) => entry !== query));
+  }
+
+  function clearRecentSearches(): void {
+    setRecentSearches([]);
+  }
+
   function saveCurrentSearch(): void {
     let query = quickQuery.trim();
     if (searchFilters.includes("attachments") && !/\bhas:(attachment|file)\b/i.test(query)) {
@@ -11060,12 +11068,29 @@ export default function App() {
             </div>
             <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, updated:today|week|month|YYYY-MM-DD..YYYY-MM-DD, created:, has:attachment|task|due|overdue|today|upcoming|undated|reminder|reminder-overdue|reminder-today|reminder-upcoming|image|pdf</p>
             <div className="search-results">
-              <h4>Recent searches</h4>
+              <div className="search-section-header">
+                <h4>Recent searches</h4>
+                {recentSearches.length ? (
+                  <button type="button" className="clear-recent-searches" onClick={clearRecentSearches}>
+                    Clear recent searches
+                  </button>
+                ) : null}
+              </div>
               <ul>
                 {recentSearches.length ? (
                   recentSearches.map((query) => (
-                    <li key={query} onClick={() => setQuickQuery(query)}>
-                      <strong>{query}</strong>
+                    <li key={query} className="recent-search-item">
+                      <button type="button" className="recent-search-open" onClick={() => setQuickQuery(query)}>
+                        <strong>{query}</strong>
+                      </button>
+                      <button
+                        type="button"
+                        className="recent-search-remove"
+                        aria-label={`Remove recent search ${query}`}
+                        onClick={() => removeRecentSearch(query)}
+                      >
+                        Remove
+                      </button>
                     </li>
                   ))
                 ) : (

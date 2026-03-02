@@ -821,6 +821,40 @@ describe("App", () => {
     expect(queryInput.value).toBe("journal");
   });
 
+  it("removes a single recent search entry from the search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    expect(screen.getByText("agenda")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove recent search agenda" }));
+    expect(screen.queryByText("agenda")).not.toBeInTheDocument();
+  });
+
+  it("clears all recent searches from the search modal", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "journal" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear recent searches" }));
+
+    expect(screen.getByText("No recent searches")).toBeInTheDocument();
+    expect(screen.queryByText("agenda")).not.toBeInTheDocument();
+    expect(screen.queryByText("journal")).not.toBeInTheDocument();
+  });
+
   it("supports has:due search filter", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));

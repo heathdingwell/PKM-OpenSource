@@ -1388,6 +1388,17 @@ describe("App", () => {
     expect(screen.getByText("Doc PDF")).toBeInTheDocument();
     expect(screen.getByText("Voice memo")).toBeInTheDocument();
     expect(screen.getByText("Archive")).toBeInTheDocument();
+    const filesModal = screen.getByRole("heading", { name: "Files", level: 3 }).closest("section");
+    expect(filesModal).toBeTruthy();
+    const rowsBefore = Array.from((filesModal as HTMLElement).querySelectorAll<HTMLElement>("li strong"));
+    expect(rowsBefore[0]?.textContent).toBe("Photo shot");
+    fireEvent.click(within(filesModal as HTMLElement).getByRole("button", { name: "Name A-Z" }));
+    const rowsAsc = Array.from((filesModal as HTMLElement).querySelectorAll<HTMLElement>("li strong"));
+    expect(rowsAsc[0]?.textContent).toBe("Archive");
+    fireEvent.click(within(filesModal as HTMLElement).getByRole("button", { name: "Name Z-A" }));
+    const rowsDesc = Array.from((filesModal as HTMLElement).querySelectorAll<HTMLElement>("li strong"));
+    expect(rowsDesc[0]?.textContent).toBe("Voice memo");
+    fireEvent.click(within(filesModal as HTMLElement).getByRole("button", { name: "Recent" }));
 
     fireEvent.click(screen.getByRole("button", { name: /^Images \(/ }));
     expect(screen.getByText("Photo shot")).toBeInTheDocument();

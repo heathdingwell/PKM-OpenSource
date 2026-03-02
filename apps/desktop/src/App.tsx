@@ -280,6 +280,7 @@ type SearchFilterKind =
 type SearchUpdatedPreset = "none" | "today" | "week" | "month";
 type SearchCreatedPreset = "none" | "today" | "week" | "month";
 type AttachmentKind = "image" | "pdf" | "video" | "audio" | "other";
+type AttachmentSortMode = "recent" | "name-asc" | "name-desc";
 type CalendarSortMode = "soonest" | "latest";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
@@ -2312,6 +2313,7 @@ export default function App() {
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [filesQuery, setFilesQuery] = useState("");
   const [filesFilterKind, setFilesFilterKind] = useState<"all" | AttachmentKind>("all");
+  const [filesSortMode, setFilesSortMode] = useState<AttachmentSortMode>("recent");
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [calendarQuery, setCalendarQuery] = useState("");
   const [calendarFilter, setCalendarFilter] = useState("all");
@@ -3051,7 +3053,7 @@ export default function App() {
   }, [attachmentItems]);
   const filteredAttachmentItems = useMemo(() => {
     const query = filesQuery.trim().toLowerCase();
-    return attachmentItems.filter((item) => {
+    const filtered = attachmentItems.filter((item) => {
       if (filesFilterKind !== "all" && getAttachmentKind(item.target) !== filesFilterKind) {
         return false;
       }
@@ -3061,7 +3063,15 @@ export default function App() {
       const haystack = `${item.label} ${item.target} ${item.noteTitle} ${item.notebook}`.toLowerCase();
       return haystack.includes(query);
     });
-  }, [attachmentItems, filesFilterKind, filesQuery]);
+    if (filesSortMode === "recent") {
+      return filtered;
+    }
+    return [...filtered].sort((left, right) =>
+      filesSortMode === "name-asc"
+        ? left.label.localeCompare(right.label)
+        : right.label.localeCompare(left.label)
+    );
+  }, [attachmentItems, filesFilterKind, filesQuery, filesSortMode]);
   const calendarEventsById = useMemo(() => new Map(calendarEvents.map((event) => [event.id, event])), [calendarEvents]);
   const calendarFilterCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -3622,6 +3632,14 @@ export default function App() {
       setCalendarSortMode("soonest");
     }
   }, [calendarDialogOpen]);
+
+  useEffect(() => {
+    if (!filesDialogOpen) {
+      setFilesQuery("");
+      setFilesFilterKind("all");
+      setFilesSortMode("recent");
+    }
+  }, [filesDialogOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -6189,6 +6207,7 @@ export default function App() {
       setTasksDialogOpen(false);
       setFilesQuery("");
       setFilesFilterKind("all");
+      setFilesSortMode("recent");
       setFilesDialogOpen(true);
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
@@ -9082,6 +9101,7 @@ export default function App() {
                   setTasksDialogOpen(false);
                   setFilesQuery("");
                   setFilesFilterKind("all");
+                  setFilesSortMode("recent");
                   setFilesDialogOpen(true);
                   setCalendarDialogOpen(false);
                   return;
@@ -12152,6 +12172,7 @@ export default function App() {
             setFilesDialogOpen(false);
             setFilesQuery("");
             setFilesFilterKind("all");
+            setFilesSortMode("recent");
           }}
         >
           <section className="move-modal files-modal" onClick={(event) => event.stopPropagation()}>
@@ -12175,6 +12196,27 @@ export default function App() {
                   />
                 </label>
                 <div className="search-chips files-filter-chips">
+                  <button
+                    type="button"
+                    className={filesSortMode === "recent" ? "chip active" : "chip"}
+                    onClick={() => setFilesSortMode("recent")}
+                  >
+                    Recent
+                  </button>
+                  <button
+                    type="button"
+                    className={filesSortMode === "name-asc" ? "chip active" : "chip"}
+                    onClick={() => setFilesSortMode("name-asc")}
+                  >
+                    Name A-Z
+                  </button>
+                  <button
+                    type="button"
+                    className={filesSortMode === "name-desc" ? "chip active" : "chip"}
+                    onClick={() => setFilesSortMode("name-desc")}
+                  >
+                    Name Z-A
+                  </button>
                   <button
                     type="button"
                     className={filesFilterKind === "all" ? "chip active" : "chip"}
@@ -12233,6 +12275,7 @@ export default function App() {
                         setFilesDialogOpen(false);
                         setFilesQuery("");
                         setFilesFilterKind("all");
+                        setFilesSortMode("recent");
                       }}
                     >
                       <strong>{file.label}</strong>
@@ -12251,6 +12294,7 @@ export default function App() {
                   setFilesDialogOpen(false);
                   setFilesQuery("");
                   setFilesFilterKind("all");
+                  setFilesSortMode("recent");
                 }}
               >
                 Close

@@ -1094,6 +1094,13 @@ body.is-resizing {
   background: #dde9ff;
 }
 
+.note-reminder {
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: #1f4ecb;
+  background: #e9f0ff;
+}
+
 .note-card-actions {
   position: absolute;
   top: 8px;
@@ -1671,6 +1678,46 @@ body.is-resizing {
   color: #1f2937;
   font-size: 12px;
   word-break: break-word;
+}
+
+.metadata-reminder {
+  display: grid;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.metadata-reminder label {
+  display: grid;
+  gap: 4px;
+}
+
+.metadata-reminder span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.metadata-reminder input {
+  height: 30px;
+  border: 1px solid #c9d8ef;
+  border-radius: 8px;
+  padding: 0 8px;
+  color: #1f2937;
+  background: #ffffff;
+}
+
+.metadata-reminder button {
+  height: 30px;
+  justify-self: start;
+  padding: 0 10px;
+  border: 1px solid #c9d8ef;
+  border-radius: 8px;
+  color: #395478;
+  background: #f4f8ff;
+  font-size: 12px;
+}
+
+.metadata-reminder button:disabled {
+  opacity: 0.55;
 }
 
 .metadata-actions {

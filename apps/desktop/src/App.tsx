@@ -17,6 +17,7 @@ interface AppNote extends NoteRecord {
   markdown: string;
   isTemplate?: boolean;
   trashedAt?: string;
+  reminderAt?: string;
 }
 
 interface ContextMenuState {
@@ -222,7 +223,7 @@ type NoteViewMode = "cards" | "list";
 type NoteDensityMode = "comfortable" | "compact";
 type NoteGroupMode = "none" | "updated-date";
 type SidebarView = "notes" | "tasks" | "calendar";
-type NoteBrowseMode = "all" | "templates" | "shortcuts" | "home" | "trash" | "graph";
+type NoteBrowseMode = "all" | "templates" | "shortcuts" | "home" | "trash" | "graph" | "reminders";
 type ThemeId = "cobalt" | "sky" | "slate";
 type AiProvider = "openai" | "anthropic" | "gemini" | "perplexity" | "openai-compatible" | "ollama";
 type NoteSortMode =
@@ -415,7 +416,7 @@ const seedNotes: SeedNote[] = [
   }
 ];
 
-const sidePinned = ["Home", "Shortcuts", "Notes", "Trash", "Tasks", "Files", "Calendar", "Graph", "Templates"];
+const sidePinned = ["Home", "Shortcuts", "Notes", "Reminders", "Trash", "Tasks", "Files", "Calendar", "Graph", "Templates"];
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -424,6 +425,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-home", label: "Open home", keywords: ["home", "dashboard"] },
   { id: "open-notes", label: "Open notes", keywords: ["notes", "sidebar"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
+  { id: "open-reminders", label: "Open reminders", keywords: ["reminders", "dates", "follow-up"] },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
@@ -1052,6 +1054,28 @@ function getTaskDueBucket(dueDate: string | null, today: string): Exclude<TaskDu
   return "upcoming";
 }
 
+function getReminderBucket(reminderDate: string, today: string): "overdue" | "today" | "upcoming" {
+  if (reminderDate < today) {
+    return "overdue";
+  }
+  if (reminderDate === today) {
+    return "today";
+  }
+  return "upcoming";
+}
+
+function describeReminderDate(reminderDate: string): string {
+  const today = toDateInputValue(new Date());
+  const bucket = getReminderBucket(reminderDate, today);
+  if (bucket === "overdue") {
+    return `Overdue ${reminderDate}`;
+  }
+  if (bucket === "today") {
+    return `Today (${reminderDate})`;
+  }
+  return `Upcoming ${reminderDate}`;
+}
+
 function extractOpenTasks(notes: AppNote[]): OpenTaskItem[] {
   const tasks: OpenTaskItem[] = [];
 
@@ -1205,6 +1229,27 @@ function noteHasAttachmentKind(markdown: string, kind: string): boolean {
   const extPattern = normalized.startsWith(".") ? normalized : `.${normalized}`;
   const escaped = extPattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`\\[[^\\]]+\\]\\([^)]*${escaped}(?:$|[?#)])`, "i").test(markdown);
+}
+
+function noteMatchesHasFilter(note: AppNote, kind: string): boolean {
+  const normalized = kind.trim().toLowerCase();
+  if (normalized === "reminder") {
+    return Boolean(note.reminderAt);
+  }
+
+  if (normalized === "reminder-overdue" || normalized === "overdue-reminder") {
+    return Boolean(note.reminderAt && getReminderBucket(note.reminderAt, toDateInputValue(new Date())) === "overdue");
+  }
+
+  if (normalized === "reminder-today" || normalized === "today-reminder") {
+    return Boolean(note.reminderAt && getReminderBucket(note.reminderAt, toDateInputValue(new Date())) === "today");
+  }
+
+  if (normalized === "reminder-upcoming" || normalized === "upcoming-reminder") {
+    return Boolean(note.reminderAt && getReminderBucket(note.reminderAt, toDateInputValue(new Date())) === "upcoming");
+  }
+
+  return noteHasAttachmentKind(note.markdown, normalized);
 }
 
 function parseSearchDateRangeToken(value: string): { afterDate: string | null; beforeDate: string | null } | null {
@@ -1509,7 +1554,8 @@ function isAppNote(value: unknown): value is AppNote {
     typeof note.notebook === "string" &&
     typeof note.markdown === "string" &&
     (note.isTemplate === undefined || typeof note.isTemplate === "boolean") &&
-    (note.trashedAt === undefined || typeof note.trashedAt === "string")
+    (note.trashedAt === undefined || typeof note.trashedAt === "string") &&
+    (note.reminderAt === undefined || typeof note.reminderAt === "string")
   );
 }
 
@@ -1592,7 +1638,8 @@ function loadPrefs(): AppPrefs {
         parsed.browseMode === "shortcuts" ||
         parsed.browseMode === "home" ||
         parsed.browseMode === "trash" ||
-        parsed.browseMode === "graph"
+        parsed.browseMode === "graph" ||
+        parsed.browseMode === "reminders"
           ? parsed.browseMode
           : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
@@ -2123,6 +2170,8 @@ export default function App() {
                     note.tags.some((tag) => shortcutTagNames.has(tag))
                 );
               })()
+            : browseMode === "reminders"
+              ? scoped.filter((note) => Boolean(note.reminderAt))
             : scoped;
 
     const filtered = tagFilters.length
@@ -2130,6 +2179,32 @@ export default function App() {
       : modeScoped;
 
     const sorted = [...filtered];
+    if (browseMode === "reminders") {
+      const today = toDateInputValue(new Date());
+      sorted.sort((left, right) => {
+        if (!left.reminderAt && !right.reminderAt) {
+          return right.updatedAt.localeCompare(left.updatedAt);
+        }
+        if (!left.reminderAt) {
+          return 1;
+        }
+        if (!right.reminderAt) {
+          return -1;
+        }
+        const order = { overdue: 0, today: 1, upcoming: 2 } as const;
+        const leftBucket = getReminderBucket(left.reminderAt, today);
+        const rightBucket = getReminderBucket(right.reminderAt, today);
+        if (leftBucket !== rightBucket) {
+          return order[leftBucket] - order[rightBucket];
+        }
+        if (left.reminderAt !== right.reminderAt) {
+          return left.reminderAt.localeCompare(right.reminderAt);
+        }
+        return right.updatedAt.localeCompare(left.updatedAt);
+      });
+      return sorted;
+    }
+
     sorted.sort((left, right) => {
       if (sortMode === "updated-desc") {
         return right.updatedAt.localeCompare(left.updatedAt);
@@ -2177,6 +2252,8 @@ export default function App() {
                     note.tags.some((tag) => shortcutTagNames.has(tag))
                 );
               })()
+            : browseMode === "reminders"
+              ? scoped.filter((note) => Boolean(note.reminderAt))
             : scoped;
     return Array.from(new Set(source.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
   }, [activeNotes, trashedNotes, selectedNotebook, browseMode, shortcutNoteIds, shortcutNotebooks, shortcutTags]);
@@ -2377,7 +2454,7 @@ export default function App() {
       if (parsedQuickQuery.tags.length && !parsedQuickQuery.tags.every((tag) => note.tags.includes(tag))) {
         return false;
       }
-      if (parsedQuickQuery.hasKinds.length && !parsedQuickQuery.hasKinds.every((kind) => noteHasAttachmentKind(note.markdown, kind))) {
+      if (parsedQuickQuery.hasKinds.length && !parsedQuickQuery.hasKinds.every((kind) => noteMatchesHasFilter(note, kind))) {
         return false;
       }
       if (updatedAfter || updatedBefore) {
@@ -2506,6 +2583,24 @@ export default function App() {
       .slice(0, 6);
   }, [calendarEvents]);
   const homeTagSuggestions = useMemo(() => availableTags.slice(0, 16), [availableTags]);
+  const noteReminders = useMemo(() => {
+    const today = toDateInputValue(new Date());
+    return activeNotes
+      .filter((note): note is AppNote & { reminderAt: string } => Boolean(note.reminderAt))
+      .sort((left, right) => {
+        if (left.reminderAt !== right.reminderAt) {
+          return left.reminderAt.localeCompare(right.reminderAt);
+        }
+        const leftBucket = getReminderBucket(left.reminderAt, today);
+        const rightBucket = getReminderBucket(right.reminderAt, today);
+        if (leftBucket !== rightBucket) {
+          const order = { overdue: 0, today: 1, upcoming: 2 };
+          return order[leftBucket] - order[rightBucket];
+        }
+        return right.updatedAt.localeCompare(left.updatedAt);
+      })
+      .slice(0, 10);
+  }, [activeNotes]);
   const eventReferences = useMemo(() => {
     return extractEventReferences(draftMarkdown).map((reference) => ({
       ...reference,
@@ -4200,6 +4295,9 @@ export default function App() {
     ) {
       setBrowseMode("all");
     }
+    if (browseMode === "reminders" && target && !target.reminderAt) {
+      setBrowseMode("all");
+    }
     if (browseMode === "trash" && target && !target.trashedAt) {
       setBrowseMode("all");
     }
@@ -4782,6 +4880,43 @@ export default function App() {
     setToastMessage(`Task "${taskText}" added`);
   }
 
+  function setNoteReminder(noteId: string, value: string | null): void {
+    const normalized = value ? normalizeTaskDueDate(value) : null;
+    if (value && !normalized) {
+      setToastMessage("Use reminder date format YYYY-MM-DD");
+      return;
+    }
+
+    const targetNote = notes.find((note) => note.id === noteId);
+    if (!targetNote) {
+      return;
+    }
+    const nextReminder = normalized ?? undefined;
+    if (targetNote.reminderAt === nextReminder) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    setNotes((previous) =>
+      previous.map((note) =>
+        note.id === noteId
+          ? {
+              ...note,
+              reminderAt: nextReminder,
+              updatedAt: now
+            }
+          : note
+      )
+    );
+    touchRecent(noteId);
+
+    if (nextReminder) {
+      setToastMessage(`Reminder set for ${nextReminder}`);
+    } else {
+      setToastMessage("Reminder cleared");
+    }
+  }
+
   function emptyTrash(): void {
     if (!trashedNotes.length) {
       setToastMessage("Trash is already empty");
@@ -4851,6 +4986,18 @@ export default function App() {
     if (actionId === "open-shortcuts") {
       setSidebarView("notes");
       setBrowseMode("shortcuts");
+      setSelectedNotebook("All Notes");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-reminders") {
+      setSidebarView("notes");
+      setBrowseMode("reminders");
       setSelectedNotebook("All Notes");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
@@ -7308,6 +7455,12 @@ export default function App() {
                   !tasksDialogOpen &&
                   !filesDialogOpen &&
                   !calendarDialogOpen) ||
+                (item === "Reminders" &&
+                  sidebarView === "notes" &&
+                  browseMode === "reminders" &&
+                  !tasksDialogOpen &&
+                  !filesDialogOpen &&
+                  !calendarDialogOpen) ||
                 (item === "Trash" &&
                   sidebarView === "notes" &&
                   browseMode === "trash" &&
@@ -7368,6 +7521,15 @@ export default function App() {
                 if (item === "Shortcuts") {
                   setSidebarView("notes");
                   setBrowseMode("shortcuts");
+                  setSelectedNotebook("All Notes");
+                  setTasksDialogOpen(false);
+                  setFilesDialogOpen(false);
+                  setCalendarDialogOpen(false);
+                  return;
+                }
+                if (item === "Reminders") {
+                  setSidebarView("notes");
+                  setBrowseMode("reminders");
                   setSelectedNotebook("All Notes");
                   setTasksDialogOpen(false);
                   setFilesDialogOpen(false);
@@ -7738,6 +7900,8 @@ export default function App() {
                   ? "Graph"
                 : browseMode === "templates"
                   ? "Templates"
+                  : browseMode === "reminders"
+                    ? "Reminders"
                   : browseMode === "shortcuts"
                     ? "Shortcuts"
                     : browseMode === "trash"
@@ -7749,6 +7913,8 @@ export default function App() {
                 ? "Dashboard"
                 : browseMode === "graph"
                   ? `${graphModel.nodes.length} nodes · ${graphModel.edges.length} links`
+                  : browseMode === "reminders"
+                    ? `${visibleNotes.length} scheduled`
                   : visibleNotes.length}
             </small>
           </div>
@@ -7919,6 +8085,33 @@ export default function App() {
                 </ul>
               ) : (
                 <p className="home-empty">No open tasks</p>
+              )}
+            </section>
+            <section className="home-panel">
+              <header>
+                <h2>Reminders</h2>
+                <small>{noteReminders.length}</small>
+              </header>
+              {noteReminders.length ? (
+                <ul className="home-list">
+                  {noteReminders.map((note) => (
+                    <li key={note.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBrowseMode("all");
+                          setSelectedNotebook(note.notebook);
+                          focusNote(note.id);
+                        }}
+                      >
+                        <strong>{note.title}</strong>
+                        <small>{note.reminderAt ? describeReminderDate(note.reminderAt) : "No reminder"}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="home-empty">No reminders</p>
               )}
             </section>
             <section className="home-panel">
@@ -8267,6 +8460,7 @@ export default function App() {
                             {browseMode === "trash" && note.trashedAt ? (
                               <span>Trashed {formatRelativeTime(note.trashedAt)}</span>
                             ) : null}
+                            {note.reminderAt ? <span className="note-reminder">{describeReminderDate(note.reminderAt)}</span> : null}
                             {note.isTemplate ? <span className="note-pin">Template</span> : null}
                             {homePinned ? <span className="note-pin">Home pin</span> : null}
                             {notebookPinned ? <span className="note-pin">Notebook pin</span> : null}
@@ -8283,6 +8477,8 @@ export default function App() {
                   <p>
                     {browseMode === "templates"
                       ? "No templates found."
+                      : browseMode === "reminders"
+                        ? "No reminders scheduled."
                       : browseMode === "shortcuts"
                         ? "No shortcut notes yet."
                         : browseMode === "trash"
@@ -8294,7 +8490,12 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (browseMode === "templates" || browseMode === "shortcuts" || browseMode === "trash") {
+                      if (
+                        browseMode === "templates" ||
+                        browseMode === "shortcuts" ||
+                        browseMode === "trash" ||
+                        browseMode === "reminders"
+                      ) {
                         setBrowseMode("all");
                       }
                       setTagFilters([]);
@@ -9295,6 +9496,10 @@ export default function App() {
                       <dt>Updated</dt>
                       <dd>{new Date(activeNote.updatedAt).toLocaleString()}</dd>
                     </div>
+                    <div>
+                      <dt>Reminder</dt>
+                      <dd>{activeNote.reminderAt ? describeReminderDate(activeNote.reminderAt) : "None"}</dd>
+                    </div>
                     {activeNote.trashedAt ? (
                       <div>
                         <dt>Trashed</dt>
@@ -9326,6 +9531,25 @@ export default function App() {
                       <dd>{activeNote.tags.length ? activeNote.tags.join(", ") : "No tags"}</dd>
                     </div>
                   </dl>
+                  <div className="metadata-reminder">
+                    <label>
+                      <span>Reminder date</span>
+                      <input
+                        aria-label="Reminder date"
+                        type="date"
+                        value={activeNote.reminderAt ?? ""}
+                        disabled={Boolean(activeNote.trashedAt)}
+                        onChange={(event) => setNoteReminder(activeNote.id, event.target.value || null)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!activeNote.reminderAt || Boolean(activeNote.trashedAt)}
+                      onClick={() => setNoteReminder(activeNote.id, null)}
+                    >
+                      Clear
+                    </button>
+                  </div>
                   <div className="metadata-actions">
                     {activeNote.trashedAt ? (
                       <>
@@ -9702,7 +9926,7 @@ export default function App() {
                 </button>
               ) : null}
             </div>
-            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, updated:today|week|month|YYYY-MM-DD..YYYY-MM-DD, created:, has:attachment|task|due|overdue|today|upcoming|undated|image|pdf</p>
+            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, updated:today|week|month|YYYY-MM-DD..YYYY-MM-DD, created:, has:attachment|task|due|overdue|today|upcoming|undated|reminder|reminder-overdue|reminder-today|reminder-upcoming|image|pdf</p>
             <div className="search-results">
               <h4>Recent searches</h4>
               <ul>

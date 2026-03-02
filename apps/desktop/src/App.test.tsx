@@ -22,6 +22,19 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Shortcuts", level: 1 })).toBeInTheDocument();
   });
 
+  it("opens reminders browse mode from the sidebar", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2099-01-01" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reminders" }));
+    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
+
+    const notesList = screen.getByLabelText("Notes list");
+    expect(within(notesList).getByText("Agenda")).toBeInTheDocument();
+    expect(within(notesList).getByText("Upcoming 2099-01-01")).toBeInTheDocument();
+  });
+
   it("opens home dashboard mode from the sidebar", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Home" }));
@@ -76,6 +89,18 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     expect(screen.getByRole("heading", { name: "Command palette", level: 4 })).toBeInTheDocument();
+  });
+
+  it("opens reminders from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">reminders" }
+    });
+    fireEvent.click(screen.getByText("Open reminders"));
+
+    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
+    expect(screen.getByText("No reminders scheduled.")).toBeInTheDocument();
   });
 
   it("opens or creates today's note from command palette without duplicates", async () => {
@@ -256,6 +281,36 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
       target: { value: "has:upcoming" }
+    });
+
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
+  it("sets a note reminder from metadata and shows it on home", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2099-01-01" } });
+
+    expect(screen.getAllByText("Upcoming 2099-01-01").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    const reminderHeading = screen.getByRole("heading", { name: "Reminders", level: 2 });
+    expect(reminderHeading).toBeInTheDocument();
+    const reminderCard = reminderHeading.closest("section");
+    expect(reminderCard).toBeTruthy();
+    expect(within(reminderCard as HTMLElement).getByText("Upcoming 2099-01-01")).toBeInTheDocument();
+  });
+
+  it("supports has:reminder search filter", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2099-01-01" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "has:reminder" }
     });
 
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");

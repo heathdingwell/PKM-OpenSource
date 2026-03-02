@@ -404,6 +404,23 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Quick task/i })).toBeInTheDocument();
   });
 
+  it("creates a task with due date metadata and surfaces due label", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Future task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2099-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+
+    const tasksModal = screen.getByRole("heading", { name: "Tasks", level: 3 }).closest("section");
+    expect(tasksModal).toBeTruthy();
+    expect(within(tasksModal as HTMLElement).getByText("Future task")).toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).getByText(/Due 2099-01-01/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Future task/i }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor?.value).toContain("- [ ] Future task due:2099-01-01");
+  });
+
   it("derives note title from first markdown line when no heading exists", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

@@ -94,6 +94,7 @@ interface OpenTaskItem {
   noteTitle: string;
   notebook: string;
   text: string;
+  dueDate: string | null;
   updatedAt: string;
 }
 
@@ -142,6 +143,7 @@ interface EventDialogState {
 interface QuickTaskDialogState {
   text: string;
   noteId: string;
+  dueDate: string;
 }
 
 interface ScratchNoteDialogState {
@@ -923,6 +925,43 @@ function extractEventReferences(markdown: string): Array<{ id: string; title: st
   return references;
 }
 
+function normalizeTaskDueDate(value: string): string | null {
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return null;
+  }
+
+  const parsed = new Date(`${trimmed}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return toDateInputValue(parsed) === trimmed ? trimmed : null;
+}
+
+function extractTaskTextAndDue(raw: string): { text: string; dueDate: string | null } {
+  const dueMatch = raw.match(/(?:^|\s)(?:due:|📅\s*)(\d{4}-\d{2}-\d{2})(?=$|\s)/i);
+  const dueDate = dueMatch ? normalizeTaskDueDate(dueMatch[1] ?? "") : null;
+  const cleaned = dueMatch
+    ? raw
+        .replace(dueMatch[0], " ")
+        .replace(/\s{2,}/g, " ")
+        .trim()
+    : raw.trim();
+
+  return { text: cleaned || raw.trim(), dueDate };
+}
+
+function describeTaskDueDate(dueDate: string): string {
+  const today = toDateInputValue(new Date());
+  if (dueDate < today) {
+    return `Overdue ${dueDate}`;
+  }
+  if (dueDate === today) {
+    return `Due today (${dueDate})`;
+  }
+  return `Due ${dueDate}`;
+}
+
 function extractOpenTasks(notes: AppNote[]): OpenTaskItem[] {
   const tasks: OpenTaskItem[] = [];
 
@@ -934,6 +973,7 @@ function extractOpenTasks(notes: AppNote[]): OpenTaskItem[] {
       if (!match) {
         continue;
       }
+      const parsed = extractTaskTextAndDue(match[1].trim());
 
       tasks.push({
         id: `${note.id}:${index}`,
@@ -941,13 +981,29 @@ function extractOpenTasks(notes: AppNote[]): OpenTaskItem[] {
         lineIndex: index,
         noteTitle: note.title,
         notebook: note.notebook,
-        text: match[1].trim(),
+        text: parsed.text,
+        dueDate: parsed.dueDate,
         updatedAt: note.updatedAt
       });
     }
   }
 
-  return tasks.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  return tasks.sort((left, right) => {
+    if (left.dueDate && right.dueDate && left.dueDate !== right.dueDate) {
+      return left.dueDate.localeCompare(right.dueDate);
+    }
+    if (left.dueDate && !right.dueDate) {
+      return -1;
+    }
+    if (!left.dueDate && right.dueDate) {
+      return 1;
+    }
+    const updatedCompare = right.updatedAt.localeCompare(left.updatedAt);
+    if (updatedCompare !== 0) {
+      return updatedCompare;
+    }
+    return left.text.localeCompare(right.text);
+  });
 }
 
 function noteHasAttachmentLink(markdown: string): boolean {
@@ -4255,7 +4311,8 @@ export default function App() {
 
     setQuickTaskDialog({
       text: "",
-      noteId: fallbackNoteId
+      noteId: fallbackNoteId,
+      dueDate: ""
     });
   }
 
@@ -4265,8 +4322,14 @@ export default function App() {
     }
 
     const taskText = quickTaskDialog.text.trim();
+    const dueDateInput = quickTaskDialog.dueDate.trim();
     if (!taskText) {
       setToastMessage("Enter task text");
+      return;
+    }
+    const dueDate = dueDateInput ? normalizeTaskDueDate(dueDateInput) : null;
+    if (dueDateInput && !dueDate) {
+      setToastMessage("Use due date format YYYY-MM-DD");
       return;
     }
 
@@ -4281,7 +4344,8 @@ export default function App() {
     const source = targetIsCurrent ? draftMarkdown : targetNote.markdown;
     const base = source.replace(/\s+$/, "");
     const separator = base.length ? "\n\n" : "";
-    const nextTargetMarkdown = `${base}${separator}- [ ] ${taskText}\n`;
+    const dueSuffix = dueDate ? ` due:${dueDate}` : "";
+    const nextTargetMarkdown = `${base}${separator}- [ ] ${taskText}${dueSuffix}\n`;
 
     setNotes((previous) =>
       previous.map((note) => {
@@ -7390,7 +7454,10 @@ export default function App() {
                         }}
                       >
                         <strong>{task.text}</strong>
-                        <small>{task.noteTitle}</small>
+                        <small>
+                          {task.noteTitle}
+                          {task.dueDate ? ` · ${describeTaskDueDate(task.dueDate)}` : ""}
+                        </small>
                       </button>
                     </li>
                   ))}
@@ -9282,7 +9349,10 @@ export default function App() {
                       }}
                     >
                       <strong>{task.text}</strong>
-                      <small>{task.notebook} - {task.noteTitle}</small>
+                      <small>
+                        {task.notebook} - {task.noteTitle}
+                        {task.dueDate ? ` · ${describeTaskDueDate(task.dueDate)}` : ""}
+                      </small>
                     </button>
                     <button
                       type="button"
@@ -9704,6 +9774,14 @@ export default function App() {
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="template-field">
+              <span>Due date (optional)</span>
+              <input
+                type="date"
+                value={quickTaskDialog.dueDate}
+                onChange={(event) => setQuickTaskDialog({ ...quickTaskDialog, dueDate: event.target.value })}
+              />
             </label>
             <footer>
               <button type="button" onClick={() => setQuickTaskDialog(null)}>

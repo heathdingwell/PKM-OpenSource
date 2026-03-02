@@ -6697,6 +6697,9 @@ export default function App() {
           >
             ⧉
           </button>
+          <button type="button" className="round-action" aria-label="Open today's note" onClick={() => void openTodayNote()}>
+            D
+          </button>
           <button type="button" className="round-action" aria-label="Quick actions" onClick={openCommandPalette}>
             +
           </button>

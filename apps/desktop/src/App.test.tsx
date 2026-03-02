@@ -86,6 +86,15 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: todayTitle, level: 2 })).toBeInTheDocument();
   });
 
+  it("opens or creates today's note from sidebar action", async () => {
+    render(<App />);
+    const now = new Date();
+    const todayTitle = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    fireEvent.click(screen.getByRole("button", { name: "Open today's note" }));
+    expect(await screen.findByRole("heading", { name: todayTitle, level: 2 })).toBeInTheDocument();
+  });
+
   it("creates and edits a saved search via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

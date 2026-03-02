@@ -1329,6 +1329,44 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
+  it("filters files modal by attachment type and text query", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: {
+        value:
+          "# Agenda\n\n![Photo shot](./attachments/photo.png)\n[Doc PDF](./attachments/brief.pdf)\n[Voice memo](./attachments/audio.m4a)\n[Archive](./attachments/files.zip)"
+      }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open files" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
+    expect(screen.getByText("Photo shot")).toBeInTheDocument();
+    expect(screen.getByText("Doc PDF")).toBeInTheDocument();
+    expect(screen.getByText("Voice memo")).toBeInTheDocument();
+    expect(screen.getByText("Archive")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Images \(/ }));
+    expect(screen.getByText("Photo shot")).toBeInTheDocument();
+    expect(screen.queryByText("Doc PDF")).not.toBeInTheDocument();
+    expect(screen.queryByText("Voice memo")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Other \(/ }));
+    expect(screen.getByText("Archive")).toBeInTheDocument();
+    expect(screen.queryByText("Photo shot")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^All \(/ }));
+    fireEvent.change(screen.getByLabelText("Filter files"), { target: { value: "voice" } });
+    expect(screen.getByText("Voice memo")).toBeInTheDocument();
+    expect(screen.queryByText("Photo shot")).not.toBeInTheDocument();
+    expect(screen.queryByText("Doc PDF")).not.toBeInTheDocument();
+  });
+
 
   it("inserts a markdown linked note from typed slash menu via modal", () => {
     const promptSpy = vi.spyOn(window, "prompt");

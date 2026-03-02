@@ -2789,6 +2789,19 @@ body.is-resizing {
   min-width: 0;
 }
 
+.files-filter-input {
+  margin-bottom: 8px;
+}
+
+.files-filter-input input {
+  margin-bottom: 0;
+}
+
+.files-filter-chips {
+  flex-wrap: wrap;
+  padding: 0 0 8px;
+}
+
 .files-modal li button strong {
   font-size: 13px;
   white-space: nowrap;

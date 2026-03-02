@@ -279,6 +279,7 @@ type SearchFilterKind =
   | "pdf";
 type SearchUpdatedPreset = "none" | "today" | "week" | "month";
 type SearchCreatedPreset = "none" | "today" | "week" | "month";
+type AttachmentKind = "image" | "pdf" | "video" | "audio" | "other";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 
@@ -1603,6 +1604,28 @@ function applyCreatedSearchPreset(query: string, preset: SearchCreatedPreset): s
   return `${base}${base ? " " : ""}created:${preset}`;
 }
 
+function getAttachmentKind(target: string): AttachmentKind {
+  const normalized = target.trim().toLowerCase().split(/[?#]/, 1)[0] ?? "";
+  const extension = normalized.includes(".") ? normalized.slice(normalized.lastIndexOf(".") + 1) : "";
+  if (!extension) {
+    return "other";
+  }
+
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg", "heic", "heif", "bmp", "tiff", "avif"].includes(extension)) {
+    return "image";
+  }
+  if (extension === "pdf") {
+    return "pdf";
+  }
+  if (["mp4", "mov", "m4v", "avi", "webm", "mkv"].includes(extension)) {
+    return "video";
+  }
+  if (["mp3", "wav", "m4a", "aac", "flac", "ogg", "oga", "opus"].includes(extension)) {
+    return "audio";
+  }
+  return "other";
+}
+
 function extractAttachments(notes: AppNote[]): AttachmentItem[] {
   const linkPattern = /(!?\[([^\]]*)\])\(([^)]+)\)/g;
   const items: AttachmentItem[] = [];
@@ -2265,6 +2288,8 @@ export default function App() {
   const [taskDueFilter, setTaskDueFilter] = useState<TaskDueFilter>(initialPrefs.taskDueFilter ?? "all");
   const [reminderDueFilter, setReminderDueFilter] = useState<ReminderDueFilter>(initialPrefs.reminderDueFilter ?? "all");
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
+  const [filesQuery, setFilesQuery] = useState("");
+  const [filesFilterKind, setFilesFilterKind] = useState<"all" | AttachmentKind>("all");
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
   const [quickTaskDialog, setQuickTaskDialog] = useState<QuickTaskDialogState | null>(null);
@@ -2962,6 +2987,33 @@ export default function App() {
     return openTasks.filter((task) => getTaskDueBucket(task.dueDate, today) === taskDueFilter);
   }, [openTasks, taskDueFilter]);
   const attachmentItems = useMemo(() => extractAttachments(liveDerivedNotes), [liveDerivedNotes]);
+  const attachmentItemCounts = useMemo(() => {
+    const counts = {
+      all: attachmentItems.length,
+      image: 0,
+      pdf: 0,
+      video: 0,
+      audio: 0,
+      other: 0
+    };
+    for (const item of attachmentItems) {
+      counts[getAttachmentKind(item.target)] += 1;
+    }
+    return counts;
+  }, [attachmentItems]);
+  const filteredAttachmentItems = useMemo(() => {
+    const query = filesQuery.trim().toLowerCase();
+    return attachmentItems.filter((item) => {
+      if (filesFilterKind !== "all" && getAttachmentKind(item.target) !== filesFilterKind) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      const haystack = `${item.label} ${item.target} ${item.noteTitle} ${item.notebook}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [attachmentItems, filesFilterKind, filesQuery]);
   const calendarEventsById = useMemo(() => new Map(calendarEvents.map((event) => [event.id, event])), [calendarEvents]);
   const calendarGroups = useMemo(() => {
     const sorted = [...calendarEvents].sort((left, right) => left.startAt.localeCompare(right.startAt));
@@ -6041,6 +6093,8 @@ export default function App() {
     if (actionId === "open-files") {
       setSidebarView("notes");
       setTasksDialogOpen(false);
+      setFilesQuery("");
+      setFilesFilterKind("all");
       setFilesDialogOpen(true);
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
@@ -8929,6 +8983,8 @@ export default function App() {
                 if (item === "Files") {
                   setSidebarView("notes");
                   setTasksDialogOpen(false);
+                  setFilesQuery("");
+                  setFilesFilterKind("all");
                   setFilesDialogOpen(true);
                   setCalendarDialogOpen(false);
                   return;
@@ -11962,16 +12018,79 @@ export default function App() {
           className="overlay"
           onClick={() => {
             setFilesDialogOpen(false);
+            setFilesQuery("");
+            setFilesFilterKind("all");
           }}
         >
           <section className="move-modal files-modal" onClick={(event) => event.stopPropagation()}>
             <header>
               <h3>Files</h3>
-              <small>{attachmentItems.length} attachments</small>
+              <small>
+                {filteredAttachmentItems.length === attachmentItems.length
+                  ? `${attachmentItems.length} attachments`
+                  : `${filteredAttachmentItems.length} of ${attachmentItems.length} attachments`}
+              </small>
             </header>
             {attachmentItems.length ? (
+              <>
+                <label className="template-field files-filter-input">
+                  <span>Filter files</span>
+                  <input
+                    aria-label="Filter files"
+                    value={filesQuery}
+                    onChange={(event) => setFilesQuery(event.target.value)}
+                    placeholder="Filter by name, path, note, or notebook"
+                  />
+                </label>
+                <div className="search-chips files-filter-chips">
+                  <button
+                    type="button"
+                    className={filesFilterKind === "all" ? "chip active" : "chip"}
+                    onClick={() => setFilesFilterKind("all")}
+                  >
+                    All ({attachmentItemCounts.all})
+                  </button>
+                  <button
+                    type="button"
+                    className={filesFilterKind === "image" ? "chip active" : "chip"}
+                    onClick={() => setFilesFilterKind("image")}
+                  >
+                    Images ({attachmentItemCounts.image})
+                  </button>
+                  <button
+                    type="button"
+                    className={filesFilterKind === "pdf" ? "chip active" : "chip"}
+                    onClick={() => setFilesFilterKind("pdf")}
+                  >
+                    PDFs ({attachmentItemCounts.pdf})
+                  </button>
+                  <button
+                    type="button"
+                    className={filesFilterKind === "video" ? "chip active" : "chip"}
+                    onClick={() => setFilesFilterKind("video")}
+                  >
+                    Videos ({attachmentItemCounts.video})
+                  </button>
+                  <button
+                    type="button"
+                    className={filesFilterKind === "audio" ? "chip active" : "chip"}
+                    onClick={() => setFilesFilterKind("audio")}
+                  >
+                    Audio ({attachmentItemCounts.audio})
+                  </button>
+                  <button
+                    type="button"
+                    className={filesFilterKind === "other" ? "chip active" : "chip"}
+                    onClick={() => setFilesFilterKind("other")}
+                  >
+                    Other ({attachmentItemCounts.other})
+                  </button>
+                </div>
+              </>
+            ) : null}
+            {filteredAttachmentItems.length ? (
               <ul>
-                {attachmentItems.map((file) => (
+                {filteredAttachmentItems.map((file) => (
                   <li key={file.id}>
                     <button
                       type="button"
@@ -11980,6 +12099,8 @@ export default function App() {
                         setSelectedNotebook(file.notebook);
                         focusNote(file.noteId);
                         setFilesDialogOpen(false);
+                        setFilesQuery("");
+                        setFilesFilterKind("all");
                       }}
                     >
                       <strong>{file.label}</strong>
@@ -11989,10 +12110,17 @@ export default function App() {
                 ))}
               </ul>
             ) : (
-              <p className="history-empty">No attachments found</p>
+              <p className="history-empty">{attachmentItems.length ? "No files match this filter" : "No attachments found"}</p>
             )}
             <footer>
-              <button type="button" onClick={() => setFilesDialogOpen(false)}>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilesDialogOpen(false);
+                  setFilesQuery("");
+                  setFilesFilterKind("all");
+                }}
+              >
                 Close
               </button>
             </footer>

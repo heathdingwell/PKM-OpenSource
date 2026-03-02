@@ -184,6 +184,7 @@ interface AppPrefs {
   viewMode?: NoteViewMode;
   noteDensity?: NoteDensityMode;
   noteGroupMode?: NoteGroupMode;
+  focusMode?: boolean;
   sortMode?: NoteSortMode;
   tagFilters?: string[];
   recentNoteIds?: string[];
@@ -441,6 +442,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "toggle-density", label: "Toggle note density", keywords: ["density", "compact", "comfortable"] },
   { id: "toggle-grouping", label: "Toggle note grouping", keywords: ["group", "sections", "date"] },
+  { id: "toggle-focus", label: "Toggle focus mode", keywords: ["focus", "layout", "panes"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
   { id: "toggle-auto-links", label: "Toggle auto reciprocal links", keywords: ["links", "backlinks", "reciprocal"] },
   { id: "cycle-theme", label: "Cycle theme", keywords: ["theme", "color", "palette"] },
@@ -1596,6 +1598,7 @@ function defaultPrefs(): AppPrefs {
     viewMode: "cards",
     noteDensity: "comfortable",
     noteGroupMode: "none",
+    focusMode: false,
     sortMode: "updated-desc",
     tagFilters: [],
     recentNoteIds: [],
@@ -1648,6 +1651,7 @@ function loadPrefs(): AppPrefs {
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
       noteDensity: parsed.noteDensity === "compact" ? "compact" : "comfortable",
       noteGroupMode: parsed.noteGroupMode === "updated-date" ? "updated-date" : "none",
+      focusMode: typeof parsed.focusMode === "boolean" ? parsed.focusMode : false,
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
       tagFilters: Array.isArray(parsed.tagFilters)
         ? parsed.tagFilters.filter((tag): tag is string => typeof tag === "string")
@@ -2039,6 +2043,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [noteDensity, setNoteDensity] = useState<NoteDensityMode>(initialPrefs.noteDensity ?? "comfortable");
   const [noteGroupMode, setNoteGroupMode] = useState<NoteGroupMode>(initialPrefs.noteGroupMode ?? "none");
+  const [focusMode, setFocusMode] = useState<boolean>(initialPrefs.focusMode ?? false);
   const [sortMode, setSortMode] = useState<NoteSortMode>(initialPrefs.sortMode ?? "updated-desc");
   const [tagFilters, setTagFilters] = useState<string[]>(initialPrefs.tagFilters ?? []);
   const [recentNoteIds, setRecentNoteIds] = useState<string[]>(initialPrefs.recentNoteIds ?? []);
@@ -3160,6 +3165,7 @@ export default function App() {
       viewMode,
       noteDensity,
       noteGroupMode,
+      focusMode,
       sortMode,
       tagFilters,
       recentNoteIds,
@@ -3186,6 +3192,7 @@ export default function App() {
     viewMode,
     noteDensity,
     noteGroupMode,
+    focusMode,
     sortMode,
     tagFilters,
     recentNoteIds,
@@ -3348,6 +3355,12 @@ export default function App() {
       if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "d") {
         event.preventDefault();
         void openTodayNote();
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === "\\") {
+        event.preventDefault();
+        setFocusMode((previous) => !previous);
         return;
       }
 
@@ -5159,6 +5172,12 @@ export default function App() {
 
     if (actionId === "toggle-grouping") {
       setNoteGroupMode((previous) => (previous === "none" ? "updated-date" : "none"));
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-focus") {
+      setFocusMode((previous) => !previous);
       setSearchOpen(false);
       return;
     }
@@ -7472,7 +7491,7 @@ export default function App() {
 
   return (
     <div
-      className="app-shell"
+      className={focusMode ? "app-shell focus-mode" : "app-shell"}
       role="application"
       aria-label="PKM OpenSource Shell"
       onClick={() => {
@@ -8785,6 +8804,9 @@ export default function App() {
                   }}
                 >
                   Lite
+                </button>
+                <button type="button" className={focusMode ? "link-btn active" : "link-btn"} onClick={() => setFocusMode((previous) => !previous)}>
+                  Focus
                 </button>
                 <button type="button" className={aiPanelOpen ? "link-btn active" : "link-btn"} onClick={toggleAiPanel}>
                   AI

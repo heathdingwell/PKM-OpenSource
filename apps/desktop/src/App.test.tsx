@@ -75,6 +75,29 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Agenda" })).toBeInTheDocument();
   });
 
+  it("toggles focus mode from the editor topbar", () => {
+    render(<App />);
+    const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });
+    expect(shell).not.toHaveClass("focus-mode");
+
+    fireEvent.click(screen.getByRole("button", { name: "Focus" }));
+    expect(shell).toHaveClass("focus-mode");
+
+    fireEvent.click(screen.getByRole("button", { name: "Focus" }));
+    expect(shell).not.toHaveClass("focus-mode");
+  });
+
+  it("toggles focus mode with keyboard shortcut", () => {
+    render(<App />);
+    const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });
+
+    fireEvent.keyDown(window, { key: "\\", metaKey: true, shiftKey: true });
+    expect(shell).toHaveClass("focus-mode");
+
+    fireEvent.keyDown(window, { key: "\\", metaKey: true, shiftKey: true });
+    expect(shell).not.toHaveClass("focus-mode");
+  });
+
   it("opens notes from graph node clicks", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));

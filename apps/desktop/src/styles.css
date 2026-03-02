@@ -89,6 +89,16 @@ button {
   background: var(--bg-shell);
 }
 
+.app-shell.focus-mode {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-shell.focus-mode .left-sidebar,
+.app-shell.focus-mode .note-column,
+.app-shell.focus-mode .pane-resizer {
+  display: none;
+}
+
 .pane-resizer {
   position: relative;
   width: 8px;

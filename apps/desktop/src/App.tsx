@@ -12148,6 +12148,19 @@ export default function App() {
               >
                 No due ({openTaskCounts.undated})
               </button>
+              {taskSortMode !== "recent" || taskDueFilter !== "all" || taskQuery.trim() ? (
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() => {
+                    setTaskSortMode("recent");
+                    setTaskDueFilter("all");
+                    setTaskQuery("");
+                  }}
+                >
+                  Reset filters
+                </button>
+              ) : null}
             </div>
             {filteredOpenTasks.length ? (
               <ul>
@@ -12317,6 +12330,19 @@ export default function App() {
                   >
                     Other ({attachmentItemCounts.other})
                   </button>
+                  {filesSortMode !== "recent" || filesFilterKind !== "all" || filesQuery.trim() ? (
+                    <button
+                      type="button"
+                      className="chip"
+                      onClick={() => {
+                        setFilesSortMode("recent");
+                        setFilesFilterKind("all");
+                        setFilesQuery("");
+                      }}
+                    >
+                      Reset filters
+                    </button>
+                  ) : null}
                 </div>
               </>
             ) : null}
@@ -12420,6 +12446,19 @@ export default function App() {
                   {name} ({count})
                 </button>
               ))}
+              {calendarSortMode !== "soonest" || calendarFilter !== "all" || calendarQuery.trim() ? (
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() => {
+                    setCalendarSortMode("soonest");
+                    setCalendarFilter("all");
+                    setCalendarQuery("");
+                  }}
+                >
+                  Reset filters
+                </button>
+              ) : null}
             </div>
             <div className="calendar-actions">
               <button

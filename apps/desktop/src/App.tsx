@@ -185,6 +185,8 @@ interface AppPrefs {
   noteDensity?: NoteDensityMode;
   noteGroupMode?: NoteGroupMode;
   focusMode?: boolean;
+  taskDueFilter?: TaskDueFilter;
+  reminderDueFilter?: ReminderDueFilter;
   sortMode?: NoteSortMode;
   tagFilters?: string[];
   recentNoteIds?: string[];
@@ -1599,6 +1601,8 @@ function defaultPrefs(): AppPrefs {
     noteDensity: "comfortable",
     noteGroupMode: "none",
     focusMode: false,
+    taskDueFilter: "all",
+    reminderDueFilter: "all",
     sortMode: "updated-desc",
     tagFilters: [],
     recentNoteIds: [],
@@ -1652,6 +1656,19 @@ function loadPrefs(): AppPrefs {
       noteDensity: parsed.noteDensity === "compact" ? "compact" : "comfortable",
       noteGroupMode: parsed.noteGroupMode === "updated-date" ? "updated-date" : "none",
       focusMode: typeof parsed.focusMode === "boolean" ? parsed.focusMode : false,
+      taskDueFilter:
+        parsed.taskDueFilter === "overdue" ||
+        parsed.taskDueFilter === "today" ||
+        parsed.taskDueFilter === "upcoming" ||
+        parsed.taskDueFilter === "undated"
+          ? parsed.taskDueFilter
+          : "all",
+      reminderDueFilter:
+        parsed.reminderDueFilter === "overdue" ||
+        parsed.reminderDueFilter === "today" ||
+        parsed.reminderDueFilter === "upcoming"
+          ? parsed.reminderDueFilter
+          : "all",
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
       tagFilters: Array.isArray(parsed.tagFilters)
         ? parsed.tagFilters.filter((tag): tag is string => typeof tag === "string")
@@ -2008,8 +2025,8 @@ export default function App() {
   const [noteRenameDialog, setNoteRenameDialog] = useState<NoteRenameDialogState | null>(null);
   const [noteHistoryDialog, setNoteHistoryDialog] = useState<NoteHistoryDialogState | null>(null);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
-  const [taskDueFilter, setTaskDueFilter] = useState<TaskDueFilter>("all");
-  const [reminderDueFilter, setReminderDueFilter] = useState<ReminderDueFilter>("all");
+  const [taskDueFilter, setTaskDueFilter] = useState<TaskDueFilter>(initialPrefs.taskDueFilter ?? "all");
+  const [reminderDueFilter, setReminderDueFilter] = useState<ReminderDueFilter>(initialPrefs.reminderDueFilter ?? "all");
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
@@ -3166,6 +3183,8 @@ export default function App() {
       noteDensity,
       noteGroupMode,
       focusMode,
+      taskDueFilter,
+      reminderDueFilter,
       sortMode,
       tagFilters,
       recentNoteIds,
@@ -3193,6 +3212,8 @@ export default function App() {
     noteDensity,
     noteGroupMode,
     focusMode,
+    taskDueFilter,
+    reminderDueFilter,
     sortMode,
     tagFilters,
     recentNoteIds,

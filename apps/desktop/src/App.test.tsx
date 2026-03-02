@@ -192,6 +192,27 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
+  it("supports due-task chip filter in search", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Chip due task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2099-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Has due tasks" }));
+
+    const dueChip = screen.getByRole("button", { name: "Has due tasks" });
+    expect(dueChip).toHaveClass("active");
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
 
   it("inserts a markdown linked note from typed slash menu via modal", () => {
     const promptSpy = vi.spyOn(window, "prompt");

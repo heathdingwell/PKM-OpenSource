@@ -225,7 +225,7 @@ type NoteSortMode =
   | "created-asc"
   | "title-asc"
   | "title-desc";
-type SearchFilterKind = "attachments" | "tasks";
+type SearchFilterKind = "attachments" | "tasks" | "due";
 
 interface ParsedSearchQuery {
   text: string;
@@ -2059,6 +2059,9 @@ export default function App() {
         return false;
       }
       if (searchFilters.includes("tasks") && !noteHasOpenTasks(note.markdown)) {
+        return false;
+      }
+      if (searchFilters.includes("due") && !noteHasTaskDueDate(note.markdown)) {
         return false;
       }
       if (notebookFilter && !note.notebook.toLowerCase().includes(notebookFilter)) {
@@ -9193,6 +9196,13 @@ export default function App() {
                 onClick={() => toggleSearchFilter("tasks")}
               >
                 Has open tasks
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("due") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("due")}
+              >
+                Has due tasks
               </button>
               {searchFilters.length ? (
                 <button type="button" className="chip" onClick={() => setSearchFilters([])}>

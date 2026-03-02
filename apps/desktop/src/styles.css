@@ -430,6 +430,25 @@ body.is-resizing {
   color: #6780aa;
 }
 
+.stack-unstack-target-wrap {
+  margin: 4px 0;
+}
+
+.stack-unstack-target {
+  padding: 5px 8px;
+  border: 1px dashed #a9bcde;
+  border-radius: 8px;
+  color: #5574a7;
+  font-size: 12px;
+  background: #f1f6ff;
+}
+
+.stack-unstack-target.active {
+  color: #1e4fa6;
+  border-color: #7ea1dc;
+  background: #dfebff;
+}
+
 .stack-notebook-row .notebook-item {
   font-size: 13px;
 }

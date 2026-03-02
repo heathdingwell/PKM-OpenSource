@@ -1357,6 +1357,32 @@ describe("App", () => {
     expect(notebookItems().some((entry) => entry.textContent?.includes("Daily Notes"))).toBe(true);
   });
 
+  it("unstacks a notebook by dragging it to unstack target", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+
+    expect(dailyNotebook()).toBeTruthy();
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Move to stack..." }));
+    fireEvent.change(screen.getByPlaceholderText("New stack name"), { target: { value: "Ops" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const dataTransfer = {
+      effectAllowed: "move",
+      setData: vi.fn(),
+      getData: vi.fn()
+    } as unknown as DataTransfer;
+    fireEvent.dragStart(dailyNotebook() as HTMLButtonElement, { dataTransfer });
+
+    const dropTarget = screen.getByText("Drop to remove from stack");
+    fireEvent.dragOver(dropTarget);
+    fireEvent.drop(dropTarget);
+
+    expect(screen.getByRole("button", { name: /Ops/i })).toBeInTheDocument();
+    expect(notebookItems().some((entry) => entry.textContent?.includes("Daily Notes"))).toBe(true);
+  });
+
   it("adds tag shortcuts and applies tag filter from shortcut", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

@@ -2091,6 +2091,7 @@ export default function App() {
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
   const [draggingNotebook, setDraggingNotebook] = useState<string | null>(null);
   const [stackDropTarget, setStackDropTarget] = useState<string | null>(null);
+  const [unstackDropTarget, setUnstackDropTarget] = useState(false);
   const [attachmentDropTarget, setAttachmentDropTarget] = useState<"markdown" | "rich" | null>(null);
   const [dropNotebook, setDropNotebook] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -3563,6 +3564,7 @@ export default function App() {
         setEditorContextMenu(null);
         setDraggingNotebook(null);
         setStackDropTarget(null);
+        setUnstackDropTarget(false);
         setStackDialog(null);
         setCreateStackDialog(null);
         setStackRenameDialog(null);
@@ -7164,10 +7166,12 @@ export default function App() {
           onDragStart={(event) => {
             event.dataTransfer.effectAllowed = "move";
             setDraggingNotebook(notebook);
+            setUnstackDropTarget(false);
           }}
           onDragEnd={() => {
             setDraggingNotebook(null);
             setStackDropTarget(null);
+            setUnstackDropTarget(false);
           }}
           onContextMenu={(event) => {
             event.preventDefault();
@@ -8029,6 +8033,7 @@ export default function App() {
         setEditorContextMenu(null);
         setDraggingNotebook(null);
         setStackDropTarget(null);
+        setUnstackDropTarget(false);
         setNoteHistoryDialog(null);
         setFilesDialogOpen(false);
         setCalendarDialogOpen(false);
@@ -8541,6 +8546,7 @@ export default function App() {
                         return;
                       }
                       event.preventDefault();
+                      setUnstackDropTarget(false);
                       setStackDropTarget(group.stack);
                     }}
                     onDragLeave={() => setStackDropTarget((previous) => (previous === group.stack ? null : previous))}
@@ -8552,6 +8558,7 @@ export default function App() {
                       assignNotebookToStack(draggingNotebook, group.stack);
                       setDraggingNotebook(null);
                       setStackDropTarget(null);
+                      setUnstackDropTarget(false);
                     }}
                   >
                     <span>{isCollapsed ? "▸" : "▾"} {group.stack}</span>
@@ -8561,6 +8568,34 @@ export default function App() {
                 </li>
               );
             })}
+            {draggingNotebook ? (
+              <li className="stack-unstack-target-wrap">
+                <div
+                  className={unstackDropTarget ? "stack-unstack-target active" : "stack-unstack-target"}
+                  onDragOver={(event) => {
+                    if (!draggingNotebook) {
+                      return;
+                    }
+                    event.preventDefault();
+                    setStackDropTarget(null);
+                    setUnstackDropTarget(true);
+                  }}
+                  onDragLeave={() => setUnstackDropTarget(false)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (!draggingNotebook) {
+                      return;
+                    }
+                    removeNotebookFromStack(draggingNotebook);
+                    setDraggingNotebook(null);
+                    setStackDropTarget(null);
+                    setUnstackDropTarget(false);
+                  }}
+                >
+                  Drop to remove from stack
+                </div>
+              </li>
+            ) : null}
             {stackedNotebookGroups.unstacked.map((notebook) => renderNotebookRow(notebook))}
           </ul>
           <button type="button" className="sidebar-subaction" onClick={createNotebook}>

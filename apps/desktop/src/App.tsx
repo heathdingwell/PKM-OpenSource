@@ -178,7 +178,7 @@ interface ScratchNoteDialogState {
   notebook: string;
 }
 
-type MediaInsertCommandId = "image" | "file" | "video" | "audio" | "transcribe-media";
+type MediaInsertCommandId = "image" | "file" | "video" | "audio" | "transcribe-media" | "sketch";
 
 interface SlashInputDialogState {
   kind: "linked-note" | "url";
@@ -635,6 +635,8 @@ const slashCommands: SlashCommand[] = [
   { id: "file", label: "File", section: "Media", keywords: ["attachment"] },
   { id: "video", label: "Video", section: "Media", keywords: ["media"] },
   { id: "audio", label: "Audio", section: "Media", keywords: ["recording"] },
+  { id: "sketch", label: "Sketch", section: "Media", keywords: ["draw", "canvas"] },
+  { id: "google-drive", label: "Google Drive", section: "Utilities", keywords: ["drive", "google"] },
   { id: "code-block", label: "Code Block", section: "Advanced", keywords: ["code", "fence"] },
   { id: "formula", label: "Formula", section: "Advanced", keywords: ["latex", "math"] },
   { id: "current-date", label: "Current date", section: "Utilities", keywords: ["today", "date"] },
@@ -7794,6 +7796,9 @@ export default function App() {
     if (commandId === "image") {
       return "./attachments/image.png";
     }
+    if (commandId === "sketch") {
+      return "./attachments/sketch.png";
+    }
     if (commandId === "file") {
       return "./attachments/file.pdf";
     }
@@ -7809,6 +7814,9 @@ export default function App() {
   function formatMediaInsert(commandId: MediaInsertCommandId, source: string): string {
     if (commandId === "image") {
       return `![image](${source})`;
+    }
+    if (commandId === "sketch") {
+      return `![sketch](${source})`;
     }
     if (commandId === "file") {
       return `[file](${source})`;
@@ -8258,6 +8266,14 @@ export default function App() {
         setSlashMenu(null);
         setLinkSuggestion(null);
         return;
+      case "sketch":
+        openMediaInsertDialog("sketch", "markdown", { start: replaceStart, end: replaceEnd });
+        setSlashMenu(null);
+        setLinkSuggestion(null);
+        return;
+      case "google-drive":
+        insert("[Google Drive](https://drive.google.com/)");
+        break;
       case "transcribe-media":
         openMediaInsertDialog("transcribe-media", "markdown", { start: replaceStart, end: replaceEnd });
         setSlashMenu(null);
@@ -8411,6 +8427,15 @@ export default function App() {
         openMediaInsertDialog("audio", "rich");
         setSlashMenu(null);
         return;
+      case "sketch":
+        openMediaInsertDialog("sketch", "rich");
+        setSlashMenu(null);
+        return;
+      case "google-drive":
+        richEditorRef.current?.insertContent(
+          '<a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">Google Drive</a>'
+        );
+        break;
       case "transcribe-media":
         openMediaInsertDialog("transcribe-media", "rich");
         setSlashMenu(null);

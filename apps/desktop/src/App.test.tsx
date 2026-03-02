@@ -1182,6 +1182,54 @@ describe("App", () => {
     promptSpy.mockRestore();
   });
 
+  it("inserts sketch media from markdown slash menu via modal", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    const slashCommand = `${editor?.value ?? ""}\n/sketch`;
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: slashCommand, selectionStart: slashCommand.length }
+    });
+
+    const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
+    expect(slashMenu).toBeTruthy();
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Sketch" }));
+
+    expect(screen.getByRole("heading", { name: "Insert sketch", level: 3 })).toBeInTheDocument();
+    const sketchModal = screen.getByRole("heading", { name: "Insert sketch", level: 3 }).closest("section");
+    expect(sketchModal).toBeTruthy();
+    fireEvent.change(within(sketchModal as HTMLElement).getByLabelText("Sketch URL or path"), {
+      target: { value: "./attachments/whiteboard.png" }
+    });
+    fireEvent.click(within(sketchModal as HTMLElement).getByRole("button", { name: "Insert" }));
+
+    const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(updatedEditor?.value).toContain("![sketch](./attachments/whiteboard.png)");
+  });
+
+  it("inserts google drive link from markdown slash menu", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    const slashCommand = `${editor?.value ?? ""}\n/google`;
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: slashCommand, selectionStart: slashCommand.length }
+    });
+
+    const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
+    expect(slashMenu).toBeTruthy();
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Google Drive" }));
+
+    const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(updatedEditor?.value).toContain("[Google Drive](https://drive.google.com/)");
+  });
+
   it("inserts a markdown table from rich insert menu", async () => {
     render(<App />);
 

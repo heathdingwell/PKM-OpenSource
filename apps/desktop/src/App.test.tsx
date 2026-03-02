@@ -47,6 +47,36 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Command palette", level: 4 })).toBeInTheDocument();
   });
 
+  it("opens or creates today's note from command palette without duplicates", async () => {
+    render(<App />);
+    const now = new Date();
+    const todayTitle = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">today" }
+    });
+    fireEvent.click(screen.getByText("Open today's note"));
+
+    expect(await screen.findByRole("heading", { name: todayTitle, level: 2 })).toBeInTheDocument();
+    const countBefore = Array.from(document.querySelectorAll(".note-card strong")).filter(
+      (entry) => entry.textContent?.trim() === todayTitle
+    ).length;
+    expect(countBefore).toBe(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">today" }
+    });
+    fireEvent.click(screen.getByText("Open today's note"));
+
+    expect(await screen.findByRole("heading", { name: todayTitle, level: 2 })).toBeInTheDocument();
+    const countAfter = Array.from(document.querySelectorAll(".note-card strong")).filter(
+      (entry) => entry.textContent?.trim() === todayTitle
+    ).length;
+    expect(countAfter).toBe(1);
+  });
+
   it("creates and edits a saved search via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

@@ -406,6 +406,7 @@ const seedNotes: SeedNote[] = [
 const sidePinned = ["Home", "Shortcuts", "Notes", "Trash", "Tasks", "Files", "Calendar", "Templates"];
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
+  { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
   { id: "new-from-template", label: "New from template", keywords: ["template", "clone"] },
   { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
   { id: "open-home", label: "Open home", keywords: ["home", "dashboard"] },
@@ -4273,6 +4274,12 @@ export default function App() {
       return;
     }
 
+    if (actionId === "open-today-note") {
+      setSearchOpen(false);
+      void openTodayNote();
+      return;
+    }
+
     if (actionId === "new-from-template") {
       setSearchOpen(false);
       openTemplateDialog(activeNote?.isTemplate ? activeNote.id : undefined);
@@ -5569,6 +5576,67 @@ export default function App() {
     setNotes((previous) => [note, ...previous]);
     setSelectedNotebook(notebook);
     focusNote(note.id);
+  }
+
+  async function openTodayNote(): Promise<void> {
+    flushActiveDraft();
+
+    const preferredNotebook = notebooks.includes("Daily Notes") ? "Daily Notes" : resolveDefaultNotebook();
+    const title = toDateInputValue(new Date());
+    const existing = activeNotes.find(
+      (note) => note.notebook === preferredNotebook && note.title.toLowerCase() === title.toLowerCase()
+    );
+    if (existing) {
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSelectedNotebook(preferredNotebook);
+      focusNote(existing.id);
+      setToastMessage("Opened today's note");
+      return;
+    }
+
+    const template = activeNotes.find((note) => note.isTemplate && note.notebook === preferredNotebook);
+    if (template) {
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSelectedNotebook(preferredNotebook);
+      await createNoteFromTemplate(template.id, title, preferredNotebook);
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const markdown = `# ${title}\n\n`;
+    const seed: AppNote = {
+      id: crypto.randomUUID(),
+      title,
+      snippet: "",
+      tags: [],
+      linksOut: [],
+      createdAt: now,
+      updatedAt: now,
+      notebook: preferredNotebook,
+      path: `${preferredNotebook}/${toFileName(title)}`,
+      markdown
+    };
+    const note = noteFromMarkdown(seed, markdown, now);
+    setSidebarView("notes");
+    setBrowseMode("all");
+    setTasksDialogOpen(false);
+    setFilesDialogOpen(false);
+    setCalendarDialogOpen(false);
+    setAiPanelOpen(false);
+    setNotes((previous) => [note, ...previous]);
+    setSelectedNotebook(preferredNotebook);
+    focusNote(note.id);
+    setToastMessage("Created today's note");
   }
 
   function confirmNotebookRename(): void {

@@ -253,6 +253,7 @@ type NoteSortMode =
   | "title-asc"
   | "title-desc";
 type SearchFilterKind = "attachments" | "tasks" | "due" | "reminders";
+type SearchUpdatedPreset = "none" | "today" | "week" | "month";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 
@@ -1452,6 +1453,30 @@ function parseSearchQuery(rawQuery: string): ParsedSearchQuery {
   return tokens;
 }
 
+function stripUpdatedSearchTokens(query: string): string {
+  return query
+    .replace(/(^|\s)updated:(?:"[^"]+"|\S+)/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function detectUpdatedSearchPreset(query: string): SearchUpdatedPreset {
+  const match = query.match(/\bupdated:(today|week|month)\b/i);
+  const value = match?.[1]?.toLowerCase();
+  if (value === "today" || value === "week" || value === "month") {
+    return value;
+  }
+  return "none";
+}
+
+function applyUpdatedSearchPreset(query: string, preset: SearchUpdatedPreset): string {
+  const base = stripUpdatedSearchTokens(query);
+  if (preset === "none") {
+    return base;
+  }
+  return `${base}${base ? " " : ""}updated:${preset}`;
+}
+
 function extractAttachments(notes: AppNote[]): AttachmentItem[] {
   const linkPattern = /(!?\[([^\]]*)\])\(([^)]+)\)/g;
   const items: AttachmentItem[] = [];
@@ -2606,6 +2631,7 @@ export default function App() {
   }, [commandMode, commandQuery]);
 
   const parsedQuickQuery = useMemo(() => parseSearchQuery(quickQuery), [quickQuery]);
+  const updatedSearchPreset = useMemo(() => detectUpdatedSearchPreset(quickQuery), [quickQuery]);
 
   const quickResults = useMemo(() => {
     if (commandMode) {
@@ -5775,6 +5801,17 @@ export default function App() {
       }
       return [...previous, kind];
     });
+  }
+
+  function setUpdatedSearchPreset(preset: SearchUpdatedPreset): void {
+    setQuickQuery((previous) => applyUpdatedSearchPreset(previous, preset));
+    setSearchSelected(0);
+  }
+
+  function clearSearchChips(): void {
+    setSearchFilters([]);
+    setQuickQuery((previous) => stripUpdatedSearchTokens(previous));
+    setSearchSelected(0);
   }
 
   function toggleStackCollapsed(stack: string): void {
@@ -10896,8 +10933,29 @@ export default function App() {
               >
                 Has reminders
               </button>
-              {searchFilters.length ? (
-                <button type="button" className="chip" onClick={() => setSearchFilters([])}>
+              <button
+                type="button"
+                className={updatedSearchPreset === "today" ? "chip active" : "chip"}
+                onClick={() => setUpdatedSearchPreset(updatedSearchPreset === "today" ? "none" : "today")}
+              >
+                Updated today
+              </button>
+              <button
+                type="button"
+                className={updatedSearchPreset === "week" ? "chip active" : "chip"}
+                onClick={() => setUpdatedSearchPreset(updatedSearchPreset === "week" ? "none" : "week")}
+              >
+                Updated week
+              </button>
+              <button
+                type="button"
+                className={updatedSearchPreset === "month" ? "chip active" : "chip"}
+                onClick={() => setUpdatedSearchPreset(updatedSearchPreset === "month" ? "none" : "month")}
+              >
+                Updated month
+              </button>
+              {searchFilters.length || updatedSearchPreset !== "none" ? (
+                <button type="button" className="chip" onClick={clearSearchChips}>
                   Clear
                 </button>
               ) : null}

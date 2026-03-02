@@ -737,6 +737,39 @@ describe("App", () => {
     expect(queryInput.value).toContain("has:reminder");
   });
 
+  it("applies updated date chips to the quick search query", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
+    fireEvent.change(queryInput, { target: { value: "agenda" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Updated week" }));
+    expect(queryInput.value).toContain("updated:week");
+    expect(screen.getByRole("button", { name: "Updated week" })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Updated today" }));
+    expect(queryInput.value).toContain("updated:today");
+    expect(queryInput.value).not.toContain("updated:week");
+    expect(screen.getByRole("button", { name: "Updated today" })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Updated today" }));
+    expect(queryInput.value).toBe("agenda");
+    expect(screen.getByRole("button", { name: "Updated today" })).not.toHaveClass("active");
+  });
+
+  it("clears date preset chips without removing search text", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
+    fireEvent.change(queryInput, { target: { value: "journal" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Updated month" }));
+    expect(queryInput.value).toContain("updated:month");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(queryInput.value).toBe("journal");
+  });
+
   it("supports has:due search filter", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));

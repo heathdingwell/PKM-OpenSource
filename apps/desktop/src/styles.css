@@ -766,6 +766,21 @@ body.is-resizing {
   padding: 10px;
 }
 
+.note-group-section {
+  display: contents;
+}
+
+.note-group-heading {
+  grid-column: 1 / -1;
+  margin: 2px 2px 0;
+  padding: 2px 6px;
+  color: #5b7196;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
 .note-grid.list-mode {
   grid-template-columns: 1fr;
 }

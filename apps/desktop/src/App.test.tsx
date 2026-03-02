@@ -29,6 +29,21 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Saved searches", level: 2 })).toBeInTheDocument();
   });
 
+  it("toggles note grouping by updated date and persists preference", () => {
+    const first = render(<App />);
+    expect(document.querySelectorAll(".note-group-heading").length).toBe(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Group: Off" }));
+    expect(document.querySelectorAll(".note-group-heading").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Group: Updated" })).toHaveClass("active");
+
+    first.unmount();
+
+    render(<App />);
+    expect(screen.getByRole("button", { name: "Group: Updated" })).toBeInTheDocument();
+    expect(document.querySelectorAll(".note-group-heading").length).toBeGreaterThan(0);
+  });
+
   it("saves scratch pad content to a note via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Home" }));

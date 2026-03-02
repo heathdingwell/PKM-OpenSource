@@ -182,6 +182,7 @@ interface AppPrefs {
   browseMode?: NoteBrowseMode;
   viewMode?: NoteViewMode;
   noteDensity?: NoteDensityMode;
+  noteGroupMode?: NoteGroupMode;
   sortMode?: NoteSortMode;
   tagFilters?: string[];
   recentNoteIds?: string[];
@@ -219,6 +220,7 @@ interface FindMatchRange {
 type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
 type NoteDensityMode = "comfortable" | "compact";
+type NoteGroupMode = "none" | "updated-date";
 type SidebarView = "notes" | "tasks" | "calendar";
 type NoteBrowseMode = "all" | "templates" | "shortcuts" | "home" | "trash";
 type ThemeId = "cobalt" | "sky" | "slate";
@@ -432,6 +434,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "toggle-density", label: "Toggle note density", keywords: ["density", "compact", "comfortable"] },
+  { id: "toggle-grouping", label: "Toggle note grouping", keywords: ["group", "sections", "date"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
   { id: "toggle-auto-links", label: "Toggle auto reciprocal links", keywords: ["links", "backlinks", "reciprocal"] },
   { id: "cycle-theme", label: "Cycle theme", keywords: ["theme", "color", "palette"] },
@@ -1542,6 +1545,7 @@ function defaultPrefs(): AppPrefs {
     browseMode: "all",
     viewMode: "cards",
     noteDensity: "comfortable",
+    noteGroupMode: "none",
     sortMode: "updated-desc",
     tagFilters: [],
     recentNoteIds: [],
@@ -1591,6 +1595,7 @@ function loadPrefs(): AppPrefs {
           : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
       noteDensity: parsed.noteDensity === "compact" ? "compact" : "comfortable",
+      noteGroupMode: parsed.noteGroupMode === "updated-date" ? "updated-date" : "none",
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
       tagFilters: Array.isArray(parsed.tagFilters)
         ? parsed.tagFilters.filter((tag): tag is string => typeof tag === "string")
@@ -1979,6 +1984,7 @@ export default function App() {
   const [themeId, setThemeId] = useState<ThemeId>(initialPrefs.themeId ?? "cobalt");
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [noteDensity, setNoteDensity] = useState<NoteDensityMode>(initialPrefs.noteDensity ?? "comfortable");
+  const [noteGroupMode, setNoteGroupMode] = useState<NoteGroupMode>(initialPrefs.noteGroupMode ?? "none");
   const [sortMode, setSortMode] = useState<NoteSortMode>(initialPrefs.sortMode ?? "updated-desc");
   const [tagFilters, setTagFilters] = useState<string[]>(initialPrefs.tagFilters ?? []);
   const [recentNoteIds, setRecentNoteIds] = useState<string[]>(initialPrefs.recentNoteIds ?? []);
@@ -2177,6 +2183,29 @@ export default function App() {
     () => visibleNotes.filter((note) => selectedIds.has(note.id)).map((note) => note.id),
     [visibleNotes, selectedIds]
   );
+
+  const noteGroups = useMemo(() => {
+    if (noteGroupMode === "none") {
+      return [{ id: "all", label: "", notes: visibleNotes }];
+    }
+
+    const groups = new Map<string, AppNote[]>();
+    const order: string[] = [];
+    for (const note of visibleNotes) {
+      const label = toDateBucketLabel(note.updatedAt);
+      if (!groups.has(label)) {
+        groups.set(label, []);
+        order.push(label);
+      }
+      groups.get(label)?.push(note);
+    }
+
+    return order.map((label) => ({
+      id: `updated:${label}`,
+      label,
+      notes: groups.get(label) ?? []
+    }));
+  }, [visibleNotes, noteGroupMode]);
 
   const recentNotes = useMemo(() => {
     return recentNoteIds
@@ -2944,6 +2973,7 @@ export default function App() {
       browseMode,
       viewMode,
       noteDensity,
+      noteGroupMode,
       sortMode,
       tagFilters,
       recentNoteIds,
@@ -2969,6 +2999,7 @@ export default function App() {
     browseMode,
     viewMode,
     noteDensity,
+    noteGroupMode,
     sortMode,
     tagFilters,
     recentNoteIds,
@@ -4867,6 +4898,12 @@ export default function App() {
 
     if (actionId === "toggle-density") {
       setNoteDensity((previous) => (previous === "comfortable" ? "compact" : "comfortable"));
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-grouping") {
+      setNoteGroupMode((previous) => (previous === "none" ? "updated-date" : "none"));
       setSearchOpen(false);
       return;
     }
@@ -7659,6 +7696,13 @@ export default function App() {
               </button>
               <button
                 type="button"
+                className={noteGroupMode === "updated-date" ? "active" : ""}
+                onClick={() => setNoteGroupMode((previous) => (previous === "none" ? "updated-date" : "none"))}
+              >
+                {noteGroupMode === "none" ? "Group: Off" : "Group: Updated"}
+              </button>
+              <button
+                type="button"
                 className={backlinksPaneOpen ? "active" : ""}
                 onClick={() => setBacklinksPaneOpen((previous) => !previous)}
               >
@@ -8045,76 +8089,81 @@ export default function App() {
               aria-label="Notes list"
             >
               {visibleNotes.length ? (
-                visibleNotes.map((note) => {
-                  const isSelected = selectedIds.has(note.id);
-                  const showQuickAction = hoveredCardId === note.id || isSelected;
-                  const homePinned = homePinnedSet.has(note.id);
-                  const notebookPinned = notebookPinnedSet.has(note.id);
-                  return (
-                    <button
-                      key={note.id}
-                      type="button"
-                      draggable
-                      onMouseEnter={() => setHoveredCardId(note.id)}
-                      onMouseLeave={() => setHoveredCardId((previous) => (previous === note.id ? null : previous))}
-                      onDragStart={() => setDraggingNoteId(note.id)}
-                      onDragEnd={() => {
-                        setDraggingNoteId(null);
-                        setDropNotebook(null);
-                      }}
-                      className={isSelected ? "note-card selected" : "note-card"}
-                      onClick={(event) => onCardClick(note.id, event)}
-                      onDoubleClick={() => openFocusedEditor(note.id)}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        openCardMenu(note.id, event.clientX, event.clientY);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
-                          event.preventDefault();
-                          const rect = event.currentTarget.getBoundingClientRect();
-                          openCardMenu(note.id, rect.left + 12, rect.bottom - 12);
-                        }
-                      }}
-                    >
-                      <span className="note-card-actions">
-                        {showQuickAction ? (
-                          <span
-                            className="note-card-menu"
-                            role="button"
-                            tabIndex={0}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openCardMenu(note.id, event.clientX, event.clientY);
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                const target = event.currentTarget.getBoundingClientRect();
-                                openCardMenu(note.id, target.left, target.bottom + 6);
-                              }
-                            }}
-                          >
-                            ...
+                noteGroups.map((group) => (
+                  <section key={group.id} className="note-group-section">
+                    {noteGroupMode !== "none" ? <div className="note-group-heading">{group.label}</div> : null}
+                    {group.notes.map((note) => {
+                      const isSelected = selectedIds.has(note.id);
+                      const showQuickAction = hoveredCardId === note.id || isSelected;
+                      const homePinned = homePinnedSet.has(note.id);
+                      const notebookPinned = notebookPinnedSet.has(note.id);
+                      return (
+                        <button
+                          key={note.id}
+                          type="button"
+                          draggable
+                          onMouseEnter={() => setHoveredCardId(note.id)}
+                          onMouseLeave={() => setHoveredCardId((previous) => (previous === note.id ? null : previous))}
+                          onDragStart={() => setDraggingNoteId(note.id)}
+                          onDragEnd={() => {
+                            setDraggingNoteId(null);
+                            setDropNotebook(null);
+                          }}
+                          className={isSelected ? "note-card selected" : "note-card"}
+                          onClick={(event) => onCardClick(note.id, event)}
+                          onDoubleClick={() => openFocusedEditor(note.id)}
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            openCardMenu(note.id, event.clientX, event.clientY);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                              event.preventDefault();
+                              const rect = event.currentTarget.getBoundingClientRect();
+                              openCardMenu(note.id, rect.left + 12, rect.bottom - 12);
+                            }
+                          }}
+                        >
+                          <span className="note-card-actions">
+                            {showQuickAction ? (
+                              <span
+                                className="note-card-menu"
+                                role="button"
+                                tabIndex={0}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openCardMenu(note.id, event.clientX, event.clientY);
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    const target = event.currentTarget.getBoundingClientRect();
+                                    openCardMenu(note.id, target.left, target.bottom + 6);
+                                  }
+                                }}
+                              >
+                                ...
+                              </span>
+                            ) : null}
                           </span>
-                        ) : null}
-                      </span>
-                      <strong>{note.title}</strong>
-                      <p>{note.snippet || "Untitled"}</p>
-                      <footer>
-                        <span>{formatRelativeTime(note.updatedAt)}</span>
-                        {browseMode === "trash" && note.trashedAt ? (
-                          <span>Trashed {formatRelativeTime(note.trashedAt)}</span>
-                        ) : null}
-                        {note.isTemplate ? <span className="note-pin">Template</span> : null}
-                        {homePinned ? <span className="note-pin">Home pin</span> : null}
-                        {notebookPinned ? <span className="note-pin">Notebook pin</span> : null}
-                        {viewMode === "list" ? <span>{note.notebook}</span> : null}
-                        {isSelected ? <em>{selectedIds.size > 1 ? "Multi" : "Selected"}</em> : null}
-                      </footer>
-                    </button>
-                  );
-                })
+                          <strong>{note.title}</strong>
+                          <p>{note.snippet || "Untitled"}</p>
+                          <footer>
+                            <span>{formatRelativeTime(note.updatedAt)}</span>
+                            {browseMode === "trash" && note.trashedAt ? (
+                              <span>Trashed {formatRelativeTime(note.trashedAt)}</span>
+                            ) : null}
+                            {note.isTemplate ? <span className="note-pin">Template</span> : null}
+                            {homePinned ? <span className="note-pin">Home pin</span> : null}
+                            {notebookPinned ? <span className="note-pin">Notebook pin</span> : null}
+                            {viewMode === "list" ? <span>{note.notebook}</span> : null}
+                            {isSelected ? <em>{selectedIds.size > 1 ? "Multi" : "Selected"}</em> : null}
+                          </footer>
+                        </button>
+                      );
+                    })}
+                  </section>
+                ))
               ) : (
                 <div className="note-grid-empty">
                   <p>

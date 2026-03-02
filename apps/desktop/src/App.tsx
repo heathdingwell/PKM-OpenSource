@@ -1014,6 +1014,10 @@ function noteHasOpenTasks(markdown: string): boolean {
   return /^\s*-\s\[\s\]\s+/m.test(markdown);
 }
 
+function noteHasTaskDueDate(markdown: string): boolean {
+  return /^\s*-\s\[\s\]\s+.*(?:due:|📅\s*)\d{4}-\d{2}-\d{2}\b/mi.test(markdown);
+}
+
 function noteHasAttachmentKind(markdown: string, kind: string): boolean {
   const normalized = kind.trim().toLowerCase();
   if (!normalized) {
@@ -1025,6 +1029,9 @@ function noteHasAttachmentKind(markdown: string, kind: string): boolean {
   }
   if (normalized === "task" || normalized === "todo") {
     return noteHasOpenTasks(markdown);
+  }
+  if (normalized === "due" || normalized === "deadline") {
+    return noteHasTaskDueDate(markdown);
   }
   if (normalized === "image") {
     return /!\[[^\]]*\]\(([^)]+)\)/i.test(markdown);
@@ -9193,7 +9200,7 @@ export default function App() {
                 </button>
               ) : null}
             </div>
-            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, has:attachment|task|image|pdf</p>
+            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, has:attachment|task|due|image|pdf</p>
             <div className="search-results">
               <h4>Recent searches</h4>
               <ul>

@@ -433,6 +433,8 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-note-info", label: "Open note info", keywords: ["metadata", "info", "note"] },
   { id: "open-note-tags", label: "Edit note tags", keywords: ["tags", "labels", "metadata"] },
   { id: "open-note-history", label: "Open note history", keywords: ["history", "restore", "versions"] },
+  { id: "open-note-window", label: "Open note in new window", keywords: ["window", "detach", "note"] },
+  { id: "open-note-lite-edit", label: "Open note in Lite edit mode", keywords: ["lite", "edit", "focus"] },
   { id: "copy-note-link", label: "Copy note link", keywords: ["link", "copy", "share", "note"] },
   { id: "rename-note", label: "Rename note", keywords: ["rename", "title", "note"] },
   { id: "move-note", label: "Move note", keywords: ["move", "notebook", "note"] },
@@ -3375,6 +3377,18 @@ export default function App() {
           return;
         }
 
+        if (key === "o" && !event.shiftKey && event.altKey) {
+          event.preventDefault();
+          openNoteInLiteEdit();
+          return;
+        }
+
+        if (key === "o" && !event.shiftKey && !event.altKey) {
+          event.preventDefault();
+          openNoteInNewWindow(activeNote.id);
+          return;
+        }
+
         if (key === "l" && !event.shiftKey && !event.altKey) {
           event.preventDefault();
           void copyNoteLink(activeNote.id);
@@ -4473,6 +4487,29 @@ export default function App() {
     setAiPanelOpen(false);
   }
 
+  function openNoteInLiteEdit(noteId?: string): void {
+    const targetId = noteId ?? activeNote?.id;
+    if (!targetId) {
+      setToastMessage("Open a note first");
+      return;
+    }
+
+    const openingDifferentTarget = targetId !== activeId;
+    if (openingDifferentTarget) {
+      focusNote(targetId);
+    }
+
+    if (liteEditMode && !openingDifferentTarget) {
+      setLiteEditMode(false);
+    } else {
+      setEditorMode("markdown");
+      setLiteEditMode(true);
+      setMetadataOpen(false);
+      setAiPanelOpen(false);
+    }
+    setSearchOpen(false);
+  }
+
   function openLinkedNote(targetNote: AppNote): void {
     insertReciprocalLink(targetNote.id, activeNote);
     focusNote(targetNote.id);
@@ -5250,6 +5287,21 @@ export default function App() {
 
     if (actionId === "open-note-tags") {
       openTagEditor();
+      return;
+    }
+
+    if (actionId === "open-note-window") {
+      if (activeNote) {
+        openNoteInNewWindow(activeNote.id);
+      } else {
+        setToastMessage("Open a note first");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-note-lite-edit") {
+      openNoteInLiteEdit();
       return;
     }
 
@@ -6355,18 +6407,7 @@ export default function App() {
     }
 
     if (action === "open-lite-edit") {
-      const openingDifferentTarget = Boolean(targetId && targetId !== activeId);
-      if (openingDifferentTarget && targetId) {
-        focusNote(targetId);
-      }
-      if (liteEditMode && !openingDifferentTarget) {
-        setLiteEditMode(false);
-      } else {
-        setEditorMode("markdown");
-        setLiteEditMode(true);
-        setMetadataOpen(false);
-        setAiPanelOpen(false);
-      }
+      openNoteInLiteEdit(targetId);
       setContextMenu(null);
       return;
     }

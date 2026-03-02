@@ -203,6 +203,23 @@ describe("App", () => {
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
 
+  it("opens note in new window with keyboard shortcut", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true });
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    openSpy.mockRestore();
+  });
+
+  it("opens note in lite edit mode with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
+  });
+
   it("opens notes from graph node clicks", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));
@@ -363,6 +380,31 @@ describe("App", () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
+  });
+
+  it("opens note in new window from command palette", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">window" }
+    });
+    fireEvent.click(screen.getByText("Open note in new window"));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    openSpy.mockRestore();
+  });
+
+  it("opens note in lite edit mode from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">lite" }
+    });
+    fireEvent.click(screen.getByText("Open note in Lite edit mode"));
+
+    expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
   it("opens or creates today's note from command palette without duplicates", async () => {

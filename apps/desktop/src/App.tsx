@@ -7428,6 +7428,39 @@ export default function App() {
     }
   }
 
+  function focusNoteCard(noteId: string): void {
+    window.requestAnimationFrame(() => {
+      const target = noteColumnRef.current?.querySelector<HTMLButtonElement>(`button.note-card[data-note-id="${noteId}"]`);
+      target?.focus();
+    });
+  }
+
+  function focusRelativeVisibleNote(fromNoteId: string, delta: number): void {
+    const index = visibleNotes.findIndex((note) => note.id === fromNoteId);
+    if (index < 0) {
+      return;
+    }
+    const nextIndex = Math.max(0, Math.min(visibleNotes.length - 1, index + delta));
+    if (nextIndex === index) {
+      return;
+    }
+    const next = visibleNotes[nextIndex];
+    if (!next) {
+      return;
+    }
+    focusNote(next.id);
+    focusNoteCard(next.id);
+  }
+
+  function focusVisibleBoundary(edge: "start" | "end"): void {
+    const target = edge === "start" ? visibleNotes[0] : visibleNotes[visibleNotes.length - 1];
+    if (!target) {
+      return;
+    }
+    focusNote(target.id);
+    focusNoteCard(target.id);
+  }
+
   return (
     <div
       className="app-shell"
@@ -8503,6 +8536,7 @@ export default function App() {
                           <button
                             key={note.id}
                             type="button"
+                            data-note-id={note.id}
                             draggable
                             onMouseEnter={() => setHoveredCardId(note.id)}
                             onMouseLeave={() => setHoveredCardId((previous) => (previous === note.id ? null : previous))}
@@ -8519,6 +8553,31 @@ export default function App() {
                               openCardMenu(note.id, event.clientX, event.clientY);
                             }}
                             onKeyDown={(event) => {
+                              if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+                                event.preventDefault();
+                                focusRelativeVisibleNote(note.id, 1);
+                                return;
+                              }
+                              if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+                                event.preventDefault();
+                                focusRelativeVisibleNote(note.id, -1);
+                                return;
+                              }
+                              if (event.key === "Home") {
+                                event.preventDefault();
+                                focusVisibleBoundary("start");
+                                return;
+                              }
+                              if (event.key === "End") {
+                                event.preventDefault();
+                                focusVisibleBoundary("end");
+                                return;
+                              }
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                openFocusedEditor(note.id);
+                                return;
+                              }
                               if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
                                 event.preventDefault();
                                 const rect = event.currentTarget.getBoundingClientRect();

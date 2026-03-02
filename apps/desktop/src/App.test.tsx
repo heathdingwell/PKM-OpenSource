@@ -83,6 +83,23 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
   });
 
+  it("navigates note cards with arrow keys", () => {
+    render(<App />);
+    const notesList = screen.getByLabelText("Notes list");
+    const cards = notesList.querySelectorAll<HTMLButtonElement>("button.note-card");
+    expect(cards.length).toBeGreaterThan(1);
+
+    const firstCard = cards[0];
+    const secondCard = cards[1];
+    const secondTitle = secondCard?.querySelector("strong")?.textContent?.trim();
+    expect(secondTitle).toBeTruthy();
+
+    firstCard?.focus();
+    fireEvent.keyDown(firstCard as HTMLButtonElement, { key: "ArrowDown" });
+
+    expect(screen.getByRole("heading", { name: secondTitle as string, level: 2 })).toBeInTheDocument();
+  });
+
   it("toggles note grouping by updated date and persists preference", () => {
     const first = render(<App />);
     expect(document.querySelectorAll(".note-group-heading").length).toBe(0);

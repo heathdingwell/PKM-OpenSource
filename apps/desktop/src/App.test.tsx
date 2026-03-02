@@ -388,7 +388,7 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: ">copy" }
+      target: { value: ">copy link" }
     });
     fireEvent.click(screen.getByText("Copy note link"));
 
@@ -454,7 +454,7 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: ">trash" }
+      target: { value: ">trash note" }
     });
     fireEvent.click(screen.getByText("Move note to trash"));
 

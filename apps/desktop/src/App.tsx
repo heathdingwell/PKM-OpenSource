@@ -2502,11 +2502,10 @@ export default function App() {
       return commandPaletteActions;
     }
 
+    const terms = commandQuery.split(/\s+/).filter((term) => term.length > 0);
     return commandPaletteActions.filter((action) => {
-      if (action.label.toLowerCase().includes(commandQuery)) {
-        return true;
-      }
-      return action.keywords.some((keyword) => keyword.toLowerCase().includes(commandQuery));
+      const haystack = `${action.label} ${action.keywords.join(" ")}`.toLowerCase();
+      return terms.every((term) => haystack.includes(term));
     });
   }, [commandMode, commandQuery]);
 

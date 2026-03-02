@@ -433,6 +433,8 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-note-info", label: "Open note info", keywords: ["metadata", "info", "note"] },
   { id: "open-note-tags", label: "Edit note tags", keywords: ["tags", "labels", "metadata"] },
   { id: "open-note-history", label: "Open note history", keywords: ["history", "restore", "versions"] },
+  { id: "rename-note", label: "Rename note", keywords: ["rename", "title", "note"] },
+  { id: "move-note", label: "Move note", keywords: ["move", "notebook", "note"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
   { id: "open-reminders", label: "Open reminders", keywords: ["reminders", "dates", "follow-up"] },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
@@ -3357,6 +3359,18 @@ export default function App() {
           return;
         }
 
+        if (key === "r" && event.shiftKey && !event.altKey) {
+          event.preventDefault();
+          openNoteRename();
+          return;
+        }
+
+        if (key === "m" && event.shiftKey && !event.altKey) {
+          event.preventDefault();
+          openMoveDialogForNotes([activeNote.id], "move");
+          return;
+        }
+
         if (key === "b" && !event.shiftKey && !event.altKey) {
           event.preventDefault();
           if (editorMode === "rich") {
@@ -4974,6 +4988,48 @@ export default function App() {
     openEditor();
   }
 
+  function openNoteRename(noteId?: string): void {
+    const targetId = noteId ?? activeNote?.id;
+    if (!targetId) {
+      setToastMessage("Open a note before renaming");
+      return;
+    }
+
+    const target = notes.find((note) => note.id === targetId);
+    if (!target) {
+      return;
+    }
+
+    if (targetId !== activeId) {
+      focusNote(targetId);
+    }
+    setNoteRenameDialog({
+      noteId: target.id,
+      newTitle: target.title
+    });
+    setSearchOpen(false);
+  }
+
+  function openMoveDialogForNotes(noteIds: string[], mode: "move" | "copy"): void {
+    const selected = notes.filter((note) => noteIds.includes(note.id));
+    if (!selected.length) {
+      return;
+    }
+
+    if (selected.every((note) => Boolean(note.trashedAt))) {
+      setToastMessage("Restore notes from Trash to use this action");
+      return;
+    }
+
+    const fallbackNotebook = selected[0]?.notebook ?? "";
+    setMoveDialog({
+      noteIds,
+      destination: selectedNotebook === "All Notes" ? fallbackNotebook : selectedNotebook,
+      mode
+    });
+    setSearchOpen(false);
+  }
+
   function openNoteInfo(noteId?: string): void {
     const targetId = noteId ?? activeNote?.id;
     if (!targetId) {
@@ -5184,6 +5240,20 @@ export default function App() {
 
     if (actionId === "open-note-tags") {
       openTagEditor();
+      return;
+    }
+
+    if (actionId === "rename-note") {
+      openNoteRename();
+      return;
+    }
+
+    if (actionId === "move-note") {
+      if (activeNote) {
+        openMoveDialogForNotes([activeNote.id], "move");
+      } else {
+        setToastMessage("Open a note before moving");
+      }
       return;
     }
 
@@ -6214,21 +6284,13 @@ export default function App() {
     }
 
     if (action === "move") {
-      setMoveDialog({
-        noteIds: contextMenu.noteIds,
-        destination: selectedNotebook === "All Notes" ? "" : selectedNotebook,
-        mode: "move"
-      });
+      openMoveDialogForNotes(contextMenu.noteIds, "move");
       setContextMenu(null);
       return;
     }
 
     if (action === "copy-to") {
-      setMoveDialog({
-        noteIds: contextMenu.noteIds,
-        destination: selectedNotebook === "All Notes" ? "" : selectedNotebook,
-        mode: "copy"
-      });
+      openMoveDialogForNotes(contextMenu.noteIds, "copy");
       setContextMenu(null);
       return;
     }
@@ -6246,13 +6308,7 @@ export default function App() {
     }
 
     if (action === "rename") {
-      const target = notes.find((note) => note.id === targetId);
-      if (target) {
-        setNoteRenameDialog({
-          noteId: target.id,
-          newTitle: target.title
-        });
-      }
+      openNoteRename(targetId);
       setContextMenu(null);
       return;
     }

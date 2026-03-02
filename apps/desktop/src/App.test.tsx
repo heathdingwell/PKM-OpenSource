@@ -175,6 +175,20 @@ describe("App", () => {
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
+  it("opens rename note dialog with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "r", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens move note dialog with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "m", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
+  });
+
   it("opens notes from graph node clicks", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));
@@ -295,6 +309,28 @@ describe("App", () => {
 
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
+  });
+
+  it("opens rename note dialog from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">rename" }
+    });
+    fireEvent.click(screen.getByText("Rename note"));
+
+    expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens move note dialog from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">move" }
+    });
+    fireEvent.click(screen.getByText("Move note"));
+
+    expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
   it("opens or creates today's note from command palette without duplicates", async () => {

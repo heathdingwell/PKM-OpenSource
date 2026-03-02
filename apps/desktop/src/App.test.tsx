@@ -1182,6 +1182,25 @@ describe("App", () => {
     promptSpy.mockRestore();
   });
 
+  it("inserts a markdown table from rich insert menu", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rich" }));
+    fireEvent.click(screen.getByRole("button", { name: "Insert" }));
+
+    const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
+    expect(slashMenu).toBeTruthy();
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Table" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Markdown" }));
+    await waitFor(() => {
+      const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+      expect(editor?.value).toContain("|");
+      expect(editor?.value).toContain("| --- | --- |");
+    });
+  });
+
   it("normalizes HTML paste into markdown in markdown editor", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

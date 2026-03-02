@@ -15,9 +15,14 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Table } from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
 import MarkdownIt from "markdown-it";
 import markdownItTaskLists from "markdown-it-task-lists";
 import TurndownService from "turndown";
+import { gfm } from "turndown-plugin-gfm";
 
 const markdownParser = new MarkdownIt({
   html: true,
@@ -39,6 +44,43 @@ function createTurndownService(): TurndownService {
     headingStyle: "atx",
     codeBlockStyle: "fenced",
     bulletListMarker: "-"
+  });
+  service.use(gfm as Parameters<typeof service.use>[0]);
+
+  service.addRule("richTable", {
+    filter(node) {
+      return node.nodeName === "TABLE";
+    },
+    replacement(_content, node) {
+      const table = node as HTMLTableElement;
+      const rows = Array.from(table.querySelectorAll("tr"))
+        .map((row) =>
+          Array.from(row.querySelectorAll("th,td")).map((cell) =>
+            (cell.textContent ?? "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .replace(/\|/g, "\\|")
+          )
+        )
+        .filter((cells) => cells.length > 0);
+
+      if (!rows.length) {
+        return "\n\n";
+      }
+
+      const columnCount = Math.max(1, ...rows.map((cells) => cells.length));
+      const normalizeRow = (cells: string[]) => [...cells, ...Array(Math.max(0, columnCount - cells.length)).fill("")];
+      const header = normalizeRow(rows[0] ?? []);
+      const body = rows.slice(1).map(normalizeRow);
+      const emptyBody = body.length ? body : [Array(columnCount).fill("")];
+      const format = (cells: string[]) => `| ${cells.join(" | ")} |`;
+
+      return `\n\n${[
+        format(header),
+        format(Array(columnCount).fill("---")),
+        ...emptyBody.map((cells) => format(cells))
+      ].join("\n")}\n\n`;
+    }
   });
 
   service.keep(["u", "sup", "sub"]);
@@ -85,6 +127,7 @@ export interface RichMarkdownEditorHandle {
   toggleBulletList: () => void;
   toggleOrderedList: () => void;
   toggleTaskList: () => void;
+  insertTable: () => void;
   setHeading: (level: 1 | 2 | 3) => void;
   setParagraph: () => void;
   toggleCodeBlock: () => void;
@@ -209,6 +252,12 @@ function RichMarkdownEditorInner(
       TaskItem.configure({
         nested: true
       }),
+      Table.configure({
+        resizable: true
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Underline,
       Placeholder.configure({
         placeholder: "Start writing..."
@@ -286,6 +335,12 @@ function RichMarkdownEditorInner(
       },
       toggleTaskList: () => {
         editor?.chain().focus().toggleTaskList().run();
+      },
+      insertTable: () => {
+        const inserted = editor?.chain().focus().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run();
+        if (!inserted) {
+          editor?.chain().focus().insertContent("| Column | Value |\n| --- | --- |\n|  |  |").run();
+        }
       },
       setHeading: (level: 1 | 2 | 3) => {
         editor?.chain().focus().toggleHeading({ level }).run();

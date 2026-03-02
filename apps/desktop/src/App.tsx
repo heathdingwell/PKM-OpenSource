@@ -8324,7 +8324,7 @@ export default function App() {
         setSlashMenu(null);
         return;
       case "table":
-        richEditorRef.current?.insertContent("| Column | Value |\n| --- | --- |\n|  |  |");
+        richEditorRef.current?.insertTable();
         break;
       case "table-of-contents":
         richEditorRef.current?.insertContent(buildTableOfContents(draftMarkdown));

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type UIEvent } from "react";
 import { SearchIndex } from "@pkm-os/indexer";
 import { type NoteRecord, VaultService } from "@pkm-os/vault-core";
 import TurndownService from "turndown";
@@ -357,6 +357,8 @@ const MAX_LIST_WIDTH = 960;
 const MIN_TAG_PANE_HEIGHT = 12;
 const MAX_TAG_PANE_HEIGHT = 420;
 const DEFAULT_TAG_PANE_HEIGHT = 52;
+const NOTE_LIST_INITIAL_BATCH = 24;
+const NOTE_LIST_BATCH = 24;
 const themeIds: ThemeId[] = ["cobalt", "sky", "slate"];
 const aiProviders: AiProvider[] = ["openai", "anthropic", "gemini", "perplexity", "openai-compatible", "ollama"];
 
@@ -2019,6 +2021,7 @@ export default function App() {
   const [searchSelected, setSearchSelected] = useState(0);
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const [tagPaneHeight, setTagPaneHeight] = useState<number>(initialPrefs.tagPaneHeight ?? DEFAULT_TAG_PANE_HEIGHT);
+  const [noteListLimit, setNoteListLimit] = useState(NOTE_LIST_INITIAL_BATCH);
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
   const [draggingNotebook, setDraggingNotebook] = useState<string | null>(null);
   const [stackDropTarget, setStackDropTarget] = useState<string | null>(null);
@@ -2107,6 +2110,7 @@ export default function App() {
   const markdownEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
   const editorMainRef = useRef<HTMLDivElement | null>(null);
+  const noteColumnRef = useRef<HTMLElement | null>(null);
   const activeResizeRef = useRef<ResizeState | null>(null);
   const findInNoteInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -2278,19 +2282,42 @@ export default function App() {
     return Array.from(new Set(source.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right));
   }, [activeNotes, trashedNotes, selectedNotebook, browseMode, shortcutNoteIds, shortcutNotebooks, shortcutTags]);
 
+  const notePaginationKey = useMemo(
+    () => `${browseMode}|${selectedNotebook}|${sortMode}|${noteGroupMode}|${reminderDueFilter}|${tagFilters.join("|")}`,
+    [browseMode, selectedNotebook, sortMode, noteGroupMode, reminderDueFilter, tagFilters]
+  );
+
+  useEffect(() => {
+    setNoteListLimit(NOTE_LIST_INITIAL_BATCH);
+  }, [notePaginationKey]);
+
+  useEffect(() => {
+    if (!activeId) {
+      return;
+    }
+    const activeIndex = visibleNotes.findIndex((note) => note.id === activeId);
+    if (activeIndex < 0 || activeIndex < noteListLimit) {
+      return;
+    }
+    setNoteListLimit((previous) => Math.min(visibleNotes.length, Math.max(previous, activeIndex + NOTE_LIST_BATCH)));
+  }, [activeId, visibleNotes, noteListLimit]);
+
+  const pagedVisibleNotes = useMemo(() => visibleNotes.slice(0, noteListLimit), [visibleNotes, noteListLimit]);
+  const hasMoreVisibleNotes = pagedVisibleNotes.length < visibleNotes.length;
+
   const selectedVisibleNoteIds = useMemo(
-    () => visibleNotes.filter((note) => selectedIds.has(note.id)).map((note) => note.id),
-    [visibleNotes, selectedIds]
+    () => pagedVisibleNotes.filter((note) => selectedIds.has(note.id)).map((note) => note.id),
+    [pagedVisibleNotes, selectedIds]
   );
 
   const noteGroups = useMemo(() => {
     if (noteGroupMode === "none") {
-      return [{ id: "all", label: "", notes: visibleNotes }];
+      return [{ id: "all", label: "", notes: pagedVisibleNotes }];
     }
 
     const groups = new Map<string, AppNote[]>();
     const order: string[] = [];
-    for (const note of visibleNotes) {
+    for (const note of pagedVisibleNotes) {
       const label = toDateBucketLabel(note.updatedAt);
       if (!groups.has(label)) {
         groups.set(label, []);
@@ -2304,7 +2331,7 @@ export default function App() {
       label,
       notes: groups.get(label) ?? []
     }));
-  }, [visibleNotes, noteGroupMode]);
+  }, [pagedVisibleNotes, noteGroupMode]);
 
   const graphModel = useMemo(() => {
     const scoped = [...visibleNotes].sort((left, right) => left.title.localeCompare(right.title));
@@ -7386,6 +7413,21 @@ export default function App() {
     "--tag-pane-height": `${tagPaneHeight}px`
   } as CSSProperties;
 
+  function loadMoreVisibleNotes(): void {
+    setNoteListLimit((previous) => Math.min(visibleNotes.length, previous + NOTE_LIST_BATCH));
+  }
+
+  function onNoteColumnScroll(event: UIEvent<HTMLElement>): void {
+    if (browseMode === "home" || browseMode === "graph" || !hasMoreVisibleNotes) {
+      return;
+    }
+    const target = event.currentTarget;
+    const remaining = target.scrollHeight - (target.scrollTop + target.clientHeight);
+    if (remaining <= 140) {
+      loadMoreVisibleNotes();
+    }
+  }
+
   return (
     <div
       className="app-shell"
@@ -7910,7 +7952,7 @@ export default function App() {
         }}
       />
 
-      <section className="note-column" style={{ width: listWidth }}>
+      <section ref={noteColumnRef} className="note-column" style={{ width: listWidth }} onScroll={onNoteColumnScroll}>
         <header className="note-column-header">
           <div>
             <h1>
@@ -8448,82 +8490,93 @@ export default function App() {
               aria-label="Notes list"
             >
               {visibleNotes.length ? (
-                noteGroups.map((group) => (
-                  <section key={group.id} className="note-group-section">
-                    {noteGroupMode !== "none" ? <div className="note-group-heading">{group.label}</div> : null}
-                    {group.notes.map((note) => {
-                      const isSelected = selectedIds.has(note.id);
-                      const showQuickAction = hoveredCardId === note.id || isSelected;
-                      const homePinned = homePinnedSet.has(note.id);
-                      const notebookPinned = notebookPinnedSet.has(note.id);
-                      return (
-                        <button
-                          key={note.id}
-                          type="button"
-                          draggable
-                          onMouseEnter={() => setHoveredCardId(note.id)}
-                          onMouseLeave={() => setHoveredCardId((previous) => (previous === note.id ? null : previous))}
-                          onDragStart={() => setDraggingNoteId(note.id)}
-                          onDragEnd={() => {
-                            setDraggingNoteId(null);
-                            setDropNotebook(null);
-                          }}
-                          className={isSelected ? "note-card selected" : "note-card"}
-                          onClick={(event) => onCardClick(note.id, event)}
-                          onDoubleClick={() => openFocusedEditor(note.id)}
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            openCardMenu(note.id, event.clientX, event.clientY);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                <>
+                  {noteGroups.map((group) => (
+                    <section key={group.id} className="note-group-section">
+                      {noteGroupMode !== "none" ? <div className="note-group-heading">{group.label}</div> : null}
+                      {group.notes.map((note) => {
+                        const isSelected = selectedIds.has(note.id);
+                        const showQuickAction = hoveredCardId === note.id || isSelected;
+                        const homePinned = homePinnedSet.has(note.id);
+                        const notebookPinned = notebookPinnedSet.has(note.id);
+                        return (
+                          <button
+                            key={note.id}
+                            type="button"
+                            draggable
+                            onMouseEnter={() => setHoveredCardId(note.id)}
+                            onMouseLeave={() => setHoveredCardId((previous) => (previous === note.id ? null : previous))}
+                            onDragStart={() => setDraggingNoteId(note.id)}
+                            onDragEnd={() => {
+                              setDraggingNoteId(null);
+                              setDropNotebook(null);
+                            }}
+                            className={isSelected ? "note-card selected" : "note-card"}
+                            onClick={(event) => onCardClick(note.id, event)}
+                            onDoubleClick={() => openFocusedEditor(note.id)}
+                            onContextMenu={(event) => {
                               event.preventDefault();
-                              const rect = event.currentTarget.getBoundingClientRect();
-                              openCardMenu(note.id, rect.left + 12, rect.bottom - 12);
-                            }
-                          }}
-                        >
-                          <span className="note-card-actions">
-                            {showQuickAction ? (
-                              <span
-                                className="note-card-menu"
-                                role="button"
-                                tabIndex={0}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  openCardMenu(note.id, event.clientX, event.clientY);
-                                }}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter" || event.key === " ") {
-                                    event.preventDefault();
-                                    const target = event.currentTarget.getBoundingClientRect();
-                                    openCardMenu(note.id, target.left, target.bottom + 6);
-                                  }
-                                }}
-                              >
-                                ...
-                              </span>
-                            ) : null}
-                          </span>
-                          <strong>{note.title}</strong>
-                          <p>{note.snippet || "Untitled"}</p>
-                          <footer>
-                            <span>{formatRelativeTime(note.updatedAt)}</span>
-                            {browseMode === "trash" && note.trashedAt ? (
-                              <span>Trashed {formatRelativeTime(note.trashedAt)}</span>
-                            ) : null}
-                            {note.reminderAt ? <span className="note-reminder">{describeReminderDate(note.reminderAt)}</span> : null}
-                            {note.isTemplate ? <span className="note-pin">Template</span> : null}
-                            {homePinned ? <span className="note-pin">Home pin</span> : null}
-                            {notebookPinned ? <span className="note-pin">Notebook pin</span> : null}
-                            {viewMode === "list" ? <span>{note.notebook}</span> : null}
-                            {isSelected ? <em>{selectedIds.size > 1 ? "Multi" : "Selected"}</em> : null}
-                          </footer>
-                        </button>
-                      );
-                    })}
-                  </section>
-                ))
+                              openCardMenu(note.id, event.clientX, event.clientY);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                                event.preventDefault();
+                                const rect = event.currentTarget.getBoundingClientRect();
+                                openCardMenu(note.id, rect.left + 12, rect.bottom - 12);
+                              }
+                            }}
+                          >
+                            <span className="note-card-actions">
+                              {showQuickAction ? (
+                                <span
+                                  className="note-card-menu"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    openCardMenu(note.id, event.clientX, event.clientY);
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                      event.preventDefault();
+                                      const target = event.currentTarget.getBoundingClientRect();
+                                      openCardMenu(note.id, target.left, target.bottom + 6);
+                                    }
+                                  }}
+                                >
+                                  ...
+                                </span>
+                              ) : null}
+                            </span>
+                            <strong>{note.title}</strong>
+                            <p>{note.snippet || "Untitled"}</p>
+                            <footer>
+                              <span>{formatRelativeTime(note.updatedAt)}</span>
+                              {browseMode === "trash" && note.trashedAt ? (
+                                <span>Trashed {formatRelativeTime(note.trashedAt)}</span>
+                              ) : null}
+                              {note.reminderAt ? (
+                                <span className="note-reminder">{describeReminderDate(note.reminderAt)}</span>
+                              ) : null}
+                              {note.isTemplate ? <span className="note-pin">Template</span> : null}
+                              {homePinned ? <span className="note-pin">Home pin</span> : null}
+                              {notebookPinned ? <span className="note-pin">Notebook pin</span> : null}
+                              {viewMode === "list" ? <span>{note.notebook}</span> : null}
+                              {isSelected ? <em>{selectedIds.size > 1 ? "Multi" : "Selected"}</em> : null}
+                            </footer>
+                          </button>
+                        );
+                      })}
+                    </section>
+                  ))}
+                  {hasMoreVisibleNotes ? (
+                    <div className="note-grid-more">
+                      <button type="button" aria-label="Load more notes" onClick={loadMoreVisibleNotes}>
+                        Load more notes ({pagedVisibleNotes.length} of {visibleNotes.length})
+                      </button>
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <div className="note-grid-empty">
                   <p>

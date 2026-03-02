@@ -98,6 +98,23 @@ describe("App", () => {
     expect(document.querySelectorAll(".note-group-heading").length).toBeGreaterThan(0);
   });
 
+  it("loads note list incrementally", () => {
+    render(<App />);
+    const createButton = screen.getByRole("button", { name: "+ Note" });
+    for (let index = 0; index < 26; index += 1) {
+      fireEvent.click(createButton);
+    }
+
+    const notesList = screen.getByLabelText("Notes list");
+    const initialCardCount = notesList.querySelectorAll(".note-card").length;
+    const loadMoreButton = screen.getByRole("button", { name: "Load more notes" });
+    expect(loadMoreButton).toBeInTheDocument();
+
+    fireEvent.click(loadMoreButton);
+    const expandedCardCount = notesList.querySelectorAll(".note-card").length;
+    expect(expandedCardCount).toBeGreaterThan(initialCardCount);
+  });
+
   it("saves scratch pad content to a note via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Home" }));

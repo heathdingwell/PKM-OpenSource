@@ -915,6 +915,27 @@ body.is-resizing {
   background: #e5efff;
 }
 
+.note-grid-more {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 2px;
+}
+
+.note-grid-more button {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #c9d8ef;
+  border-radius: 999px;
+  color: #38537a;
+  font-size: 12px;
+  background: #eef4ff;
+}
+
+.note-grid-more button:hover {
+  background: #e5efff;
+}
+
 .note-grid.compact {
   gap: 6px;
   padding: 8px;

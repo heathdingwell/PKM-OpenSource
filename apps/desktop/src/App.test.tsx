@@ -1662,6 +1662,7 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "New from template" }));
     expect(screen.getByRole("heading", { name: "New from template", level: 3 })).toBeInTheDocument();
+    expect(screen.getByText(/Variables:/i)).toBeInTheDocument();
   });
 
   it("creates a notebook from modal flow", () => {

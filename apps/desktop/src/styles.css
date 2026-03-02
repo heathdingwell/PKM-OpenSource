@@ -2712,6 +2712,13 @@ body.is-resizing {
   font-size: 12px;
 }
 
+.template-variable-hint {
+  margin: 0 0 10px;
+  color: #6b7f9e;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .bulk-tag-summary {
   margin: 0 0 10px;
   color: #6b7f9e;

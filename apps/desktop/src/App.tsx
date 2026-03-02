@@ -12992,6 +12992,10 @@ export default function App() {
                   ))}
               </select>
             </label>
+            <p className="template-variable-hint">
+              Variables: {"{{title}}"}, {"{{notebook}}"}, {"{{date}}"}, {"{{time}}"}, {"{{datetime}}"}, {"{{timestamp}}"},
+              {"{{year}}"}, {"{{month}}"}, {"{{day}}"}, {"{{weekday}}"}
+            </p>
             <footer>
               <button type="button" onClick={() => setTemplateDialog(null)}>
                 Cancel

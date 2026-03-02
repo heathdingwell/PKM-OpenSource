@@ -1614,6 +1614,40 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Remove Shortcuts" })).toBeInTheDocument();
   });
 
+  it("moves multi-selected notes by dragging one selected card", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = Array.from(document.querySelectorAll<HTMLButtonElement>(".note-grid .note-card"));
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    const firstTitle = cards[0]?.querySelector("strong")?.textContent?.trim() ?? "";
+    const secondTitle = cards[1]?.querySelector("strong")?.textContent?.trim() ?? "";
+    expect(firstTitle).not.toBe("");
+    expect(secondTitle).not.toBe("");
+
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    const dataTransfer = {
+      effectAllowed: "move",
+      setData: vi.fn(),
+      getData: vi.fn()
+    } as unknown as DataTransfer;
+    fireEvent.dragStart(cards[1] as HTMLButtonElement, { dataTransfer });
+
+    const notebookItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".notebook-item"));
+    const inboxNotebook = notebookItems.find((entry) => entry.textContent?.includes("Inbox"));
+    expect(inboxNotebook).toBeTruthy();
+    fireEvent.dragOver(inboxNotebook as HTMLButtonElement, { dataTransfer });
+    fireEvent.drop(inboxNotebook as HTMLButtonElement, { dataTransfer });
+
+    fireEvent.click(inboxNotebook as HTMLButtonElement);
+    expect(screen.getByRole("heading", { name: "Inbox", level: 1 })).toBeInTheDocument();
+    const notesList = screen.getByLabelText("Notes list");
+    expect(within(notesList).getByText(firstTitle)).toBeInTheDocument();
+    expect(within(notesList).getByText(secondTitle)).toBeInTheDocument();
+  });
+
   it("moves the active note to trash with cmd+backspace", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

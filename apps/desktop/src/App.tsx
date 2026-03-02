@@ -2213,6 +2213,7 @@ export default function App() {
   const noteColumnRef = useRef<HTMLElement | null>(null);
   const activeResizeRef = useRef<ResizeState | null>(null);
   const findInNoteInputRef = useRef<HTMLInputElement | null>(null);
+  const draggingNoteIdsRef = useRef<string[] | null>(null);
 
   const notebooks = useMemo(() => {
     const names = Array.from(new Set(activeNotes.map((note) => note.notebook))).sort((left, right) =>
@@ -7296,8 +7297,10 @@ export default function App() {
             if (!draggingNoteId) {
               return;
             }
-            moveNotes([draggingNoteId], notebook);
+            const dragSet = draggingNoteIdsRef.current ?? [draggingNoteId];
+            moveNotes(dragSet, notebook);
             setDraggingNoteId(null);
+            draggingNoteIdsRef.current = null;
             setDropNotebook(null);
           }}
         >
@@ -9284,9 +9287,16 @@ export default function App() {
                             draggable
                             onMouseEnter={() => setHoveredCardId(note.id)}
                             onMouseLeave={() => setHoveredCardId((previous) => (previous === note.id ? null : previous))}
-                            onDragStart={() => setDraggingNoteId(note.id)}
+                            onDragStart={() => {
+                              const dragSet = selectedIds.has(note.id) && selectedVisibleNoteIds.length > 1
+                                ? selectedVisibleNoteIds
+                                : [note.id];
+                              setDraggingNoteId(note.id);
+                              draggingNoteIdsRef.current = dragSet;
+                            }}
                             onDragEnd={() => {
                               setDraggingNoteId(null);
+                              draggingNoteIdsRef.current = null;
                               setDropNotebook(null);
                             }}
                             className={isSelected ? "note-card selected" : "note-card"}

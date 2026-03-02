@@ -282,6 +282,7 @@ type SearchCreatedPreset = "none" | "today" | "week" | "month";
 type AttachmentKind = "image" | "pdf" | "video" | "audio" | "other";
 type AttachmentSortMode = "recent" | "name-asc" | "name-desc";
 type CalendarSortMode = "soonest" | "latest";
+type TaskSortMode = "recent" | "due-asc" | "due-desc";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 
@@ -2308,6 +2309,7 @@ export default function App() {
   const [noteHistoryDialog, setNoteHistoryDialog] = useState<NoteHistoryDialogState | null>(null);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [taskDueFilter, setTaskDueFilter] = useState<TaskDueFilter>(initialPrefs.taskDueFilter ?? "all");
+  const [taskSortMode, setTaskSortMode] = useState<TaskSortMode>("recent");
   const [taskQuery, setTaskQuery] = useState("");
   const [reminderDueFilter, setReminderDueFilter] = useState<ReminderDueFilter>(initialPrefs.reminderDueFilter ?? "all");
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
@@ -3028,14 +3030,30 @@ export default function App() {
         ? openTasks
         : openTasks.filter((task) => getTaskDueBucket(task.dueDate, toDateInputValue(new Date())) === taskDueFilter);
     const query = taskQuery.trim().toLowerCase();
-    if (!query) {
-      return dueScoped;
+    const queryScoped = query
+      ? dueScoped.filter((task) => {
+          const haystack = `${task.text} ${task.noteTitle} ${task.notebook} ${task.dueDate ?? ""}`.toLowerCase();
+          return haystack.includes(query);
+        })
+      : dueScoped;
+    if (taskSortMode === "recent") {
+      return queryScoped;
     }
-    return dueScoped.filter((task) => {
-      const haystack = `${task.text} ${task.noteTitle} ${task.notebook} ${task.dueDate ?? ""}`.toLowerCase();
-      return haystack.includes(query);
+    return [...queryScoped].sort((left, right) => {
+      const leftDue = left.dueDate ?? "";
+      const rightDue = right.dueDate ?? "";
+      if (!leftDue && !rightDue) {
+        return left.text.localeCompare(right.text);
+      }
+      if (!leftDue) {
+        return 1;
+      }
+      if (!rightDue) {
+        return -1;
+      }
+      return taskSortMode === "due-asc" ? leftDue.localeCompare(rightDue) : rightDue.localeCompare(leftDue);
     });
-  }, [openTasks, taskDueFilter, taskQuery]);
+  }, [openTasks, taskDueFilter, taskQuery, taskSortMode]);
   const attachmentItems = useMemo(() => extractAttachments(liveDerivedNotes), [liveDerivedNotes]);
   const attachmentItemCounts = useMemo(() => {
     const counts = {
@@ -3640,6 +3658,14 @@ export default function App() {
       setFilesSortMode("recent");
     }
   }, [filesDialogOpen]);
+
+  useEffect(() => {
+    if (!tasksDialogOpen) {
+      setTaskDueFilter("all");
+      setTaskSortMode("recent");
+      setTaskQuery("");
+    }
+  }, [tasksDialogOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -5672,6 +5698,7 @@ export default function App() {
     setSidebarView("tasks");
     setTasksDialogOpen(true);
     setTaskDueFilter("all");
+    setTaskSortMode("recent");
     setTaskQuery("");
     setFilesDialogOpen(false);
     setCalendarDialogOpen(false);
@@ -12038,6 +12065,7 @@ export default function App() {
           onClick={() => {
             setTasksDialogOpen(false);
             setTaskDueFilter("all");
+            setTaskSortMode("recent");
             setTaskQuery("");
             setSidebarView("notes");
           }}
@@ -12057,6 +12085,27 @@ export default function App() {
               />
             </label>
             <div className="search-chips tasks-filter-chips">
+              <button
+                type="button"
+                className={taskSortMode === "recent" ? "chip active" : "chip"}
+                onClick={() => setTaskSortMode("recent")}
+              >
+                Recent
+              </button>
+              <button
+                type="button"
+                className={taskSortMode === "due-asc" ? "chip active" : "chip"}
+                onClick={() => setTaskSortMode("due-asc")}
+              >
+                Due soonest
+              </button>
+              <button
+                type="button"
+                className={taskSortMode === "due-desc" ? "chip active" : "chip"}
+                onClick={() => setTaskSortMode("due-desc")}
+              >
+                Due latest
+              </button>
               <button
                 type="button"
                 className={taskDueFilter === "all" ? "chip active" : "chip"}
@@ -12105,6 +12154,7 @@ export default function App() {
                         focusNote(task.noteId);
                         setTasksDialogOpen(false);
                         setTaskDueFilter("all");
+                        setTaskSortMode("recent");
                         setTaskQuery("");
                         setSidebarView("notes");
                       }}
@@ -12154,6 +12204,7 @@ export default function App() {
                 onClick={() => {
                   setTasksDialogOpen(false);
                   setTaskDueFilter("all");
+                  setTaskSortMode("recent");
                   setTaskQuery("");
                   setSidebarView("notes");
                 }}

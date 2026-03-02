@@ -1819,6 +1819,31 @@ describe("App", () => {
     expect(within(reopenedModal as HTMLElement).getByText("Forecast roadmap")).toBeInTheDocument();
   });
 
+  it("sorts tasks by due date in tasks modal", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Later due task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2099-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Soon due task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2000-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+
+    const tasksModal = screen.getByRole("heading", { name: "Tasks", level: 3 }).closest("section");
+    expect(tasksModal).toBeTruthy();
+    fireEvent.click(within(tasksModal as HTMLElement).getByRole("button", { name: "Due soonest" }));
+    let taskRows = Array.from((tasksModal as HTMLElement).querySelectorAll<HTMLElement>(".task-row strong"));
+    expect(taskRows[0]?.textContent).toBe("Soon due task");
+
+    fireEvent.click(within(tasksModal as HTMLElement).getByRole("button", { name: "Due latest" }));
+    taskRows = Array.from((tasksModal as HTMLElement).querySelectorAll<HTMLElement>(".task-row strong"));
+    expect(taskRows[0]?.textContent).toBe("Later due task");
+  });
+
   it("completes only shown tasks from tasks modal filter", async () => {
     render(<App />);
 

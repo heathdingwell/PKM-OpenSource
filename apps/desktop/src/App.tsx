@@ -433,6 +433,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-note-info", label: "Open note info", keywords: ["metadata", "info", "note"] },
   { id: "open-note-tags", label: "Edit note tags", keywords: ["tags", "labels", "metadata"] },
   { id: "open-note-history", label: "Open note history", keywords: ["history", "restore", "versions"] },
+  { id: "copy-note-link", label: "Copy note link", keywords: ["link", "copy", "share", "note"] },
   { id: "rename-note", label: "Rename note", keywords: ["rename", "title", "note"] },
   { id: "move-note", label: "Move note", keywords: ["move", "notebook", "note"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
@@ -3374,6 +3375,12 @@ export default function App() {
           return;
         }
 
+        if (key === "l" && !event.shiftKey && !event.altKey) {
+          event.preventDefault();
+          void copyNoteLink(activeNote.id);
+          return;
+        }
+
         if (key === "b" && !event.shiftKey && !event.altKey) {
           event.preventDefault();
           if (editorMode === "rich") {
@@ -5260,6 +5267,16 @@ export default function App() {
       return;
     }
 
+    if (actionId === "copy-note-link") {
+      if (activeNote) {
+        void copyNoteLink(activeNote.id);
+      } else {
+        setToastMessage("Open a note before copying a link");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
     if (actionId === "open-note-history") {
       openNoteHistory();
       return;
@@ -6228,9 +6245,13 @@ export default function App() {
     const link = `pkm-os://note/${encoded}`;
 
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(link);
-      setToastMessage("Note link copied");
-      return;
+      try {
+        await navigator.clipboard.writeText(link);
+        setToastMessage("Note link copied");
+        return;
+      } catch {
+        // Fall through to showing the generated link when clipboard is unavailable.
+      }
     }
 
     setToastMessage(link);

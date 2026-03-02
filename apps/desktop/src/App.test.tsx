@@ -189,6 +189,20 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
+  it("copies note link with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "l", metaKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note link copied")).toBeInTheDocument();
+  });
+
   it("opens notes from graph node clicks", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));
@@ -331,6 +345,24 @@ describe("App", () => {
     fireEvent.click(screen.getByText("Move note"));
 
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
+  });
+
+  it("copies note link from command palette", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">copy" }
+    });
+    fireEvent.click(screen.getByText("Copy note link"));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
 
   it("opens or creates today's note from command palette without duplicates", async () => {

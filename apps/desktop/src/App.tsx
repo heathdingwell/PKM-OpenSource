@@ -435,6 +435,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-note-history", label: "Open note history", keywords: ["history", "restore", "versions"] },
   { id: "open-note-window", label: "Open note in new window", keywords: ["window", "detach", "note"] },
   { id: "open-note-lite-edit", label: "Open note in Lite edit mode", keywords: ["lite", "edit", "focus"] },
+  { id: "share-note", label: "Share note link", keywords: ["share", "link", "note"] },
   { id: "copy-note-link", label: "Copy note link", keywords: ["link", "copy", "share", "note"] },
   { id: "duplicate-note", label: "Duplicate note", keywords: ["duplicate", "copy", "note"] },
   { id: "trash-note", label: "Move note to trash", keywords: ["trash", "delete", "note"] },
@@ -495,7 +496,7 @@ const seedCalendarEvents: Array<Pick<CalendarEvent, "title" | "startAt" | "endAt
 const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
   { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
   { id: "open-lite-edit", label: "Open in Lite edit mode", shortcut: "alt+cmd+o" },
-  { id: "share", label: "Share", shortcut: "cmd+s" },
+  { id: "share", label: "Share", shortcut: "cmd+alt+s" },
   { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
   { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
   { id: "divider-1", label: "", divider: true },
@@ -3397,6 +3398,12 @@ export default function App() {
           return;
         }
 
+        if (key === "s" && !event.shiftKey && event.altKey) {
+          event.preventDefault();
+          void copyNoteLink(activeNote.id, "Share link copied");
+          return;
+        }
+
         if (key === "b" && !event.shiftKey && !event.altKey) {
           event.preventDefault();
           if (editorMode === "rich") {
@@ -5331,6 +5338,16 @@ export default function App() {
       return;
     }
 
+    if (actionId === "share-note") {
+      if (activeNote) {
+        void copyNoteLink(activeNote.id, "Share link copied");
+      } else {
+        setToastMessage("Open a note before sharing");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
     if (actionId === "duplicate-note") {
       if (!activeNote) {
         setToastMessage("Open a note before duplicating");
@@ -6319,7 +6336,7 @@ export default function App() {
     setToastMessage(`Renamed to "${trimmedTitle}"`);
   }
 
-  async function copyNoteLink(noteId: string): Promise<void> {
+  async function copyNoteLink(noteId: string, successToastMessage = "Note link copied"): Promise<void> {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note) {
       return;
@@ -6331,7 +6348,7 @@ export default function App() {
     if (navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(link);
-        setToastMessage("Note link copied");
+        setToastMessage(successToastMessage);
         return;
       } catch {
         // Fall through to showing the generated link when clipboard is unavailable.
@@ -6426,8 +6443,7 @@ export default function App() {
     }
 
     if (action === "share") {
-      void copyNoteLink(targetId);
-      setToastMessage("Share link copied");
+      void copyNoteLink(targetId, "Share link copied");
       setContextMenu(null);
       return;
     }

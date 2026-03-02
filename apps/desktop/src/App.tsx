@@ -235,6 +235,7 @@ type NoteSortMode =
   | "title-desc";
 type SearchFilterKind = "attachments" | "tasks" | "due";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
+type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 
 interface ParsedSearchQuery {
   text: string;
@@ -2002,6 +2003,7 @@ export default function App() {
   const [noteHistoryDialog, setNoteHistoryDialog] = useState<NoteHistoryDialogState | null>(null);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [taskDueFilter, setTaskDueFilter] = useState<TaskDueFilter>("all");
+  const [reminderDueFilter, setReminderDueFilter] = useState<ReminderDueFilter>("all");
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
@@ -2178,9 +2180,16 @@ export default function App() {
       ? modeScoped.filter((note) => tagFilters.every((tag) => note.tags.includes(tag)))
       : modeScoped;
 
-    const sorted = [...filtered];
+    const today = toDateInputValue(new Date());
+    const reminderFiltered =
+      browseMode === "reminders" && reminderDueFilter !== "all"
+        ? filtered.filter((note) =>
+            note.reminderAt ? getReminderBucket(note.reminderAt, today) === reminderDueFilter : false
+          )
+        : filtered;
+
+    const sorted = [...reminderFiltered];
     if (browseMode === "reminders") {
-      const today = toDateInputValue(new Date());
       sorted.sort((left, right) => {
         if (!left.reminderAt && !right.reminderAt) {
           return right.updatedAt.localeCompare(left.updatedAt);
@@ -2225,7 +2234,18 @@ export default function App() {
     });
 
     return sorted;
-  }, [activeNotes, trashedNotes, selectedNotebook, browseMode, tagFilters, sortMode, shortcutNoteIds, shortcutNotebooks, shortcutTags]);
+  }, [
+    activeNotes,
+    trashedNotes,
+    selectedNotebook,
+    browseMode,
+    tagFilters,
+    sortMode,
+    shortcutNoteIds,
+    shortcutNotebooks,
+    shortcutTags,
+    reminderDueFilter
+  ]);
 
   const availableTags = useMemo(() => {
     const sourceNotes = browseMode === "trash" ? trashedNotes : activeNotes;
@@ -7920,6 +7940,38 @@ export default function App() {
           </div>
           {browseMode !== "home" && browseMode !== "graph" ? (
             <div className="header-actions">
+              {browseMode === "reminders" ? (
+                <div className="reminder-filter-chips">
+                  <button
+                    type="button"
+                    className={reminderDueFilter === "all" ? "chip active" : "chip"}
+                    onClick={() => setReminderDueFilter("all")}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    className={reminderDueFilter === "overdue" ? "chip active" : "chip"}
+                    onClick={() => setReminderDueFilter("overdue")}
+                  >
+                    Overdue
+                  </button>
+                  <button
+                    type="button"
+                    className={reminderDueFilter === "today" ? "chip active" : "chip"}
+                    onClick={() => setReminderDueFilter("today")}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    className={reminderDueFilter === "upcoming" ? "chip active" : "chip"}
+                    onClick={() => setReminderDueFilter("upcoming")}
+                  >
+                    Upcoming
+                  </button>
+                </div>
+              ) : null}
               <button
                 type="button"
                 className={viewMode === "list" ? "active" : ""}

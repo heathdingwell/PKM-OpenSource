@@ -35,6 +35,31 @@ describe("App", () => {
     expect(within(notesList).getByText("Upcoming 2099-01-01")).toBeInTheDocument();
   });
 
+  it("filters reminder buckets in reminders mode", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2099-01-01" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    if (!screen.queryByLabelText("Reminder date")) {
+      fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    }
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2000-01-01" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reminders" }));
+    const notesList = screen.getByLabelText("Notes list");
+    expect(within(notesList).getByText("Overdue 2000-01-01")).toBeInTheDocument();
+    expect(within(notesList).getByText("Upcoming 2099-01-01")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Overdue" }));
+    expect(within(notesList).getByText("Overdue 2000-01-01")).toBeInTheDocument();
+    expect(within(notesList).queryByText("Upcoming 2099-01-01")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming" }));
+    expect(within(notesList).getByText("Upcoming 2099-01-01")).toBeInTheDocument();
+    expect(within(notesList).queryByText("Overdue 2000-01-01")).not.toBeInTheDocument();
+  });
+
   it("opens home dashboard mode from the sidebar", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Home" }));

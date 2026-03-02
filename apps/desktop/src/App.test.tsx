@@ -894,6 +894,26 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Updated today" })).not.toHaveClass("active");
   });
 
+  it("applies created date chips to the quick search query", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
+    fireEvent.change(queryInput, { target: { value: "agenda" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Created week" }));
+    expect(queryInput.value).toContain("created:week");
+    expect(screen.getByRole("button", { name: "Created week" })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Created today" }));
+    expect(queryInput.value).toContain("created:today");
+    expect(queryInput.value).not.toContain("created:week");
+    expect(screen.getByRole("button", { name: "Created today" })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Created today" }));
+    expect(queryInput.value).toBe("agenda");
+    expect(screen.getByRole("button", { name: "Created today" })).not.toHaveClass("active");
+  });
+
   it("clears date preset chips without removing search text", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -902,6 +922,19 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Updated month" }));
     expect(queryInput.value).toContain("updated:month");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(queryInput.value).toBe("journal");
+  });
+
+  it("clears created date preset chips without removing search text", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
+    fireEvent.change(queryInput, { target: { value: "journal" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Created month" }));
+    expect(queryInput.value).toContain("created:month");
 
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(queryInput.value).toBe("journal");

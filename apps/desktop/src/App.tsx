@@ -278,6 +278,7 @@ type SearchFilterKind =
   | "audio"
   | "pdf";
 type SearchUpdatedPreset = "none" | "today" | "week" | "month";
+type SearchCreatedPreset = "none" | "today" | "week" | "month";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 
@@ -1561,8 +1562,24 @@ function stripUpdatedSearchTokens(query: string): string {
     .trim();
 }
 
+function stripCreatedSearchTokens(query: string): string {
+  return query
+    .replace(/(^|\s)created:(?:"[^"]+"|\S+)/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function detectUpdatedSearchPreset(query: string): SearchUpdatedPreset {
   const match = query.match(/\bupdated:(today|week|month)\b/i);
+  const value = match?.[1]?.toLowerCase();
+  if (value === "today" || value === "week" || value === "month") {
+    return value;
+  }
+  return "none";
+}
+
+function detectCreatedSearchPreset(query: string): SearchCreatedPreset {
+  const match = query.match(/\bcreated:(today|week|month)\b/i);
   const value = match?.[1]?.toLowerCase();
   if (value === "today" || value === "week" || value === "month") {
     return value;
@@ -1576,6 +1593,14 @@ function applyUpdatedSearchPreset(query: string, preset: SearchUpdatedPreset): s
     return base;
   }
   return `${base}${base ? " " : ""}updated:${preset}`;
+}
+
+function applyCreatedSearchPreset(query: string, preset: SearchCreatedPreset): string {
+  const base = stripCreatedSearchTokens(query);
+  if (preset === "none") {
+    return base;
+  }
+  return `${base}${base ? " " : ""}created:${preset}`;
 }
 
 function extractAttachments(notes: AppNote[]): AttachmentItem[] {
@@ -2748,6 +2773,7 @@ export default function App() {
 
   const parsedQuickQuery = useMemo(() => parseSearchQuery(quickQuery), [quickQuery]);
   const updatedSearchPreset = useMemo(() => detectUpdatedSearchPreset(quickQuery), [quickQuery]);
+  const createdSearchPreset = useMemo(() => detectCreatedSearchPreset(quickQuery), [quickQuery]);
 
   const quickResults = useMemo(() => {
     if (commandMode) {
@@ -6239,9 +6265,14 @@ export default function App() {
     setSearchSelected(0);
   }
 
+  function setCreatedSearchPreset(preset: SearchCreatedPreset): void {
+    setQuickQuery((previous) => applyCreatedSearchPreset(previous, preset));
+    setSearchSelected(0);
+  }
+
   function clearSearchChips(): void {
     setSearchFilters([]);
-    setQuickQuery((previous) => stripUpdatedSearchTokens(previous));
+    setQuickQuery((previous) => stripCreatedSearchTokens(stripUpdatedSearchTokens(previous)));
     setSearchSelected(0);
   }
 
@@ -11640,7 +11671,28 @@ export default function App() {
               >
                 Updated month
               </button>
-              {searchFilters.length || updatedSearchPreset !== "none" ? (
+              <button
+                type="button"
+                className={createdSearchPreset === "today" ? "chip active" : "chip"}
+                onClick={() => setCreatedSearchPreset(createdSearchPreset === "today" ? "none" : "today")}
+              >
+                Created today
+              </button>
+              <button
+                type="button"
+                className={createdSearchPreset === "week" ? "chip active" : "chip"}
+                onClick={() => setCreatedSearchPreset(createdSearchPreset === "week" ? "none" : "week")}
+              >
+                Created week
+              </button>
+              <button
+                type="button"
+                className={createdSearchPreset === "month" ? "chip active" : "chip"}
+                onClick={() => setCreatedSearchPreset(createdSearchPreset === "month" ? "none" : "month")}
+              >
+                Created month
+              </button>
+              {searchFilters.length || updatedSearchPreset !== "none" || createdSearchPreset !== "none" ? (
                 <button type="button" className="chip" onClick={clearSearchChips}>
                   Clear
                 </button>

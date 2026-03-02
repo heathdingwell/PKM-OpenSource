@@ -152,6 +152,14 @@ describe("App", () => {
     expect(shell).not.toHaveClass("focus-mode");
   });
 
+  it("opens note history with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "h", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByText("No history yet")).toBeInTheDocument();
+  });
+
   it("opens notes from graph node clicks", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));
@@ -237,6 +245,18 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
     expect(screen.getByText("No reminders scheduled.")).toBeInTheDocument();
+  });
+
+  it("opens note history from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">history" }
+    });
+    fireEvent.click(screen.getByText("Open note history"));
+
+    expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByText("No history yet")).toBeInTheDocument();
   });
 
   it("opens or creates today's note from command palette without duplicates", async () => {

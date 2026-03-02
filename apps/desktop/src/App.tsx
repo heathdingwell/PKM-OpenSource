@@ -430,6 +430,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
   { id: "open-home", label: "Open home", keywords: ["home", "dashboard"] },
   { id: "open-notes", label: "Open notes", keywords: ["notes", "sidebar"] },
+  { id: "open-note-history", label: "Open note history", keywords: ["history", "restore", "versions"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
   { id: "open-reminders", label: "Open reminders", keywords: ["reminders", "dates", "follow-up"] },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
@@ -501,7 +502,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "find", label: "Find in note", shortcut: "cmd+f" },
   { id: "note-info", label: "Note info", shortcut: "cmd+i" },
   { id: "toggle-template", label: "Set as template" },
-  { id: "note-history", label: "Note history" },
+  { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
   { id: "divider-4", label: "", divider: true },
   { id: "export", label: "Export" },
   { id: "export-pdf", label: "Export as PDF" },
@@ -3404,6 +3405,12 @@ export default function App() {
         return;
       }
 
+      if ((event.metaKey || event.ctrlKey) && event.altKey && event.key.toLowerCase() === "h") {
+        event.preventDefault();
+        openNoteHistory();
+        return;
+      }
+
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f" && activeNote) {
         event.preventDefault();
         openFindInNote();
@@ -4922,6 +4929,20 @@ export default function App() {
     setSearchOpen(false);
   }
 
+  function openNoteHistory(noteId?: string): void {
+    const targetId = noteId ?? activeNote?.id;
+    if (!targetId) {
+      setToastMessage("Open a note to view history");
+      return;
+    }
+
+    if (targetId !== activeId) {
+      focusNote(targetId);
+    }
+    setNoteHistoryDialog({ noteId: targetId });
+    setSearchOpen(false);
+  }
+
   function quickCreateTask(): void {
     const fallbackNoteId = activeNote?.id ?? activeNotes[0]?.id ?? "";
     if (!fallbackNoteId) {
@@ -5093,6 +5114,11 @@ export default function App() {
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-note-history") {
+      openNoteHistory();
       return;
     }
 
@@ -6270,7 +6296,7 @@ export default function App() {
     }
 
     if (action === "note-history") {
-      setNoteHistoryDialog({ noteId: targetId });
+      openNoteHistory(targetId);
       setContextMenu(null);
       return;
     }

@@ -1794,6 +1794,38 @@ describe("App", () => {
     expect(within(tasksModal as HTMLElement).getByText("Batch no-due task")).toBeInTheDocument();
   });
 
+  it("filters calendar events by query and resets on reopen", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open calendar" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    let calendarModal = screen.getByRole("heading", { name: "Calendar", level: 3 }).closest("section");
+    expect(calendarModal).toBeTruthy();
+    expect(within(calendarModal as HTMLElement).getByText("Weekly planning")).toBeInTheDocument();
+    expect(within(calendarModal as HTMLElement).getByText("Research block")).toBeInTheDocument();
+
+    fireEvent.change(within(calendarModal as HTMLElement).getByLabelText("Filter events"), {
+      target: { value: "research" }
+    });
+    expect(within(calendarModal as HTMLElement).getByText("Research block")).toBeInTheDocument();
+    expect(within(calendarModal as HTMLElement).queryByText("Weekly planning")).not.toBeInTheDocument();
+
+    fireEvent.click(within(calendarModal as HTMLElement).getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open calendar" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    calendarModal = screen.getByRole("heading", { name: "Calendar", level: 3 }).closest("section");
+    expect(calendarModal).toBeTruthy();
+    const queryInput = within(calendarModal as HTMLElement).getByLabelText("Filter events") as HTMLInputElement;
+    expect(queryInput.value).toBe("");
+  });
+
   it("derives note title from first markdown line when no heading exists", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

@@ -2829,6 +2829,14 @@ body.is-resizing {
   width: 560px;
 }
 
+.calendar-filter-input {
+  margin-bottom: 8px;
+}
+
+.calendar-filter-input input {
+  margin-bottom: 0;
+}
+
 .calendar-actions {
   margin-bottom: 10px;
 }

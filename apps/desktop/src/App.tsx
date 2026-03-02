@@ -2292,6 +2292,7 @@ export default function App() {
   const [filesQuery, setFilesQuery] = useState("");
   const [filesFilterKind, setFilesFilterKind] = useState<"all" | AttachmentKind>("all");
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
+  const [calendarQuery, setCalendarQuery] = useState("");
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
   const [quickTaskDialog, setQuickTaskDialog] = useState<QuickTaskDialogState | null>(null);
   const [scratchNoteDialog, setScratchNoteDialog] = useState<ScratchNoteDialogState | null>(null);
@@ -3023,8 +3024,22 @@ export default function App() {
     });
   }, [attachmentItems, filesFilterKind, filesQuery]);
   const calendarEventsById = useMemo(() => new Map(calendarEvents.map((event) => [event.id, event])), [calendarEvents]);
+  const filteredCalendarEvents = useMemo(() => {
+    const query = calendarQuery.trim().toLowerCase();
+    if (!query) {
+      return calendarEvents;
+    }
+
+    return calendarEvents.filter((event) => {
+      const linkedNote = event.noteId ? liveNotesById.get(event.noteId) ?? null : null;
+      const haystack = `${event.title} ${event.calendar} ${formatCalendarTimeRange(event)} ${
+        linkedNote?.title ?? ""
+      } ${linkedNote?.notebook ?? ""}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [calendarEvents, calendarQuery, liveNotesById]);
   const calendarGroups = useMemo(() => {
-    const sorted = [...calendarEvents].sort((left, right) => left.startAt.localeCompare(right.startAt));
+    const sorted = [...filteredCalendarEvents].sort((left, right) => left.startAt.localeCompare(right.startAt));
     const groups: Array<{ label: string; events: CalendarEvent[] }> = [];
 
     for (const event of sorted) {
@@ -3038,7 +3053,7 @@ export default function App() {
     }
 
     return groups;
-  }, [calendarEvents]);
+  }, [filteredCalendarEvents]);
   const homeRecentNotes = useMemo(() => {
     if (recentNotes.length) {
       return recentNotes.slice(0, 6);
@@ -3546,6 +3561,12 @@ export default function App() {
     }
     window.localStorage.setItem(CALENDAR_STORAGE_KEY, JSON.stringify(calendarEvents));
   }, [calendarEvents]);
+
+  useEffect(() => {
+    if (!calendarDialogOpen) {
+      setCalendarQuery("");
+    }
+  }, [calendarDialogOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -12164,8 +12185,21 @@ export default function App() {
           <section className="move-modal calendar-modal" onClick={(event) => event.stopPropagation()}>
             <header>
               <h3>Calendar</h3>
-              <small>{calendarEvents.length} events</small>
+              <small>
+                {filteredCalendarEvents.length === calendarEvents.length
+                  ? `${calendarEvents.length} events`
+                  : `${filteredCalendarEvents.length} of ${calendarEvents.length} events`}
+              </small>
             </header>
+            <label className="template-field calendar-filter-input">
+              <span>Filter events</span>
+              <input
+                aria-label="Filter events"
+                value={calendarQuery}
+                onChange={(event) => setCalendarQuery(event.target.value)}
+                placeholder="Filter by event, calendar, note, or time"
+              />
+            </label>
             <div className="calendar-actions">
               <button
                 type="button"
@@ -12217,7 +12251,7 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              <p className="history-empty">No events yet</p>
+              <p className="history-empty">{calendarEvents.length ? "No events match this filter" : "No events yet"}</p>
             )}
             <footer>
               <button

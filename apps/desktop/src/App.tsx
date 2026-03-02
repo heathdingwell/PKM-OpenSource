@@ -261,7 +261,20 @@ type NoteSortMode =
   | "created-asc"
   | "title-asc"
   | "title-desc";
-type SearchFilterKind = "attachments" | "tasks" | "due" | "reminders" | "image" | "pdf";
+type SearchFilterKind =
+  | "attachments"
+  | "tasks"
+  | "due"
+  | "due-overdue"
+  | "due-today"
+  | "due-upcoming"
+  | "due-undated"
+  | "reminders"
+  | "reminders-overdue"
+  | "reminders-today"
+  | "reminders-upcoming"
+  | "image"
+  | "pdf";
 type SearchUpdatedPreset = "none" | "today" | "week" | "month";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
@@ -2756,8 +2769,38 @@ export default function App() {
       if (searchFilters.includes("due") && !noteHasTaskDueDate(note.markdown)) {
         return false;
       }
+      if (searchFilters.includes("due-overdue") && !noteHasTaskDueBucket(note.markdown, "overdue")) {
+        return false;
+      }
+      if (searchFilters.includes("due-today") && !noteHasTaskDueBucket(note.markdown, "today")) {
+        return false;
+      }
+      if (searchFilters.includes("due-upcoming") && !noteHasTaskDueBucket(note.markdown, "upcoming")) {
+        return false;
+      }
+      if (searchFilters.includes("due-undated") && !noteHasTaskDueBucket(note.markdown, "undated")) {
+        return false;
+      }
       if (searchFilters.includes("reminders") && !note.reminderAt) {
         return false;
+      }
+      if (searchFilters.includes("reminders-overdue")) {
+        const overdue = note.reminderAt && getReminderBucket(note.reminderAt, toDateInputValue(new Date())) === "overdue";
+        if (!overdue) {
+          return false;
+        }
+      }
+      if (searchFilters.includes("reminders-today")) {
+        const dueToday = note.reminderAt && getReminderBucket(note.reminderAt, toDateInputValue(new Date())) === "today";
+        if (!dueToday) {
+          return false;
+        }
+      }
+      if (searchFilters.includes("reminders-upcoming")) {
+        const upcoming = note.reminderAt && getReminderBucket(note.reminderAt, toDateInputValue(new Date())) === "upcoming";
+        if (!upcoming) {
+          return false;
+        }
       }
       if (notebookFilter && !note.notebook.toLowerCase().includes(notebookFilter)) {
         return false;
@@ -4978,8 +5021,29 @@ export default function App() {
     if (searchFilters.includes("due") && !/\bhas:(due|deadline)\b/i.test(query)) {
       query = `${query}${query ? " " : ""}has:due`;
     }
+    if (searchFilters.includes("due-overdue") && !/\bhas:overdue\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:overdue`;
+    }
+    if (searchFilters.includes("due-today") && !/\bhas:today\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:today`;
+    }
+    if (searchFilters.includes("due-upcoming") && !/\bhas:upcoming\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:upcoming`;
+    }
+    if (searchFilters.includes("due-undated") && !/\bhas:undated\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:undated`;
+    }
     if (searchFilters.includes("reminders") && !/\bhas:(reminder|reminders?)\b/i.test(query)) {
       query = `${query}${query ? " " : ""}has:reminder`;
+    }
+    if (searchFilters.includes("reminders-overdue") && !/\bhas:(reminder-overdue|overdue-reminder)\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:reminder-overdue`;
+    }
+    if (searchFilters.includes("reminders-today") && !/\bhas:(reminder-today|today-reminder)\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:reminder-today`;
+    }
+    if (searchFilters.includes("reminders-upcoming") && !/\bhas:(reminder-upcoming|upcoming-reminder)\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:reminder-upcoming`;
     }
 
     if (!query) {
@@ -5026,8 +5090,29 @@ export default function App() {
     if (/\bhas:(due|deadline)\b/i.test(saved.query)) {
       restoredFilters.push("due");
     }
+    if (/\bhas:overdue\b/i.test(saved.query)) {
+      restoredFilters.push("due-overdue");
+    }
+    if (/\bhas:today\b/i.test(saved.query)) {
+      restoredFilters.push("due-today");
+    }
+    if (/\bhas:upcoming\b/i.test(saved.query)) {
+      restoredFilters.push("due-upcoming");
+    }
+    if (/\bhas:undated\b/i.test(saved.query)) {
+      restoredFilters.push("due-undated");
+    }
     if (/\bhas:(reminder|reminders?)\b/i.test(saved.query)) {
       restoredFilters.push("reminders");
+    }
+    if (/\bhas:(reminder-overdue|overdue-reminder)\b/i.test(saved.query)) {
+      restoredFilters.push("reminders-overdue");
+    }
+    if (/\bhas:(reminder-today|today-reminder)\b/i.test(saved.query)) {
+      restoredFilters.push("reminders-today");
+    }
+    if (/\bhas:(reminder-upcoming|upcoming-reminder)\b/i.test(saved.query)) {
+      restoredFilters.push("reminders-upcoming");
     }
     setSearchFilters(restoredFilters);
     setQuickQuery(saved.query);
@@ -11436,10 +11521,59 @@ export default function App() {
               </button>
               <button
                 type="button"
+                className={searchFilters.includes("due-overdue") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("due-overdue")}
+              >
+                Overdue tasks
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("due-today") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("due-today")}
+              >
+                Due today
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("due-upcoming") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("due-upcoming")}
+              >
+                Upcoming tasks
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("due-undated") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("due-undated")}
+              >
+                Undated tasks
+              </button>
+              <button
+                type="button"
                 className={searchFilters.includes("reminders") ? "chip active" : "chip"}
                 onClick={() => toggleSearchFilter("reminders")}
               >
                 Has reminders
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("reminders-overdue") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("reminders-overdue")}
+              >
+                Overdue reminders
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("reminders-today") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("reminders-today")}
+              >
+                Today reminders
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("reminders-upcoming") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("reminders-upcoming")}
+              >
+                Upcoming reminders
               </button>
               <button
                 type="button"

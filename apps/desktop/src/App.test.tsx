@@ -835,6 +835,11 @@ describe("App", () => {
 
   it("persists chip filters when saving and reopening a saved search", () => {
     render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Saved search due task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2099-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     fireEvent.click(screen.getByRole("button", { name: "Info" }));
     fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2099-01-01" } });
 
@@ -843,7 +848,9 @@ describe("App", () => {
       target: { value: "agenda" }
     });
     fireEvent.click(screen.getByRole("button", { name: "Has due tasks" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming tasks" }));
     fireEvent.click(screen.getByRole("button", { name: "Has reminders" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming reminders" }));
     fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Due focus" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -853,12 +860,18 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^Due focus/i }));
     const dueChip = screen.getByRole("button", { name: "Has due tasks" });
+    const upcomingChip = screen.getByRole("button", { name: "Upcoming tasks" });
     const reminderChip = screen.getByRole("button", { name: "Has reminders" });
+    const upcomingReminderChip = screen.getByRole("button", { name: "Upcoming reminders" });
     expect(dueChip).toHaveClass("active");
+    expect(upcomingChip).toHaveClass("active");
     expect(reminderChip).toHaveClass("active");
+    expect(upcomingReminderChip).toHaveClass("active");
     const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
     expect(queryInput.value).toContain("has:due");
+    expect(queryInput.value).toContain("has:upcoming");
     expect(queryInput.value).toContain("has:reminder");
+    expect(queryInput.value).toContain("has:reminder-upcoming");
   });
 
   it("applies updated date chips to the quick search query", () => {
@@ -1075,6 +1088,71 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
+  it("supports overdue task chip filter in search", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Overdue task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2000-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Overdue tasks" }));
+
+    const chip = screen.getByRole("button", { name: "Overdue tasks" });
+    expect(chip).toHaveClass("active");
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
+  it("supports due today chip filter in search", () => {
+    render(<App />);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Today task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: today } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Due today" }));
+
+    const chip = screen.getByRole("button", { name: "Due today" });
+    expect(chip).toHaveClass("active");
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
+  it("supports undated task chip filter in search", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Undated task" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Undated tasks" }));
+
+    const chip = screen.getByRole("button", { name: "Undated tasks" });
+    expect(chip).toHaveClass("active");
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
   it("supports reminder chip filter in search", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Info" }));
@@ -1089,6 +1167,42 @@ describe("App", () => {
     const reminderChip = screen.getByRole("button", { name: "Has reminders" });
     expect(reminderChip).toHaveClass("active");
 
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
+  it("supports overdue reminder chip filter in search", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2000-01-01" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Overdue reminders" }));
+
+    const chip = screen.getByRole("button", { name: "Overdue reminders" });
+    expect(chip).toHaveClass("active");
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
+  it("supports upcoming reminder chip filter in search", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2099-01-01" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming reminders" }));
+
+    const chip = screen.getByRole("button", { name: "Upcoming reminders" });
+    expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();

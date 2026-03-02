@@ -4246,7 +4246,17 @@ export default function App() {
   }
 
   function saveCurrentSearch(): void {
-    const query = quickQuery.trim();
+    let query = quickQuery.trim();
+    if (searchFilters.includes("attachments") && !/\bhas:(attachment|file)\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:attachment`;
+    }
+    if (searchFilters.includes("tasks") && !/\bhas:(task|todo)\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:task`;
+    }
+    if (searchFilters.includes("due") && !/\bhas:(due|deadline)\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:due`;
+    }
+
     if (!query) {
       setToastMessage("Enter a query to save");
       return;
@@ -4275,6 +4285,17 @@ export default function App() {
     }
     setBrowseMode("all");
     setSearchScope(saved.scope);
+    const restoredFilters: SearchFilterKind[] = [];
+    if (/\bhas:(attachment|file)\b/i.test(saved.query)) {
+      restoredFilters.push("attachments");
+    }
+    if (/\bhas:(task|todo)\b/i.test(saved.query)) {
+      restoredFilters.push("tasks");
+    }
+    if (/\bhas:(due|deadline)\b/i.test(saved.query)) {
+      restoredFilters.push("due");
+    }
+    setSearchFilters(restoredFilters);
     setQuickQuery(saved.query);
     setSearchOpen(true);
   }

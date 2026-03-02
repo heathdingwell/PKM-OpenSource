@@ -174,6 +174,28 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
   });
 
+  it("persists chip filters when saving and reopening a saved search", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "agenda" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Has due tasks" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Due focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Due focus/i }));
+    const dueChip = screen.getByRole("button", { name: "Has due tasks" });
+    expect(dueChip).toHaveClass("active");
+    const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
+    expect(queryInput.value).toContain("has:due");
+  });
+
   it("supports has:due search filter", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));

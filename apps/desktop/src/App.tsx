@@ -983,6 +983,13 @@ function describeTaskDueDate(dueDate: string): string {
   return `Due ${dueDate}`;
 }
 
+function formatSidebarCount(value: number): string {
+  if (value > 999) {
+    return "999+";
+  }
+  return String(value);
+}
+
 function summarizeBacklinkContextLine(line: string): string {
   const replacedWikilinks = line.replace(/\[\[([^\]]+)\]\]/g, (_match, raw: string) => {
     const parsed = parseWikilinkTarget(raw);
@@ -2616,6 +2623,18 @@ export default function App() {
 
     return counts;
   }, [openTasks]);
+  const reminderCounts = useMemo(() => {
+    const today = toDateInputValue(new Date());
+    const counts = { all: 0, overdue: 0, today: 0, upcoming: 0 };
+    for (const note of activeNotes) {
+      if (!note.reminderAt) {
+        continue;
+      }
+      counts.all += 1;
+      counts[getReminderBucket(note.reminderAt, today)] += 1;
+    }
+    return counts;
+  }, [activeNotes]);
   const filteredOpenTasks = useMemo(() => {
     if (taskDueFilter === "all") {
       return openTasks;
@@ -7580,10 +7599,40 @@ export default function App() {
         </div>
 
         <nav className="sidebar-nav">
-          {sidePinned.map((item) => (
+          {sidePinned.map((item) => {
+            let badge: string | null = null;
+            let badgeTone: "default" | "alert" = "default";
+            if (item === "Notes" && activeNotes.length) {
+              badge = formatSidebarCount(activeNotes.length);
+            } else if (item === "Shortcuts") {
+              const shortcutCount = shortcutNotes.length + shortcutNotebookItems.length + shortcutTags.length;
+              if (shortcutCount) {
+                badge = formatSidebarCount(shortcutCount);
+              }
+            } else if (item === "Reminders" && reminderCounts.all) {
+              badge =
+                reminderCounts.overdue > 0
+                  ? `${formatSidebarCount(reminderCounts.overdue)}/${formatSidebarCount(reminderCounts.all)}`
+                  : formatSidebarCount(reminderCounts.all);
+              if (reminderCounts.overdue > 0) {
+                badgeTone = "alert";
+              }
+            } else if (item === "Tasks" && openTaskCounts.all) {
+              badge = formatSidebarCount(openTaskCounts.all);
+              if (openTaskCounts.overdue > 0) {
+                badgeTone = "alert";
+              }
+            } else if (item === "Trash" && trashedNotes.length) {
+              badge = formatSidebarCount(trashedNotes.length);
+            } else if (item === "Templates" && templateNotes.length) {
+              badge = formatSidebarCount(templateNotes.length);
+            }
+
+            return (
             <button
               key={item}
               type="button"
+              aria-label={item}
               className={
                 (item === "Home" &&
                   sidebarView === "notes" &&
@@ -7718,9 +7767,15 @@ export default function App() {
                 setToastMessage(`"${item}" is planned`);
               }}
             >
-              {item}
+              <span>{item}</span>
+              {badge ? (
+                <small className={badgeTone === "alert" ? "sidebar-link-badge alert" : "sidebar-link-badge"} aria-hidden="true">
+                  {badge}
+                </small>
+              ) : null}
             </button>
-          ))}
+            );
+          })}
         </nav>
 
         <section className="sidebar-section">

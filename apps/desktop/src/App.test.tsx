@@ -35,6 +35,24 @@ describe("App", () => {
     expect(within(notesList).getByText("Upcoming 2099-01-01")).toBeInTheDocument();
   });
 
+  it("shows reminder sidebar badge with overdue ratio", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2000-01-01" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    if (!screen.queryByLabelText("Reminder date")) {
+      fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    }
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2099-01-01" } });
+
+    const remindersButton = screen.getByRole("button", { name: "Reminders" });
+    const badge = remindersButton.querySelector(".sidebar-link-badge");
+    expect(badge).toBeTruthy();
+    expect(badge?.textContent).toBe("1/2");
+    expect(badge).toHaveClass("alert");
+  });
+
   it("filters reminder buckets in reminders mode", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Info" }));

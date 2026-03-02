@@ -194,12 +194,35 @@ body.is-resizing {
 }
 
 .sidebar-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 7px 8px;
   border: 0;
   border-radius: 8px;
   text-align: left;
   color: #334f7b;
   background: transparent;
+}
+
+.sidebar-link-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: #4f6b93;
+  font-size: 11px;
+  background: #e6eeff;
+}
+
+.sidebar-link-badge.alert {
+  color: #9f1239;
+  background: #fee2e2;
 }
 
 .sidebar-link:hover {

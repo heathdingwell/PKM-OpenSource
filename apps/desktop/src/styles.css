@@ -253,6 +253,13 @@ body.is-resizing {
   margin-top: 16px;
 }
 
+.sidebar-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .sidebar-section h2 {
   margin: 0 0 8px;
   color: #4e6692;
@@ -260,6 +267,21 @@ body.is-resizing {
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+
+.sidebar-section-clear {
+  height: 20px;
+  padding: 0 6px;
+  margin-bottom: 8px;
+  border: 1px solid #d0dcf0;
+  border-radius: 6px;
+  color: #4e6692;
+  font-size: 11px;
+  background: #f4f8ff;
+}
+
+.sidebar-section-clear:hover {
+  background: #eaf1ff;
 }
 
 .sidebar-section ul {

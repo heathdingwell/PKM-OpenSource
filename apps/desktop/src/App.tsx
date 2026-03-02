@@ -543,6 +543,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
   { id: "open-graph", label: "Open graph", keywords: ["graph", "links", "network"] },
   { id: "open-trash", label: "Open trash", keywords: ["trash", "deleted"] },
+  { id: "clear-recent-notes", label: "Clear recent notes", keywords: ["recent", "history", "clear"] },
   { id: "empty-trash", label: "Empty trash", keywords: ["trash", "delete"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
   { id: "insert-last-ai-reply", label: "Insert last AI reply into note", keywords: ["ai", "copilot", "insert"] },
@@ -4664,6 +4665,15 @@ export default function App() {
     setRecentNoteIds((previous) => [noteId, ...previous.filter((entry) => entry !== noteId)].slice(0, 24));
   }
 
+  function clearRecentNotes(): void {
+    if (!recentNoteIds.length) {
+      setToastMessage("Recent notes are already empty");
+      return;
+    }
+    setRecentNoteIds([]);
+    setToastMessage("Cleared recent notes");
+  }
+
   function syncSlashSuggestion(markdown: string, caret: number): void {
     const head = markdown.slice(0, caret);
     const match = head.match(/(?:^|\s)\/([a-z0-9-]*)$/i);
@@ -6208,6 +6218,12 @@ export default function App() {
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "clear-recent-notes") {
+      setSearchOpen(false);
+      clearRecentNotes();
       return;
     }
 
@@ -9101,7 +9117,14 @@ export default function App() {
         </nav>
 
         <section className="sidebar-section">
-          <h2>Recent notes</h2>
+          <div className="sidebar-section-head">
+            <h2>Recent notes</h2>
+            {recentNotes.length ? (
+              <button type="button" className="sidebar-section-clear" onClick={clearRecentNotes}>
+                Clear
+              </button>
+            ) : null}
+          </div>
           {recentNotes.length ? (
             <ul className="shortcut-list">
               {recentNotes.map((note) => (

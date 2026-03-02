@@ -119,6 +119,33 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Agenda" })).toBeInTheDocument();
   });
 
+  it("clears recent notes from the sidebar section", () => {
+    render(<App />);
+    const notesList = screen.getByLabelText("Notes list");
+    const card = Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+      entry.textContent?.includes("To-do list")
+    );
+    expect(card).toBeTruthy();
+    fireEvent.click(card as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(screen.getByText("No recent notes yet")).toBeInTheDocument();
+  });
+
+  it("clears recent notes from command palette action", () => {
+    render(<App />);
+    const notesList = screen.getByLabelText("Notes list");
+    const card = Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+      entry.textContent?.includes("To-do list")
+    );
+    expect(card).toBeTruthy();
+    fireEvent.click(card as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">clear recent notes" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+    expect(screen.getByText("No recent notes yet")).toBeInTheDocument();
+  });
+
   it("filters graph nodes by query", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));

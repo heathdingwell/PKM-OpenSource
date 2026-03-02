@@ -77,6 +77,15 @@ describe("App", () => {
     expect(countAfter).toBe(1);
   });
 
+  it("opens or creates today's note from keyboard shortcut", async () => {
+    render(<App />);
+    const now = new Date();
+    const todayTitle = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    fireEvent.keyDown(window, { key: "D", metaKey: true, shiftKey: true });
+    expect(await screen.findByRole("heading", { name: todayTitle, level: 2 })).toBeInTheDocument();
+  });
+
   it("creates and edits a saved search via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

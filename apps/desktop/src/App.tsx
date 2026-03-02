@@ -2737,6 +2737,12 @@ export default function App() {
         return;
       }
 
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        void openTodayNote();
+        return;
+      }
+
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f" && activeNote) {
         event.preventDefault();
         openFindInNote();

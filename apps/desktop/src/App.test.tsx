@@ -264,10 +264,12 @@ describe("App", () => {
     expect(document.querySelectorAll(".note-group-heading").length).toBe(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Group: Off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Updated date" }));
     expect(document.querySelectorAll(".note-group-heading").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Group: Updated" })).toHaveClass("active");
 
     fireEvent.click(screen.getByRole("button", { name: "Group: Updated" }));
+    fireEvent.click(screen.getByRole("button", { name: "Notebook" }));
     expect(screen.getByRole("button", { name: "Group: Notebook" })).toHaveClass("active");
     const groupHeadings = Array.from(document.querySelectorAll(".note-group-heading")).map((entry) =>
       entry.textContent?.trim()
@@ -288,8 +290,11 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Group: Off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Updated date" }));
     fireEvent.click(screen.getByRole("button", { name: "Group: Updated" }));
+    fireEvent.click(screen.getByRole("button", { name: "Notebook" }));
     fireEvent.click(screen.getByRole("button", { name: "Group: Notebook" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tag" }));
 
     expect(screen.getByRole("button", { name: "Group: Tag" })).toBeInTheDocument();
     const groupHeadings = Array.from(document.querySelectorAll(".note-group-heading")).map((entry) =>

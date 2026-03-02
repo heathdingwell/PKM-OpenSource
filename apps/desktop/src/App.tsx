@@ -286,7 +286,7 @@ interface SlashCommand {
 interface NoteListMenuState {
   x: number;
   y: number;
-  kind: "sort" | "filter";
+  kind: "sort" | "filter" | "group";
 }
 
 interface SavedSearch {
@@ -5732,7 +5732,7 @@ export default function App() {
     setEditorContextMenu(null);
   }
 
-  function openNoteListMenu(kind: "sort" | "filter", clientX: number, clientY: number): void {
+  function openNoteListMenu(kind: "sort" | "filter" | "group", clientX: number, clientY: number): void {
     const position = clampMenuPosition(clientX, clientY);
     setNoteListMenu({ kind, x: position.x, y: position.y });
     setContextMenu(null);
@@ -8811,7 +8811,11 @@ export default function App() {
               <button
                 type="button"
                 className={noteGroupMode !== "none" ? "active" : ""}
-                onClick={() => setNoteGroupMode((previous) => nextNoteGroupMode(previous))}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  openNoteListMenu("group", rect.left, rect.bottom + 8);
+                }}
               >
                 {noteGroupModeLabel(noteGroupMode)}
               </button>
@@ -8825,6 +8829,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={(event) => {
+                  event.stopPropagation();
                   const rect = event.currentTarget.getBoundingClientRect();
                   openNoteListMenu("sort", rect.left, rect.bottom + 8);
                 }}
@@ -8835,6 +8840,7 @@ export default function App() {
                 type="button"
                 className={tagFilters.length ? "active" : ""}
                 onClick={(event) => {
+                  event.stopPropagation();
                   const rect = event.currentTarget.getBoundingClientRect();
                   openNoteListMenu("filter", rect.left, rect.bottom + 8);
                 }}
@@ -10635,6 +10641,29 @@ export default function App() {
                   }}
                 >
                   <span>{mode.label}</span>
+                </button>
+              ))}
+            </>
+          ) : noteListMenu.kind === "group" ? (
+            <>
+              {(
+                [
+                  { id: "none", label: "Off" },
+                  { id: "updated-date", label: "Updated date" },
+                  { id: "notebook", label: "Notebook" },
+                  { id: "tag", label: "Tag" }
+                ] as Array<{ id: NoteGroupMode; label: string }>
+              ).map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  className={noteGroupMode === mode.id ? "active" : ""}
+                  onClick={() => {
+                    setNoteGroupMode(mode.id);
+                    setNoteListMenu(null);
+                  }}
+                >
+                  <span>{noteGroupMode === mode.id ? `${mode.label} ✓` : mode.label}</span>
                 </button>
               ))}
             </>

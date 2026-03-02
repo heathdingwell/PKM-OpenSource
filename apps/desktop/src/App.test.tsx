@@ -281,6 +281,24 @@ describe("App", () => {
     expect(document.querySelectorAll(".note-group-heading").length).toBeGreaterThan(0);
   });
 
+  it("groups notes by primary tag in tag grouping mode", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    fireEvent.change(document.getElementById("tag-input") as HTMLInputElement, { target: { value: "focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Group: Off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Group: Updated" }));
+    fireEvent.click(screen.getByRole("button", { name: "Group: Notebook" }));
+
+    expect(screen.getByRole("button", { name: "Group: Tag" })).toBeInTheDocument();
+    const groupHeadings = Array.from(document.querySelectorAll(".note-group-heading")).map((entry) =>
+      entry.textContent?.trim()
+    );
+    expect(groupHeadings).toContain("#focus");
+    expect(groupHeadings).toContain("Untagged");
+  });
+
   it("loads note list incrementally", () => {
     render(<App />);
     const createButton = screen.getByRole("button", { name: "+ Note" });

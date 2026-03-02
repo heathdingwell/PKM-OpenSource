@@ -1303,6 +1303,60 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Journal Hub", level: 1 })).toBeInTheDocument();
   });
 
+  it("creates a stack from the sidebar action", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "+ New stack" }));
+    expect(screen.getByRole("heading", { name: "New stack", level: 3 })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Stack name"), { target: { value: "Workstream" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(screen.getByRole("button", { name: /Workstream/i })).toBeInTheDocument();
+  });
+
+  it("renames a stack from stack context menu", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+
+    expect(dailyNotebook()).toBeTruthy();
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Move to stack..." }));
+    fireEvent.change(screen.getByPlaceholderText("New stack name"), { target: { value: "Ops" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const opsStack = screen.getByRole("button", { name: /Ops/i });
+    fireEvent.contextMenu(opsStack);
+    fireEvent.click(screen.getByRole("button", { name: "Rename stack" }));
+    const renameModalHeading = screen.getByRole("heading", { name: "Rename stack", level: 3 });
+    const renameModal = renameModalHeading.closest("section") as HTMLElement;
+    fireEvent.change(within(renameModal).getByRole("textbox"), { target: { value: "Projects" } });
+    fireEvent.click(within(renameModal).getByRole("button", { name: "Save" }));
+
+    expect(screen.getByRole("button", { name: /Projects/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Ops/i })).not.toBeInTheDocument();
+  });
+
+  it("removes stack and keeps notebooks available", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+
+    expect(dailyNotebook()).toBeTruthy();
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Move to stack..." }));
+    fireEvent.change(screen.getByPlaceholderText("New stack name"), { target: { value: "Ops" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const opsStack = screen.getByRole("button", { name: /Ops/i });
+    fireEvent.contextMenu(opsStack);
+    fireEvent.click(screen.getByRole("button", { name: "Remove stack" }));
+
+    expect(screen.queryByRole("button", { name: /Ops/i })).not.toBeInTheDocument();
+    expect(notebookItems().some((entry) => entry.textContent?.includes("Daily Notes"))).toBe(true);
+  });
+
   it("adds tag shortcuts and applies tag filter from shortcut", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

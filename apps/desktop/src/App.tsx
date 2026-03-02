@@ -430,6 +430,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
   { id: "open-home", label: "Open home", keywords: ["home", "dashboard"] },
   { id: "open-notes", label: "Open notes", keywords: ["notes", "sidebar"] },
+  { id: "open-note-info", label: "Open note info", keywords: ["metadata", "info", "note"] },
   { id: "open-note-history", label: "Open note history", keywords: ["history", "restore", "versions"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
   { id: "open-reminders", label: "Open reminders", keywords: ["reminders", "dates", "follow-up"] },
@@ -500,7 +501,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "pin-home", label: "Pin to Home" },
   { id: "divider-3", label: "", divider: true },
   { id: "find", label: "Find in note", shortcut: "cmd+f" },
-  { id: "note-info", label: "Note info", shortcut: "cmd+i" },
+  { id: "note-info", label: "Note info", shortcut: "cmd+shift+i" },
   { id: "toggle-template", label: "Set as template" },
   { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
   { id: "divider-4", label: "", divider: true },
@@ -3355,7 +3356,7 @@ export default function App() {
           return;
         }
 
-        if (key === "b") {
+        if (key === "b" && !event.shiftKey && !event.altKey) {
           event.preventDefault();
           if (editorMode === "rich") {
             richEditorRef.current?.toggleBold();
@@ -3365,7 +3366,7 @@ export default function App() {
           return;
         }
 
-        if (key === "i") {
+        if (key === "i" && !event.shiftKey && !event.altKey) {
           event.preventDefault();
           if (editorMode === "rich") {
             richEditorRef.current?.toggleItalic();
@@ -3375,7 +3376,7 @@ export default function App() {
           return;
         }
 
-        if (key === "u") {
+        if (key === "u" && !event.shiftKey && !event.altKey) {
           event.preventDefault();
           if (editorMode === "rich") {
             richEditorRef.current?.toggleUnderline();
@@ -3396,6 +3397,12 @@ export default function App() {
       if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "d") {
         event.preventDefault();
         void openTodayNote();
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "i") {
+        event.preventDefault();
+        openNoteInfo();
         return;
       }
 
@@ -4929,6 +4936,21 @@ export default function App() {
     setSearchOpen(false);
   }
 
+  function openNoteInfo(noteId?: string): void {
+    const targetId = noteId ?? activeNote?.id;
+    if (!targetId) {
+      setToastMessage("Open a note to view note info");
+      return;
+    }
+
+    if (targetId !== activeId) {
+      focusNote(targetId);
+    }
+    setMetadataOpen(true);
+    setAiPanelOpen(false);
+    setSearchOpen(false);
+  }
+
   function openNoteHistory(noteId?: string): void {
     const targetId = noteId ?? activeNote?.id;
     if (!targetId) {
@@ -5114,6 +5136,11 @@ export default function App() {
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-note-info") {
+      openNoteInfo();
       return;
     }
 
@@ -6218,11 +6245,7 @@ export default function App() {
     }
 
     if (action === "note-info") {
-      if (targetId && targetId !== activeId) {
-        focusNote(targetId);
-      }
-      setMetadataOpen(true);
-      setAiPanelOpen(false);
+      openNoteInfo(targetId);
       setContextMenu(null);
       return;
     }

@@ -160,6 +160,13 @@ describe("App", () => {
     expect(screen.getByText("No history yet")).toBeInTheDocument();
   });
 
+  it("opens note metadata with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "i", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
+  });
+
   it("opens notes from graph node clicks", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));
@@ -257,6 +264,17 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
     expect(screen.getByText("No history yet")).toBeInTheDocument();
+  });
+
+  it("opens note metadata from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">info" }
+    });
+    fireEvent.click(screen.getByText("Open note info"));
+
+    expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
   });
 
   it("opens or creates today's note from command palette without duplicates", async () => {

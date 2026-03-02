@@ -568,6 +568,35 @@ describe("App", () => {
     openSpy.mockRestore();
   });
 
+  it("copies selected search result link with cmd+l in search modal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "l", metaKey: true });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note link copied")).toBeInTheDocument();
+  });
+
+  it("opens selected search result in new window with cmd+o in search modal", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "o", metaKey: true });
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    openSpy.mockRestore();
+  });
+
   it("opens note in lite edit mode from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

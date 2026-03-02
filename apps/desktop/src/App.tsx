@@ -10929,6 +10929,27 @@ export default function App() {
               onChange={(event) => setQuickQuery(event.target.value)}
               onKeyDown={(event) => {
                 const resultLength = commandMode ? paletteResults.length : quickResults.length;
+                const lowerKey = event.key.toLowerCase();
+                const selectedNote = !commandMode ? quickResults[searchSelected] : null;
+                const hasMeta = event.metaKey || event.ctrlKey;
+
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setSearchOpen(false);
+                  return;
+                }
+
+                if (hasMeta && lowerKey === "l" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "copy-link");
+                  return;
+                }
+
+                if (hasMeta && lowerKey === "o" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "open-window");
+                  return;
+                }
 
                 if (event.key === "ArrowDown") {
                   if (!resultLength) {

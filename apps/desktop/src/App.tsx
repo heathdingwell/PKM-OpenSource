@@ -354,6 +354,15 @@ interface GitBackupStatus {
   lastError: string;
 }
 
+interface VaultSnapshotV1 {
+  version: 1;
+  createdAt: string;
+  notes: AppNote[];
+  calendarEvents: CalendarEvent[];
+  recentSearches: string[];
+  homeScratchPad: string;
+}
+
 interface ShellNotesPayload {
   [index: number]: unknown;
   length: number;
@@ -410,6 +419,23 @@ const aiProviders: AiProvider[] = ["openai", "anthropic", "gemini", "perplexity"
 
 function clampTagPaneHeight(value: number): number {
   return Math.max(MIN_TAG_PANE_HEIGHT, Math.min(value, MAX_TAG_PANE_HEIGHT));
+}
+
+function readFileAsText(file: File): Promise<string> {
+  if (typeof file.text === "function") {
+    return file.text();
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(typeof reader.result === "string" ? reader.result : "");
+    };
+    reader.onerror = () => {
+      reject(reader.error ?? new Error("Failed to read file"));
+    };
+    reader.readAsText(file);
+  });
 }
 
 const seedNotes: SeedNote[] = [
@@ -507,6 +533,8 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "cycle-theme", label: "Cycle theme", keywords: ["theme", "color", "palette"] },
   { id: "toggle-git-backup", label: "Toggle Git backups", keywords: ["git", "backup", "versioning"] },
   { id: "git-backup-now", label: "Run Git backup now", keywords: ["git", "backup", "commit"] },
+  { id: "export-snapshot", label: "Export vault snapshot", keywords: ["backup", "snapshot", "export", "vault"] },
+  { id: "import-snapshot", label: "Import vault snapshot", keywords: ["backup", "snapshot", "import", "restore", "vault"] },
   { id: "undo-last-action", label: "Undo last action", keywords: ["undo", "restore", "revert"] },
   { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
 ];
@@ -2278,6 +2306,7 @@ export default function App() {
   const activeResizeRef = useRef<ResizeState | null>(null);
   const findInNoteInputRef = useRef<HTMLInputElement | null>(null);
   const draggingNoteIdsRef = useRef<string[] | null>(null);
+  const vaultSnapshotInputRef = useRef<HTMLInputElement | null>(null);
 
   const notebooks = useMemo(() => {
     const names = Array.from(new Set(activeNotes.map((note) => note.notebook))).sort((left, right) =>
@@ -4813,6 +4842,96 @@ export default function App() {
     setRecentSearches([]);
   }
 
+  function exportVaultSnapshot(): void {
+    if (typeof document === "undefined" || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+      setToastMessage("Snapshot export is unavailable in this environment");
+      return;
+    }
+
+    const snapshot: VaultSnapshotV1 = {
+      version: 1,
+      createdAt: new Date().toISOString(),
+      notes,
+      calendarEvents,
+      recentSearches,
+      homeScratchPad
+    };
+
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pkm-os-snapshot-${toDateInputValue(new Date())}.json`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    setToastMessage(`Snapshot exported (${notes.length} notes)`);
+  }
+
+  function triggerVaultSnapshotImport(): void {
+    vaultSnapshotInputRef.current?.click();
+  }
+
+  async function importVaultSnapshotFromFile(file: File): Promise<void> {
+    if (!file) {
+      return;
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await readFileAsText(file));
+    } catch {
+      setToastMessage("Invalid snapshot file");
+      return;
+    }
+
+    if (!parsed || typeof parsed !== "object") {
+      setToastMessage("Invalid snapshot format");
+      return;
+    }
+
+    const candidate = parsed as Partial<VaultSnapshotV1>;
+    if (candidate.version !== 1 || !Array.isArray(candidate.notes)) {
+      setToastMessage("Unsupported snapshot format");
+      return;
+    }
+
+    const importedNotes = candidate.notes.filter(isAppNote);
+    if (!importedNotes.length) {
+      setToastMessage("Snapshot has no valid notes");
+      return;
+    }
+
+    const importedEvents = Array.isArray(candidate.calendarEvents)
+      ? candidate.calendarEvents.filter(isCalendarEvent)
+      : [];
+    const importedRecentSearches = Array.isArray(candidate.recentSearches)
+      ? Array.from(
+          new Set(
+            candidate.recentSearches
+              .filter((entry): entry is string => typeof entry === "string")
+              .map((entry) => entry.trim())
+              .filter(Boolean)
+          )
+        ).slice(0, 8)
+      : [];
+    const nextScratchPad = typeof candidate.homeScratchPad === "string" ? candidate.homeScratchPad : "";
+    const nextActive = importedNotes[0]?.id ?? "";
+
+    setNotes(importedNotes);
+    setCalendarEvents(importedEvents);
+    setRecentSearches(importedRecentSearches);
+    setHomeScratchPad(nextScratchPad);
+    setSidebarView("notes");
+    setBrowseMode("all");
+    setSelectedNotebook("All Notes");
+    setActiveId(nextActive);
+    setSelectedIds(nextActive ? new Set([nextActive]) : new Set());
+    setLastSelectedId(nextActive || null);
+    setDraftMarkdown(importedNotes[0]?.markdown ?? "");
+    setSearchOpen(false);
+    setToastMessage(`Imported snapshot (${importedNotes.length} notes)`);
+  }
+
   function saveCurrentSearch(): void {
     let query = quickQuery.trim();
     if (searchFilters.includes("attachments") && !/\bhas:(attachment|file)\b/i.test(query)) {
@@ -5774,6 +5893,18 @@ export default function App() {
     if (actionId === "git-backup-now") {
       setSearchOpen(false);
       void runGitBackupNow();
+      return;
+    }
+
+    if (actionId === "export-snapshot") {
+      setSearchOpen(false);
+      exportVaultSnapshot();
+      return;
+    }
+
+    if (actionId === "import-snapshot") {
+      setSearchOpen(false);
+      triggerVaultSnapshotImport();
       return;
     }
 
@@ -10717,6 +10848,22 @@ export default function App() {
           <p className="empty-editor">Select a note.</p>
         )}
       </main>
+
+      <input
+        id="vault-snapshot-input"
+        ref={vaultSnapshotInputRef}
+        type="file"
+        accept=".json,application/json"
+        aria-label="Import vault snapshot file"
+        className="visually-hidden-input"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.currentTarget.value = "";
+          if (file) {
+            void importVaultSnapshotFromFile(file);
+          }
+        }}
+      />
 
       {contextMenu ? (
         <div

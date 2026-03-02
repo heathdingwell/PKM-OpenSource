@@ -568,6 +568,79 @@ describe("App", () => {
     openSpy.mockRestore();
   });
 
+  it("exports a vault snapshot from command palette", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-snapshot");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">export snapshot" }
+    });
+    fireEvent.click(screen.getByText("Export vault snapshot"));
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Snapshot exported/i)).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
+  it("opens snapshot picker from command palette", () => {
+    render(<App />);
+    const input = document.getElementById("vault-snapshot-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    const clickSpy = vi.spyOn(input, "click").mockImplementation(() => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">import snapshot" }
+    });
+    fireEvent.click(screen.getByText("Import vault snapshot"));
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    clickSpy.mockRestore();
+  });
+
+  it("imports notes from a vault snapshot file", async () => {
+    render(<App />);
+    const input = document.getElementById("vault-snapshot-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    const now = new Date().toISOString();
+    const snapshot = {
+      version: 1,
+      createdAt: now,
+      notes: [
+        {
+          id: "imported-note-1",
+          path: "Imported/Imported Note.md",
+          title: "Imported Note",
+          snippet: "Recovered from snapshot.",
+          tags: ["backup"],
+          linksOut: [],
+          createdAt: now,
+          updatedAt: now,
+          notebook: "Imported",
+          markdown: "# Imported Note\n\nRecovered from snapshot."
+        }
+      ],
+      calendarEvents: [],
+      recentSearches: ["imported query"],
+      homeScratchPad: "snapshot scratch"
+    };
+
+    const file = new File([JSON.stringify(snapshot)], "snapshot.json", { type: "application/json" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Imported Note", level: 2 })).toBeInTheDocument()
+    );
+    expect(screen.getByText("Imported snapshot (1 notes)")).toBeInTheDocument();
+  });
+
   it("copies selected search result link with cmd+l in search modal", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

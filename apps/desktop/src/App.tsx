@@ -547,6 +547,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-graph", label: "Open graph", keywords: ["graph", "links", "network"] },
   { id: "open-trash", label: "Open trash", keywords: ["trash", "deleted"] },
   { id: "clear-recent-notes", label: "Clear recent notes", keywords: ["recent", "history", "clear"] },
+  { id: "clear-recent-searches", label: "Clear recent searches", keywords: ["search", "recent", "clear"] },
   { id: "empty-trash", label: "Empty trash", keywords: ["trash", "delete"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
   { id: "insert-last-ai-reply", label: "Insert last AI reply into note", keywords: ["ai", "copilot", "insert"] },
@@ -6278,6 +6279,12 @@ export default function App() {
     if (actionId === "clear-recent-notes") {
       setSearchOpen(false);
       clearRecentNotes();
+      return;
+    }
+
+    if (actionId === "clear-recent-searches") {
+      setSearchOpen(false);
+      clearRecentSearches();
       return;
     }
 

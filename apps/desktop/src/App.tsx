@@ -98,6 +98,11 @@ interface OpenTaskItem {
   updatedAt: string;
 }
 
+interface BacklinkItem {
+  note: AppNote;
+  context: string;
+}
+
 interface AttachmentItem {
   id: string;
   noteId: string;
@@ -961,6 +966,71 @@ function describeTaskDueDate(dueDate: string): string {
     return `Due today (${dueDate})`;
   }
   return `Due ${dueDate}`;
+}
+
+function summarizeBacklinkContextLine(line: string): string {
+  const replacedWikilinks = line.replace(/\[\[([^\]]+)\]\]/g, (_match, raw: string) => {
+    const parsed = parseWikilinkTarget(raw);
+    if (!parsed) {
+      return raw.trim();
+    }
+    const aliasIndex = raw.indexOf("|");
+    if (aliasIndex !== -1) {
+      const alias = raw.slice(aliasIndex + 1).trim();
+      if (alias) {
+        return alias;
+      }
+    }
+    return parsed.title;
+  });
+
+  const cleaned = replacedWikilinks
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+    .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/, "")
+    .replace(/^\s*[-*+]\s+/, "")
+    .replace(/^\s*\d+[.)]\s+/, "")
+    .replace(/^>\s+/, "")
+    .replace(/^#+\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) {
+    return "Backlink context";
+  }
+  if (cleaned.length <= 110) {
+    return cleaned;
+  }
+  return `${cleaned.slice(0, 107).trimEnd()}...`;
+}
+
+function extractBacklinkContext(markdown: string, backlinkTitle: string): string {
+  const target = backlinkTitle.trim().toLowerCase();
+  if (!target) {
+    return "Backlink context";
+  }
+
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  for (const line of lines) {
+    for (const match of line.matchAll(/\[\[([^\]]+)\]\]/g)) {
+      const parsed = parseWikilinkTarget(match[1] ?? "");
+      if (parsed?.title.toLowerCase() === target) {
+        return summarizeBacklinkContextLine(line);
+      }
+    }
+  }
+
+  const fallback = lines.find((line) => line.toLowerCase().includes(target) && line.trim().length > 0);
+  if (fallback) {
+    return summarizeBacklinkContextLine(fallback);
+  }
+
+  const preview = parseForPreview(markdown);
+  const previewLine = preview.body.find((line) => line.trim().length > 0);
+  if (previewLine) {
+    return summarizeBacklinkContextLine(previewLine);
+  }
+
+  return "Backlink context";
 }
 
 function getTaskDueBucket(dueDate: string | null, today: string): Exclude<TaskDueFilter, "all"> {
@@ -2347,10 +2417,14 @@ export default function App() {
       return [];
     }
 
-    return activeNotes.filter(
+    const linked = activeNotes.filter(
       (note) => note.id !== activeNote.id && note.linksOut.some((link) => link.toLowerCase() === activeBacklinkTitle)
     );
-  }, [activeNotes, activeNote, activeBacklinkTitle]);
+    return linked.map((note): BacklinkItem => ({
+      note,
+      context: extractBacklinkContext(note.markdown, activeBacklinkLabel)
+    }));
+  }, [activeNotes, activeNote, activeBacklinkTitle, activeBacklinkLabel]);
 
   const draftWordCount = useMemo(() => {
     const text = draftMarkdown.trim();
@@ -7898,18 +7972,20 @@ export default function App() {
                     <p className="note-backlinks-context">Notes linking to "{activeBacklinkLabel}"</p>
                     {backlinks.length ? (
                       <ul>
-                        {backlinks.map((note) => (
-                          <li key={note.id}>
+                        {backlinks.map((entry) => (
+                          <li key={entry.note.id}>
                             <button
                               type="button"
                               onClick={() => {
                                 setBrowseMode("all");
-                                setSelectedNotebook(note.notebook);
-                                openLinkedNote(note);
+                                setSelectedNotebook(entry.note.notebook);
+                                openLinkedNote(entry.note);
                               }}
                             >
-                              <strong>{note.title}</strong>
-                              <small>{note.notebook}</small>
+                              <strong>{entry.note.title}</strong>
+                              <small>
+                                {entry.note.notebook} · {entry.context}
+                              </small>
                             </button>
                           </li>
                         ))}
@@ -8498,9 +8574,9 @@ export default function App() {
                           <ul>
                             {backlinks.length ? (
                               backlinks.map((entry) => (
-                                <li key={entry.id}>
-                                  <button type="button" onClick={() => openLinkedNote(entry)}>
-                                    {entry.title}
+                                <li key={entry.note.id}>
+                                  <button type="button" onClick={() => openLinkedNote(entry.note)}>
+                                    {entry.note.title}
                                   </button>
                                 </li>
                               ))

@@ -623,6 +623,10 @@ const slashCommands: SlashCommand[] = [
   { id: "strikethrough", label: "Strikethrough", section: "Formatting", keywords: ["strike"] },
   { id: "superscript", label: "Superscript", section: "Formatting", keywords: ["super"] },
   { id: "subscript", label: "Subscript", section: "Formatting", keywords: ["sub"] },
+  { id: "align-left", label: "Align left", section: "Alignment", keywords: ["left", "align"] },
+  { id: "align-center", label: "Align center", section: "Alignment", keywords: ["center", "align"] },
+  { id: "align-right", label: "Align right", section: "Alignment", keywords: ["right", "align"] },
+  { id: "indent", label: "Indent", section: "Alignment", keywords: ["tab", "indent"] },
   { id: "bullet-list", label: "Bullet list", section: "Lists", keywords: ["ul", "list"] },
   { id: "checklist", label: "Checklist", section: "Lists", keywords: ["task", "todo"] },
   { id: "numbered-list", label: "Numbered list", section: "Lists", keywords: ["ol", "list"] },
@@ -643,6 +647,11 @@ const editorContextRows: Array<{ id: string; label: string; divider?: boolean }>
   { id: "underline", label: "Underline" },
   { id: "strikethrough", label: "Strikethrough" },
   { id: "divider-1", label: "", divider: true },
+  { id: "align-left", label: "Align left" },
+  { id: "align-center", label: "Align center" },
+  { id: "align-right", label: "Align right" },
+  { id: "indent", label: "Indent" },
+  { id: "divider-1b", label: "", divider: true },
   { id: "bullet", label: "Bullet list" },
   { id: "checklist", label: "Checklist" },
   { id: "divider-2", label: "", divider: true },
@@ -7994,6 +8003,14 @@ export default function App() {
         richEditorRef.current?.toggleUnderline();
       } else if (action === "strikethrough") {
         richEditorRef.current?.toggleStrike();
+      } else if (action === "align-left") {
+        richEditorRef.current?.setTextAlign("left");
+      } else if (action === "align-center") {
+        richEditorRef.current?.setTextAlign("center");
+      } else if (action === "align-right") {
+        richEditorRef.current?.setTextAlign("right");
+      } else if (action === "indent") {
+        richEditorRef.current?.indent();
       } else if (action === "bullet") {
         richEditorRef.current?.toggleBulletList();
       } else if (action === "checklist") {
@@ -8022,6 +8039,14 @@ export default function App() {
       applyMarkdownInlineFormat("<u>", "</u>", "underlined text");
     } else if (action === "strikethrough") {
       applyMarkdownInlineFormat("~~", "~~", "struck text");
+    } else if (action === "align-left") {
+      applyMarkdownInlineFormat('<div align="left">', "</div>", "aligned text");
+    } else if (action === "align-center") {
+      applyMarkdownInlineFormat('<div align="center">', "</div>", "aligned text");
+    } else if (action === "align-right") {
+      applyMarkdownInlineFormat('<div align="right">', "</div>", "aligned text");
+    } else if (action === "indent") {
+      applyMarkdownInlineFormat("", "", "indented text", { linePrefix: "    " });
     } else if (action === "bullet") {
       applyMarkdownInlineFormat("", "", "item", { linePrefix: "- " });
     } else if (action === "checklist") {
@@ -8170,6 +8195,18 @@ export default function App() {
       case "subscript":
         wrap("<sub>", "</sub>", "sub");
         break;
+      case "align-left":
+        wrap('<div align="left">', "</div>", "aligned text");
+        break;
+      case "align-center":
+        wrap('<div align="center">', "</div>", "aligned text");
+        break;
+      case "align-right":
+        wrap('<div align="right">', "</div>", "aligned text");
+        break;
+      case "indent":
+        insert(`    ${selectedText || "indented text"}`);
+        break;
       case "bullet-list":
         insert("- ");
         break;
@@ -8311,6 +8348,18 @@ export default function App() {
         break;
       case "subscript":
         richEditorRef.current?.insertContent("<sub>sub</sub>");
+        break;
+      case "align-left":
+        richEditorRef.current?.setTextAlign("left");
+        break;
+      case "align-center":
+        richEditorRef.current?.setTextAlign("center");
+        break;
+      case "align-right":
+        richEditorRef.current?.setTextAlign("right");
+        break;
+      case "indent":
+        richEditorRef.current?.indent();
         break;
       case "bullet-list":
         richEditorRef.current?.toggleBulletList();

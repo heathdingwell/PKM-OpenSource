@@ -1201,6 +1201,25 @@ describe("App", () => {
     });
   });
 
+  it("applies align-center from markdown slash menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    const slashCommand = `${editor?.value ?? ""}\n/align`;
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: slashCommand, selectionStart: slashCommand.length }
+    });
+
+    const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
+    expect(slashMenu).toBeTruthy();
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Align center" }));
+
+    const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(updatedEditor?.value).toContain('<div align="center">aligned text</div>');
+  });
+
   it("normalizes HTML paste into markdown in markdown editor", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -1732,6 +1751,7 @@ describe("App", () => {
     (editor as HTMLTextAreaElement).focus();
     fireEvent.keyDown(editor as HTMLTextAreaElement, { key: "ContextMenu" });
     expect(screen.getByRole("button", { name: "Bold" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Align center" })).toBeInTheDocument();
   });
 
   it("inserts a table from rich editor context menu", async () => {

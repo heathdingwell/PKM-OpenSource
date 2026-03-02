@@ -19,6 +19,7 @@ import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableHeader from "@tiptap/extension-table-header";
 import TableCell from "@tiptap/extension-table-cell";
+import TextAlign from "@tiptap/extension-text-align";
 import MarkdownIt from "markdown-it";
 import markdownItTaskLists from "markdown-it-task-lists";
 import TurndownService from "turndown";
@@ -131,6 +132,8 @@ export interface RichMarkdownEditorHandle {
   addTableRowAfter: () => void;
   addTableColumnAfter: () => void;
   deleteTable: () => void;
+  setTextAlign: (alignment: "left" | "center" | "right") => void;
+  indent: () => void;
   setHeading: (level: 1 | 2 | 3) => void;
   setParagraph: () => void;
   toggleCodeBlock: () => void;
@@ -261,6 +264,9 @@ function RichMarkdownEditorInner(
       TableRow,
       TableHeader,
       TableCell,
+      TextAlign.configure({
+        types: ["heading", "paragraph"]
+      }),
       Underline,
       Placeholder.configure({
         placeholder: "Start writing..."
@@ -353,6 +359,15 @@ function RichMarkdownEditorInner(
       },
       deleteTable: () => {
         editor?.chain().focus().deleteTable().run();
+      },
+      setTextAlign: (alignment: "left" | "center" | "right") => {
+        editor?.chain().focus().setTextAlign(alignment).run();
+      },
+      indent: () => {
+        const indented = editor?.chain().focus().sinkListItem("listItem").run();
+        if (!indented) {
+          editor?.chain().focus().insertContent("    ").run();
+        }
       },
       setHeading: (level: 1 | 2 | 3) => {
         editor?.chain().focus().toggleHeading({ level }).run();

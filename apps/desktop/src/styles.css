@@ -872,6 +872,24 @@ body.is-resizing {
   font-size: 12px;
 }
 
+.graph-filter {
+  display: grid;
+  gap: 4px;
+}
+
+.graph-filter span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.graph-filter input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #c9d8ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
 .graph-canvas {
   position: relative;
   min-height: 420px;

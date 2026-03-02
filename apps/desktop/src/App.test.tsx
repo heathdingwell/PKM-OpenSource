@@ -119,6 +119,17 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Agenda" })).toBeInTheDocument();
   });
 
+  it("filters graph nodes by query", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    expect(screen.getByRole("button", { name: "Agenda" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "To-do list" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Filter graph"), { target: { value: "agenda" } });
+    expect(screen.getByRole("button", { name: "Agenda" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "To-do list" })).not.toBeInTheDocument();
+  });
+
   it("toggles focus mode from the editor topbar", () => {
     render(<App />);
     const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });

@@ -2303,6 +2303,7 @@ export default function App() {
   const [searchScope, setSearchScope] = useState<"everywhere" | "current">("everywhere");
   const [searchFilters, setSearchFilters] = useState<SearchFilterKind[]>([]);
   const [quickQuery, setQuickQuery] = useState("");
+  const [graphQuery, setGraphQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>(() => loadRecentSearches());
   const [searchSelected, setSearchSelected] = useState(0);
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
@@ -2588,6 +2589,12 @@ export default function App() {
   }, [notePaginationKey]);
 
   useEffect(() => {
+    if (browseMode !== "graph") {
+      setGraphQuery("");
+    }
+  }, [browseMode]);
+
+  useEffect(() => {
     if (!activeId) {
       return;
     }
@@ -2667,7 +2674,16 @@ export default function App() {
   }, [pagedVisibleNotes, noteGroupMode]);
 
   const graphModel = useMemo(() => {
-    const scoped = [...visibleNotes].sort((left, right) => left.title.localeCompare(right.title));
+    const query = graphQuery.trim().toLowerCase();
+    const scoped = [...visibleNotes]
+      .filter((note) => {
+        if (!query) {
+          return true;
+        }
+        const haystack = `${note.title} ${note.notebook} ${note.tags.join(" ")} ${note.linksOut.join(" ")}`.toLowerCase();
+        return haystack.includes(query);
+      })
+      .sort((left, right) => left.title.localeCompare(right.title));
     if (!scoped.length) {
       return { nodes: [], edges: [] as Array<{ id: string; from: string; to: string }> };
     }
@@ -2701,7 +2717,7 @@ export default function App() {
     });
 
     return { nodes, edges };
-  }, [visibleNotes]);
+  }, [graphQuery, visibleNotes]);
 
   const graphNodeById = useMemo(() => new Map(graphModel.nodes.map((node) => [node.note.id, node])), [graphModel.nodes]);
 
@@ -9804,6 +9820,15 @@ export default function App() {
               <h2>Connections</h2>
               <small>Click a node to open its note</small>
             </header>
+            <label className="graph-filter">
+              <span>Filter graph</span>
+              <input
+                aria-label="Filter graph"
+                value={graphQuery}
+                onChange={(event) => setGraphQuery(event.target.value)}
+                placeholder="Filter by title, notebook, tag, or link"
+              />
+            </label>
             {graphModel.nodes.length ? (
               <div className="graph-canvas" role="img" aria-label={`Graph with ${graphModel.nodes.length} nodes`}>
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">

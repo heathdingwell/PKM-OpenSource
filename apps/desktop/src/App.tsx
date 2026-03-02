@@ -565,13 +565,42 @@ function clampPaneWidth(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function parseForPreview(markdown: string): { title: string; body: string[] } {
-  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
-  if (lines[0]?.startsWith("# ")) {
-    return { title: lines[0].slice(2).trim() || "Untitled", body: lines.slice(1) };
+function normalizeTitleCandidate(line: string): string {
+  const cleaned = line
+    .trim()
+    .replace(/^[-*+]\s+\[[ xX]\]\s+/, "")
+    .replace(/^[-*+]\s+/, "")
+    .replace(/^\d+[.)]\s+/, "")
+    .replace(/^>\s+/, "")
+    .replace(/^#+\s+/, "")
+    .trim();
+
+  if (!cleaned) {
+    return "";
   }
 
-  const fallback = lines.find((line) => line.trim())?.trim() || "Untitled";
+  const wikilink = cleaned.match(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/);
+  if (wikilink) {
+    const alias = wikilink[2]?.trim();
+    const target = wikilink[1]?.trim();
+    return alias || target || "";
+  }
+
+  return cleaned;
+}
+
+function parseForPreview(markdown: string): { title: string; body: string[] } {
+  const normalized = markdown.replace(/\r\n/g, "\n").replace(/^---[\s\S]*?---\n?/m, "");
+  const lines = normalized.split("\n");
+  const headingIndex = lines.findIndex((line) => /^#\s+/.test(line));
+  if (headingIndex !== -1) {
+    return {
+      title: lines[headingIndex].replace(/^#\s+/, "").trim() || "Untitled",
+      body: [...lines.slice(0, headingIndex), ...lines.slice(headingIndex + 1)]
+    };
+  }
+
+  const fallback = lines.map((line) => normalizeTitleCandidate(line)).find((line) => line.length > 0) || "Untitled";
   return { title: fallback, body: lines };
 }
 

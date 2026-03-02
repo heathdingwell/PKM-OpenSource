@@ -329,6 +329,20 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Quick task/i })).toBeInTheDocument();
   });
 
+  it("derives note title from first markdown line when no heading exists", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "- [ ] Draft follow-up items\n\ndetails" }
+    });
+
+    expect(screen.getByRole("heading", { name: "Draft follow-up items", level: 2 })).toBeInTheDocument();
+  });
+
   it("shows unsaved markdown checklist items in tasks view", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

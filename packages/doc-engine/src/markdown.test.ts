@@ -12,6 +12,11 @@ describe("doc-engine markdown helpers", () => {
     expect(parsed.snippet).toContain("Ship parity");
   });
 
+  it("derives title from first non-empty line when no heading exists", () => {
+    const parsed = extractTitleAndSnippet("- [ ] Weekly planning pass");
+    expect(parsed.title).toBe("Weekly planning pass");
+  });
+
   it("extracts tags and wikilinks", () => {
     const markdown = "# T\n\n#Tag [[Next Note]]";
     expect(extractTags(markdown)).toEqual(["tag"]);

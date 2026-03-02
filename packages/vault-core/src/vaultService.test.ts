@@ -14,6 +14,12 @@ describe("VaultService", () => {
     expect(note.linksOut).toContain("Second note");
   });
 
+  it("uses first non-empty line as title when heading is absent", () => {
+    const vault = new VaultService();
+    const note = vault.upsertNoteFromMarkdown("Inbox/First.md", "- [ ] Follow up with vendor");
+    expect(note.title).toBe("Follow up with vendor");
+  });
+
   it("normalizes aliased and anchored wikilinks in note metadata", () => {
     const vault = new VaultService();
     const note = vault.upsertNoteFromMarkdown(

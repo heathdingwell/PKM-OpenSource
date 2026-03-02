@@ -4,6 +4,30 @@ const TITLE_PATTERN = /^#\s+(.*)$/m;
 const TAG_PATTERN = /(^|\s)#([a-zA-Z0-9/_-]+)/g;
 const WIKILINK_PATTERN = /\[\[([^\]]+)\]\]/g;
 
+function normalizeTitleCandidate(line: string): string {
+  const cleaned = line
+    .trim()
+    .replace(/^[-*+]\s+\[[ xX]\]\s+/, "")
+    .replace(/^[-*+]\s+/, "")
+    .replace(/^\d+[.)]\s+/, "")
+    .replace(/^>\s+/, "")
+    .replace(/^#+\s+/, "")
+    .trim();
+
+  if (!cleaned) {
+    return "";
+  }
+
+  const wikilink = cleaned.match(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/);
+  if (wikilink) {
+    const alias = wikilink[2]?.trim();
+    const target = wikilink[1]?.trim();
+    return alias || target || "";
+  }
+
+  return cleaned;
+}
+
 function parseWikiLinkTarget(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed || /^event:/i.test(trimmed)) {
@@ -26,8 +50,14 @@ function normalizeMarkdown(markdown: string): string {
 }
 
 function extractTitleAndSnippet(markdown: string): { title: string; snippet: string } {
-  const titleMatch = markdown.match(TITLE_PATTERN);
-  const title = titleMatch?.[1]?.trim() || "Untitled";
+  const content = markdown.replace(/^---[\s\S]*?---\n?/m, "");
+  const titleMatch = content.match(TITLE_PATTERN);
+  const fallbackTitle =
+    content
+      .split("\n")
+      .map((line) => normalizeTitleCandidate(line))
+      .find((candidate) => candidate.length > 0) || "Untitled";
+  const title = titleMatch?.[1]?.trim() || fallbackTitle;
   const snippet = markdown
     .replace(/^---[\s\S]*?---\n?/m, "")
     .replace(TITLE_PATTERN, "")

@@ -1094,6 +1094,50 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
+  it("supports image attachment chip filter in search", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n![image](./attachments/photo.png)" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Has images" }));
+
+    const chip = screen.getByRole("button", { name: "Has images" });
+    expect(chip).toHaveClass("active");
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
+  it("supports pdf attachment chip filter in search", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[file](./attachments/brief.pdf)" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Has PDFs" }));
+
+    const chip = screen.getByRole("button", { name: "Has PDFs" });
+    expect(chip).toHaveClass("active");
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
 
   it("inserts a markdown linked note from typed slash menu via modal", () => {
     const promptSpy = vi.spyOn(window, "prompt");

@@ -261,7 +261,7 @@ type NoteSortMode =
   | "created-asc"
   | "title-asc"
   | "title-desc";
-type SearchFilterKind = "attachments" | "tasks" | "due" | "reminders";
+type SearchFilterKind = "attachments" | "tasks" | "due" | "reminders" | "image" | "pdf";
 type SearchUpdatedPreset = "none" | "today" | "week" | "month";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
@@ -2744,6 +2744,12 @@ export default function App() {
       if (searchFilters.includes("attachments") && !noteHasAttachmentLink(note.markdown)) {
         return false;
       }
+      if (searchFilters.includes("image") && !noteHasAttachmentKind(note.markdown, "image")) {
+        return false;
+      }
+      if (searchFilters.includes("pdf") && !noteHasAttachmentKind(note.markdown, "pdf")) {
+        return false;
+      }
       if (searchFilters.includes("tasks") && !noteHasOpenTasks(note.markdown)) {
         return false;
       }
@@ -4960,6 +4966,12 @@ export default function App() {
     if (searchFilters.includes("attachments") && !/\bhas:(attachment|file)\b/i.test(query)) {
       query = `${query}${query ? " " : ""}has:attachment`;
     }
+    if (searchFilters.includes("image") && !/\bhas:image\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:image`;
+    }
+    if (searchFilters.includes("pdf") && !/\bhas:pdf\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:pdf`;
+    }
     if (searchFilters.includes("tasks") && !/\bhas:(task|todo)\b/i.test(query)) {
       query = `${query}${query ? " " : ""}has:task`;
     }
@@ -5001,6 +5013,12 @@ export default function App() {
     const restoredFilters: SearchFilterKind[] = [];
     if (/\bhas:(attachment|file)\b/i.test(saved.query)) {
       restoredFilters.push("attachments");
+    }
+    if (/\bhas:image\b/i.test(saved.query)) {
+      restoredFilters.push("image");
+    }
+    if (/\bhas:pdf\b/i.test(saved.query)) {
+      restoredFilters.push("pdf");
     }
     if (/\bhas:(task|todo)\b/i.test(saved.query)) {
       restoredFilters.push("tasks");
@@ -11387,6 +11405,20 @@ export default function App() {
                 onClick={() => toggleSearchFilter("attachments")}
               >
                 Has attachments
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("image") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("image")}
+              >
+                Has images
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("pdf") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("pdf")}
+              >
+                Has PDFs
               </button>
               <button
                 type="button"

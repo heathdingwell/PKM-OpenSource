@@ -14,6 +14,11 @@ Open source notes app with Markdown-first storage and an high-density experience
 1. `npm install`
 2. `npm run dev`
 
+## Desktop packaging
+- Local unpacked app bundle: `npm run package:desktop`
+- Installable artifacts for current OS: `npm run dist:desktop`
+- Output folder: `apps/desktop/release`
+
 ## Current status
 This is an implementation scaffold aligned to the docs in `docs/` and intended for iterative feature parity work.
 
@@ -25,3 +30,6 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - Auto-commit backups are enabled by default.
   - Toggle in `AI Copilot -> Settings -> Git backup`.
   - Manual run via `Run Git backup now` in command palette (`cmd+shift+k`, then `>` query).
+- Vault snapshots for manual backup/restore:
+  - Export via command palette: `Export vault snapshot`
+  - Restore via command palette: `Import vault snapshot`

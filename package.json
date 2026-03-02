@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "npm run -w @pkm-os/desktop dev",
     "build": "npm run -ws build",
+    "package:desktop": "npm run -w @pkm-os/desktop package",
+    "dist:desktop": "npm run -w @pkm-os/desktop dist",
     "typecheck": "npm run -ws typecheck",
     "test": "npm run -ws test"
   },

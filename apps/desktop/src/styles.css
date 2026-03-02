@@ -2760,6 +2760,14 @@ body.is-resizing {
   padding: 0 0 8px;
 }
 
+.task-filter-input {
+  margin-bottom: 8px;
+}
+
+.task-filter-input input {
+  margin-bottom: 0;
+}
+
 .tasks-modal .task-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

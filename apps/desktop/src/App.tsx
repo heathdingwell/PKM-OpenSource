@@ -2286,6 +2286,7 @@ export default function App() {
   const [noteHistoryDialog, setNoteHistoryDialog] = useState<NoteHistoryDialogState | null>(null);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [taskDueFilter, setTaskDueFilter] = useState<TaskDueFilter>(initialPrefs.taskDueFilter ?? "all");
+  const [taskQuery, setTaskQuery] = useState("");
   const [reminderDueFilter, setReminderDueFilter] = useState<ReminderDueFilter>(initialPrefs.reminderDueFilter ?? "all");
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [filesQuery, setFilesQuery] = useState("");
@@ -2980,12 +2981,19 @@ export default function App() {
     return counts;
   }, [activeNotes]);
   const filteredOpenTasks = useMemo(() => {
-    if (taskDueFilter === "all") {
-      return openTasks;
+    const dueScoped =
+      taskDueFilter === "all"
+        ? openTasks
+        : openTasks.filter((task) => getTaskDueBucket(task.dueDate, toDateInputValue(new Date())) === taskDueFilter);
+    const query = taskQuery.trim().toLowerCase();
+    if (!query) {
+      return dueScoped;
     }
-    const today = toDateInputValue(new Date());
-    return openTasks.filter((task) => getTaskDueBucket(task.dueDate, today) === taskDueFilter);
-  }, [openTasks, taskDueFilter]);
+    return dueScoped.filter((task) => {
+      const haystack = `${task.text} ${task.noteTitle} ${task.notebook} ${task.dueDate ?? ""}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [openTasks, taskDueFilter, taskQuery]);
   const attachmentItems = useMemo(() => extractAttachments(liveDerivedNotes), [liveDerivedNotes]);
   const attachmentItemCounts = useMemo(() => {
     const counts = {
@@ -5561,6 +5569,7 @@ export default function App() {
     setSidebarView("tasks");
     setTasksDialogOpen(true);
     setTaskDueFilter("all");
+    setTaskQuery("");
     setFilesDialogOpen(false);
     setCalendarDialogOpen(false);
     setSearchOpen(false);
@@ -8947,10 +8956,7 @@ export default function App() {
                   return;
                 }
                 if (item === "Tasks") {
-                  setSidebarView("tasks");
-                  setTasksDialogOpen(true);
-                  setFilesDialogOpen(false);
-                  setCalendarDialogOpen(false);
+                  openTasksPanel();
                   return;
                 }
                 if (item === "Trash") {
@@ -11905,6 +11911,7 @@ export default function App() {
           onClick={() => {
             setTasksDialogOpen(false);
             setTaskDueFilter("all");
+            setTaskQuery("");
             setSidebarView("notes");
           }}
         >
@@ -11913,6 +11920,15 @@ export default function App() {
               <h3>Tasks</h3>
               <small>{filteredOpenTasks.length} shown</small>
             </header>
+            <label className="template-field task-filter-input">
+              <span>Filter tasks</span>
+              <input
+                aria-label="Filter tasks"
+                value={taskQuery}
+                onChange={(event) => setTaskQuery(event.target.value)}
+                placeholder="Filter by task, note, notebook, or date"
+              />
+            </label>
             <div className="search-chips tasks-filter-chips">
               <button
                 type="button"
@@ -11961,6 +11977,8 @@ export default function App() {
                         setSelectedNotebook(task.notebook);
                         focusNote(task.noteId);
                         setTasksDialogOpen(false);
+                        setTaskDueFilter("all");
+                        setTaskQuery("");
                         setSidebarView("notes");
                       }}
                     >
@@ -11982,7 +12000,13 @@ export default function App() {
               </ul>
             ) : (
               <p className="history-empty">
-                {taskDueFilter === "all" ? "No open tasks" : "No tasks in this filter"}
+                {openTasks.length === 0
+                  ? "No open tasks"
+                  : taskQuery.trim()
+                    ? "No tasks match this filter"
+                    : taskDueFilter === "all"
+                      ? "No open tasks"
+                      : "No tasks in this filter"}
               </p>
             )}
             <footer>
@@ -12003,6 +12027,7 @@ export default function App() {
                 onClick={() => {
                   setTasksDialogOpen(false);
                   setTaskDueFilter("all");
+                  setTaskQuery("");
                   setSidebarView("notes");
                 }}
               >

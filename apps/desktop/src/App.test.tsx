@@ -1732,6 +1732,36 @@ describe("App", () => {
     expect(within(tasksModal as HTMLElement).queryByText("No-due task")).not.toBeInTheDocument();
   });
 
+  it("filters tasks by query in tasks modal and resets on reopen", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Forecast roadmap" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Grocery pickup" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+
+    const tasksModal = screen.getByRole("heading", { name: "Tasks", level: 3 }).closest("section");
+    expect(tasksModal).toBeTruthy();
+    fireEvent.change(within(tasksModal as HTMLElement).getByLabelText("Filter tasks"), {
+      target: { value: "grocery" }
+    });
+    expect(within(tasksModal as HTMLElement).getByText("Grocery pickup")).toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).queryByText("Forecast roadmap")).not.toBeInTheDocument();
+
+    fireEvent.click(within(tasksModal as HTMLElement).getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
+    const reopenedModal = screen.getByRole("heading", { name: "Tasks", level: 3 }).closest("section");
+    expect(reopenedModal).toBeTruthy();
+    const queryInput = within(reopenedModal as HTMLElement).getByLabelText("Filter tasks") as HTMLInputElement;
+    expect(queryInput.value).toBe("");
+    expect(within(reopenedModal as HTMLElement).getByText("Grocery pickup")).toBeInTheDocument();
+    expect(within(reopenedModal as HTMLElement).getByText("Forecast roadmap")).toBeInTheDocument();
+  });
+
   it("completes only shown tasks from tasks modal filter", async () => {
     render(<App />);
 

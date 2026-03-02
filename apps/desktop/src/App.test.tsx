@@ -259,7 +259,7 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: secondTitle as string, level: 2 })).toBeInTheDocument();
   });
 
-  it("toggles note grouping by updated date and persists preference", () => {
+  it("cycles note grouping modes and persists preference", () => {
     const first = render(<App />);
     expect(document.querySelectorAll(".note-group-heading").length).toBe(0);
 
@@ -267,10 +267,17 @@ describe("App", () => {
     expect(document.querySelectorAll(".note-group-heading").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Group: Updated" })).toHaveClass("active");
 
+    fireEvent.click(screen.getByRole("button", { name: "Group: Updated" }));
+    expect(screen.getByRole("button", { name: "Group: Notebook" })).toHaveClass("active");
+    const groupHeadings = Array.from(document.querySelectorAll(".note-group-heading")).map((entry) =>
+      entry.textContent?.trim()
+    );
+    expect(groupHeadings).toContain("Daily Notes");
+
     first.unmount();
 
     render(<App />);
-    expect(screen.getByRole("button", { name: "Group: Updated" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Group: Notebook" })).toBeInTheDocument();
     expect(document.querySelectorAll(".note-group-heading").length).toBeGreaterThan(0);
   });
 
@@ -319,6 +326,23 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
     expect(screen.getByText("No reminders scheduled.")).toBeInTheDocument();
+  });
+
+  it("cycles grouping mode from command palette action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle note grouping" }
+    });
+    fireEvent.click(screen.getByText("Toggle note grouping"));
+    expect(screen.getByRole("button", { name: "Group: Updated" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle note grouping" }
+    });
+    fireEvent.click(screen.getByText("Toggle note grouping"));
+    expect(screen.getByRole("button", { name: "Group: Notebook" })).toBeInTheDocument();
   });
 
   it("opens new stack modal from command palette action", () => {

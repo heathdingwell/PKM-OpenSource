@@ -240,7 +240,7 @@ interface FindMatchRange {
 type EditorMode = "markdown" | "rich";
 type NoteViewMode = "cards" | "list";
 type NoteDensityMode = "comfortable" | "compact";
-type NoteGroupMode = "none" | "updated-date";
+type NoteGroupMode = "none" | "updated-date" | "notebook";
 type SidebarView = "notes" | "tasks" | "calendar";
 type NoteBrowseMode = "all" | "templates" | "shortcuts" | "home" | "trash" | "graph" | "reminders";
 type ThemeId = "cobalt" | "sky" | "slate";
@@ -473,7 +473,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "toggle-density", label: "Toggle note density", keywords: ["density", "compact", "comfortable"] },
-  { id: "toggle-grouping", label: "Toggle note grouping", keywords: ["group", "sections", "date"] },
+  { id: "toggle-grouping", label: "Toggle note grouping", keywords: ["group", "sections", "date", "notebook"] },
   { id: "toggle-focus", label: "Toggle focus mode", keywords: ["focus", "layout", "panes"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
   { id: "toggle-auto-links", label: "Toggle auto reciprocal links", keywords: ["links", "backlinks", "reciprocal"] },
@@ -874,6 +874,26 @@ function toDateBucketLabel(iso: string): string {
     return "Yesterday";
   }
   return targetDate.toLocaleDateString();
+}
+
+function nextNoteGroupMode(mode: NoteGroupMode): NoteGroupMode {
+  if (mode === "none") {
+    return "updated-date";
+  }
+  if (mode === "updated-date") {
+    return "notebook";
+  }
+  return "none";
+}
+
+function noteGroupModeLabel(mode: NoteGroupMode): string {
+  if (mode === "none") {
+    return "Group: Off";
+  }
+  if (mode === "updated-date") {
+    return "Group: Updated";
+  }
+  return "Group: Notebook";
 }
 
 function formatAutosaveDelay(autosaveDelayMs: number): string {
@@ -1695,7 +1715,10 @@ function loadPrefs(): AppPrefs {
           : "all",
       viewMode: parsed.viewMode === "list" ? "list" : "cards",
       noteDensity: parsed.noteDensity === "compact" ? "compact" : "comfortable",
-      noteGroupMode: parsed.noteGroupMode === "updated-date" ? "updated-date" : "none",
+      noteGroupMode:
+        parsed.noteGroupMode === "updated-date" || parsed.noteGroupMode === "notebook"
+          ? parsed.noteGroupMode
+          : "none",
       focusMode: typeof parsed.focusMode === "boolean" ? parsed.focusMode : false,
       taskDueFilter:
         parsed.taskDueFilter === "overdue" ||
@@ -2385,6 +2408,23 @@ export default function App() {
   const noteGroups = useMemo(() => {
     if (noteGroupMode === "none") {
       return [{ id: "all", label: "", notes: pagedVisibleNotes }];
+    }
+
+    if (noteGroupMode === "notebook") {
+      const groups = new Map<string, AppNote[]>();
+      for (const note of pagedVisibleNotes) {
+        const list = groups.get(note.notebook) ?? [];
+        list.push(note);
+        groups.set(note.notebook, list);
+      }
+
+      return Array.from(groups.entries())
+        .sort((left, right) => left[0].localeCompare(right[0]))
+        .map(([label, notes]) => ({
+          id: `notebook:${label}`,
+          label,
+          notes
+        }));
     }
 
     const groups = new Map<string, AppNote[]>();
@@ -5589,7 +5629,7 @@ export default function App() {
     }
 
     if (actionId === "toggle-grouping") {
-      setNoteGroupMode((previous) => (previous === "none" ? "updated-date" : "none"));
+      setNoteGroupMode((previous) => nextNoteGroupMode(previous));
       setSearchOpen(false);
       return;
     }
@@ -8741,10 +8781,10 @@ export default function App() {
               </button>
               <button
                 type="button"
-                className={noteGroupMode === "updated-date" ? "active" : ""}
-                onClick={() => setNoteGroupMode((previous) => (previous === "none" ? "updated-date" : "none"))}
+                className={noteGroupMode !== "none" ? "active" : ""}
+                onClick={() => setNoteGroupMode((previous) => nextNoteGroupMode(previous))}
               >
-                {noteGroupMode === "none" ? "Group: Off" : "Group: Updated"}
+                {noteGroupModeLabel(noteGroupMode)}
               </button>
               <button
                 type="button"

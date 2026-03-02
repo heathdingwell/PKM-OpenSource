@@ -233,7 +233,7 @@ type NoteSortMode =
   | "created-asc"
   | "title-asc"
   | "title-desc";
-type SearchFilterKind = "attachments" | "tasks" | "due";
+type SearchFilterKind = "attachments" | "tasks" | "due" | "reminders";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 
@@ -2495,6 +2495,9 @@ export default function App() {
       if (searchFilters.includes("due") && !noteHasTaskDueDate(note.markdown)) {
         return false;
       }
+      if (searchFilters.includes("reminders") && !note.reminderAt) {
+        return false;
+      }
       if (notebookFilter && !note.notebook.toLowerCase().includes(notebookFilter)) {
         return false;
       }
@@ -4473,6 +4476,9 @@ export default function App() {
     if (searchFilters.includes("due") && !/\bhas:(due|deadline)\b/i.test(query)) {
       query = `${query}${query ? " " : ""}has:due`;
     }
+    if (searchFilters.includes("reminders") && !/\bhas:(reminder|reminders?)\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:reminder`;
+    }
 
     if (!query) {
       setToastMessage("Enter a query to save");
@@ -4511,6 +4517,9 @@ export default function App() {
     }
     if (/\bhas:(due|deadline)\b/i.test(saved.query)) {
       restoredFilters.push("due");
+    }
+    if (/\bhas:(reminder|reminders?)\b/i.test(saved.query)) {
+      restoredFilters.push("reminders");
     }
     setSearchFilters(restoredFilters);
     setQuickQuery(saved.query);
@@ -10083,6 +10092,13 @@ export default function App() {
                 onClick={() => toggleSearchFilter("due")}
               >
                 Has due tasks
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("reminders") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("reminders")}
+              >
+                Has reminders
               </button>
               {searchFilters.length ? (
                 <button type="button" className="chip" onClick={() => setSearchFilters([])}>

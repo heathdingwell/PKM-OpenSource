@@ -2417,6 +2417,11 @@ body.is-resizing {
   gap: 1px;
 }
 
+.tasks-filter-chips {
+  flex-wrap: wrap;
+  padding: 0 0 8px;
+}
+
 .tasks-modal .task-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

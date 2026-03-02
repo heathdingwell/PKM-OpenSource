@@ -226,6 +226,7 @@ type NoteSortMode =
   | "title-asc"
   | "title-desc";
 type SearchFilterKind = "attachments" | "tasks" | "due";
+type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 
 interface ParsedSearchQuery {
   text: string;
@@ -960,6 +961,19 @@ function describeTaskDueDate(dueDate: string): string {
     return `Due today (${dueDate})`;
   }
   return `Due ${dueDate}`;
+}
+
+function getTaskDueBucket(dueDate: string | null, today: string): Exclude<TaskDueFilter, "all"> {
+  if (!dueDate) {
+    return "undated";
+  }
+  if (dueDate < today) {
+    return "overdue";
+  }
+  if (dueDate === today) {
+    return "today";
+  }
+  return "upcoming";
 }
 
 function extractOpenTasks(notes: AppNote[]): OpenTaskItem[] {
@@ -1713,6 +1727,7 @@ export default function App() {
   const [noteRenameDialog, setNoteRenameDialog] = useState<NoteRenameDialogState | null>(null);
   const [noteHistoryDialog, setNoteHistoryDialog] = useState<NoteHistoryDialogState | null>(null);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
+  const [taskDueFilter, setTaskDueFilter] = useState<TaskDueFilter>("all");
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
@@ -2134,6 +2149,30 @@ export default function App() {
   const liveNotesById = useMemo(() => new Map(liveDerivedNotes.map((note) => [note.id, note])), [liveDerivedNotes]);
 
   const openTasks = useMemo(() => extractOpenTasks(liveDerivedNotes), [liveDerivedNotes]);
+  const openTaskCounts = useMemo(() => {
+    const today = toDateInputValue(new Date());
+    const counts: Record<TaskDueFilter, number> = {
+      all: openTasks.length,
+      overdue: 0,
+      today: 0,
+      upcoming: 0,
+      undated: 0
+    };
+
+    for (const task of openTasks) {
+      const bucket = getTaskDueBucket(task.dueDate, today);
+      counts[bucket] += 1;
+    }
+
+    return counts;
+  }, [openTasks]);
+  const filteredOpenTasks = useMemo(() => {
+    if (taskDueFilter === "all") {
+      return openTasks;
+    }
+    const today = toDateInputValue(new Date());
+    return openTasks.filter((task) => getTaskDueBucket(task.dueDate, today) === taskDueFilter);
+  }, [openTasks, taskDueFilter]);
   const attachmentItems = useMemo(() => extractAttachments(liveDerivedNotes), [liveDerivedNotes]);
   const calendarEventsById = useMemo(() => new Map(calendarEvents.map((event) => [event.id, event])), [calendarEvents]);
   const calendarGroups = useMemo(() => {
@@ -4307,6 +4346,7 @@ export default function App() {
   function openTasksPanel(): void {
     setSidebarView("tasks");
     setTasksDialogOpen(true);
+    setTaskDueFilter("all");
     setFilesDialogOpen(false);
     setCalendarDialogOpen(false);
     setSearchOpen(false);
@@ -9343,17 +9383,55 @@ export default function App() {
           className="overlay"
           onClick={() => {
             setTasksDialogOpen(false);
+            setTaskDueFilter("all");
             setSidebarView("notes");
           }}
         >
           <section className="move-modal tasks-modal" onClick={(event) => event.stopPropagation()}>
             <header>
               <h3>Tasks</h3>
-              <small>{openTasks.length} open</small>
+              <small>{filteredOpenTasks.length} shown</small>
             </header>
-            {openTasks.length ? (
+            <div className="search-chips tasks-filter-chips">
+              <button
+                type="button"
+                className={taskDueFilter === "all" ? "chip active" : "chip"}
+                onClick={() => setTaskDueFilter("all")}
+              >
+                All ({openTaskCounts.all})
+              </button>
+              <button
+                type="button"
+                className={taskDueFilter === "overdue" ? "chip active" : "chip"}
+                onClick={() => setTaskDueFilter("overdue")}
+              >
+                Overdue ({openTaskCounts.overdue})
+              </button>
+              <button
+                type="button"
+                className={taskDueFilter === "today" ? "chip active" : "chip"}
+                onClick={() => setTaskDueFilter("today")}
+              >
+                Today ({openTaskCounts.today})
+              </button>
+              <button
+                type="button"
+                className={taskDueFilter === "upcoming" ? "chip active" : "chip"}
+                onClick={() => setTaskDueFilter("upcoming")}
+              >
+                Upcoming ({openTaskCounts.upcoming})
+              </button>
+              <button
+                type="button"
+                className={taskDueFilter === "undated" ? "chip active" : "chip"}
+                onClick={() => setTaskDueFilter("undated")}
+              >
+                No due ({openTaskCounts.undated})
+              </button>
+            </div>
+            {filteredOpenTasks.length ? (
               <ul>
-                {openTasks.map((task) => (
+                {filteredOpenTasks.map((task) => (
                   <li key={task.id} className="task-row">
                     <button
                       type="button"
@@ -9382,13 +9460,16 @@ export default function App() {
                 ))}
               </ul>
             ) : (
-              <p className="history-empty">No open tasks</p>
+              <p className="history-empty">
+                {taskDueFilter === "all" ? "No open tasks" : "No tasks in this filter"}
+              </p>
             )}
             <footer>
               <button
                 type="button"
                 onClick={() => {
                   setTasksDialogOpen(false);
+                  setTaskDueFilter("all");
                   setSidebarView("notes");
                 }}
               >

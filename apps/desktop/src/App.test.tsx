@@ -460,6 +460,33 @@ describe("App", () => {
     expect(editor?.value).toContain("- [ ] Future task due:2099-01-01");
   });
 
+  it("filters tasks by due status in tasks modal", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Due-only task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2099-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "No-due task" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+
+    const tasksModal = screen.getByRole("heading", { name: "Tasks", level: 3 }).closest("section");
+    expect(tasksModal).toBeTruthy();
+    expect(within(tasksModal as HTMLElement).getByText("Due-only task")).toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).getByText("No-due task")).toBeInTheDocument();
+
+    fireEvent.click(within(tasksModal as HTMLElement).getByRole("button", { name: /No due/i }));
+    expect(within(tasksModal as HTMLElement).queryByText("Due-only task")).not.toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).getByText("No-due task")).toBeInTheDocument();
+
+    fireEvent.click(within(tasksModal as HTMLElement).getByRole("button", { name: /Upcoming/i }));
+    expect(within(tasksModal as HTMLElement).getByText("Due-only task")).toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).queryByText("No-due task")).not.toBeInTheDocument();
+  });
+
   it("derives note title from first markdown line when no heading exists", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

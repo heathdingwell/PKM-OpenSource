@@ -6086,7 +6086,12 @@ export default function App() {
     setToastMessage(`Moved "${notebook}" to stack "${chosen}"`);
   }
 
-  function removeNotebookFromStack(notebook: string): void {
+  function removeNotebookFromStack(notebook: string): boolean {
+    if (!(notebook in notebookStacks)) {
+      setToastMessage(`"${notebook}" is not in a stack`);
+      return false;
+    }
+
     setNotebookStacks((previous) => {
       if (!(notebook in previous)) {
         return previous;
@@ -6096,6 +6101,7 @@ export default function App() {
       return next;
     });
     setToastMessage(`Removed "${notebook}" from stack`);
+    return true;
   }
 
   function renameStack(oldName: string, nextName: string): boolean {

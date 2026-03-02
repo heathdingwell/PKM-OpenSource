@@ -366,6 +366,17 @@ describe("App", () => {
     expect(screen.getByText('Removed "Daily Notes" from stack')).toBeInTheDocument();
   });
 
+  it("reports when removing current notebook from stack while unstacked", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">remove current notebook from stack" }
+    });
+    fireEvent.click(screen.getByText("Remove current notebook from stack"));
+
+    expect(screen.getByText('"Daily Notes" is not in a stack')).toBeInTheDocument();
+  });
+
   it("opens note history from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

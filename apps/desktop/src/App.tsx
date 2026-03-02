@@ -7622,6 +7622,10 @@ export default function App() {
               if (openTaskCounts.overdue > 0) {
                 badgeTone = "alert";
               }
+            } else if (item === "Files" && attachmentItems.length) {
+              badge = formatSidebarCount(attachmentItems.length);
+            } else if (item === "Calendar" && calendarEvents.length) {
+              badge = formatSidebarCount(calendarEvents.length);
             } else if (item === "Trash" && trashedNotes.length) {
               badge = formatSidebarCount(trashedNotes.length);
             } else if (item === "Templates" && templateNotes.length) {

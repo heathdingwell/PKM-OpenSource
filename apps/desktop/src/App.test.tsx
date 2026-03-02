@@ -291,12 +291,15 @@ describe("App", () => {
 
   it("persists chip filters when saving and reopening a saved search", () => {
     render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2099-01-01" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
       target: { value: "agenda" }
     });
     fireEvent.click(screen.getByRole("button", { name: "Has due tasks" }));
+    fireEvent.click(screen.getByRole("button", { name: "Has reminders" }));
     fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Due focus" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -306,9 +309,12 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^Due focus/i }));
     const dueChip = screen.getByRole("button", { name: "Has due tasks" });
+    const reminderChip = screen.getByRole("button", { name: "Has reminders" });
     expect(dueChip).toHaveClass("active");
+    expect(reminderChip).toHaveClass("active");
     const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
     expect(queryInput.value).toContain("has:due");
+    expect(queryInput.value).toContain("has:reminder");
   });
 
   it("supports has:due search filter", () => {

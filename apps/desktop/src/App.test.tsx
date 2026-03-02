@@ -505,6 +505,38 @@ describe("App", () => {
     expect(within(tasksModal as HTMLElement).queryByText("No-due task")).not.toBeInTheDocument();
   });
 
+  it("completes only shown tasks from tasks modal filter", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Batch due task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2099-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Batch no-due task" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+
+    const tasksModal = screen.getByRole("heading", { name: "Tasks", level: 3 }).closest("section");
+    expect(tasksModal).toBeTruthy();
+    expect(within(tasksModal as HTMLElement).getByText("Batch due task")).toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).getByText("Batch no-due task")).toBeInTheDocument();
+
+    fireEvent.click(within(tasksModal as HTMLElement).getByRole("button", { name: /Upcoming/i }));
+    expect(within(tasksModal as HTMLElement).getByText("Batch due task")).toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).queryByText("Batch no-due task")).not.toBeInTheDocument();
+
+    fireEvent.click(within(tasksModal as HTMLElement).getByRole("button", { name: "Complete shown" }));
+    await waitFor(() => {
+      expect(within(tasksModal as HTMLElement).getByText("No tasks in this filter")).toBeInTheDocument();
+    });
+
+    fireEvent.click(within(tasksModal as HTMLElement).getByRole("button", { name: /All \(/i }));
+    expect(within(tasksModal as HTMLElement).queryByText("Batch due task")).not.toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).getByText("Batch no-due task")).toBeInTheDocument();
+  });
+
   it("derives note title from first markdown line when no heading exists", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

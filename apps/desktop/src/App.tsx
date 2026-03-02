@@ -1090,6 +1090,50 @@ function extractOpenTasks(notes: AppNote[]): OpenTaskItem[] {
   });
 }
 
+function doesLineMatchOpenTask(line: string, task: OpenTaskItem): boolean {
+  const match = line.match(/^\s*-\s\[\s\]\s+(.+)$/);
+  if (!match) {
+    return false;
+  }
+  const parsed = extractTaskTextAndDue(match[1].trim());
+  return parsed.text === task.text && parsed.dueDate === task.dueDate;
+}
+
+function applyTaskCompletionsToMarkdown(
+  markdown: string,
+  tasks: OpenTaskItem[]
+): { markdown: string; completed: number } {
+  if (!tasks.length) {
+    return { markdown, completed: 0 };
+  }
+
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  const usedLineIndexes = new Set<number>();
+  let completed = 0;
+
+  for (const task of tasks) {
+    let targetLineIndex = task.lineIndex;
+    const indexedLine = lines[targetLineIndex] ?? "";
+    if (!indexedLine || !doesLineMatchOpenTask(indexedLine, task) || usedLineIndexes.has(targetLineIndex)) {
+      targetLineIndex = lines.findIndex(
+        (line, index) => !usedLineIndexes.has(index) && doesLineMatchOpenTask(line, task)
+      );
+      if (targetLineIndex < 0) {
+        continue;
+      }
+    }
+
+    lines[targetLineIndex] = lines[targetLineIndex].replace(/^(\s*-\s)\[\s\](\s+)/, "$1[x]$2");
+    usedLineIndexes.add(targetLineIndex);
+    completed += 1;
+  }
+
+  return {
+    markdown: lines.join("\n"),
+    completed
+  };
+}
+
 function noteHasAttachmentLink(markdown: string): boolean {
   return /\[[^\]]+\]\((\.\/)?attachments\/[^)]+\)|!\[[^\]]*\]\((\.\/)?attachments\/[^)]+\)/i.test(markdown);
 }
@@ -4237,36 +4281,67 @@ export default function App() {
   }
 
   function completeOpenTask(task: OpenTaskItem): void {
-    flushActiveDraft();
+    completeOpenTasksBatch([task]);
+    setToastMessage("Task completed");
+  }
 
-    let nextActiveMarkdown: string | null = null;
-
-    setNotes((previous) =>
-      previous.map((note) => {
-        if (note.id !== task.noteId) {
-          return note;
-        }
-
-        const lines = note.markdown.replace(/\r\n/g, "\n").split("\n");
-        const target = lines[task.lineIndex];
-        if (!target || !/^\s*-\s\[\s\]\s+/.test(target)) {
-          return note;
-        }
-
-        lines[task.lineIndex] = target.replace(/^(\s*-\s)\[\s\](\s+)/, "$1[x]$2");
-        const nextMarkdown = lines.join("\n");
-        if (activeId === note.id) {
-          nextActiveMarkdown = nextMarkdown;
-        }
-        return noteFromMarkdown(note, nextMarkdown, new Date().toISOString());
-      })
-    );
-
-    if (nextActiveMarkdown !== null) {
-      setDraftMarkdown(nextActiveMarkdown);
+  function completeOpenTasksBatch(tasks: OpenTaskItem[]): number {
+    if (!tasks.length) {
+      return 0;
     }
 
-    setToastMessage("Task completed");
+    const taskTargets = new Map<string, OpenTaskItem[]>();
+    for (const task of tasks) {
+      const existing = taskTargets.get(task.noteId);
+      if (existing) {
+        existing.push(task);
+      } else {
+        taskTargets.set(task.noteId, [task]);
+      }
+    }
+
+    let sourceNotes = notes;
+    if (activeId) {
+      const sourceActiveNote = notes.find((note) => note.id === activeId && !note.trashedAt);
+      if (sourceActiveNote && draftMarkdown !== sourceActiveNote.markdown) {
+        sourceNotes = notes.map((note) =>
+          note.id === sourceActiveNote.id ? applyNoteMarkdownWithUniquePath(note, draftMarkdown, notes) : note
+        );
+      }
+    }
+
+    const now = new Date().toISOString();
+    let completed = 0;
+
+    const nextNotes = sourceNotes.map((note) => {
+      const noteTasks = taskTargets.get(note.id);
+      if (!noteTasks?.length) {
+        return note;
+      }
+
+      const completion = applyTaskCompletionsToMarkdown(note.markdown, noteTasks);
+      if (!completion.completed) {
+        return note;
+      }
+
+      completed += completion.completed;
+      return noteFromMarkdown(note, completion.markdown, now);
+    });
+
+    if (!completed) {
+      return 0;
+    }
+
+    setNotes(nextNotes);
+
+    if (activeId) {
+      const nextActive = nextNotes.find((note) => note.id === activeId);
+      if (nextActive) {
+        setDraftMarkdown(nextActive.markdown);
+      }
+    }
+
+    return completed;
   }
 
   function openCreateEventDialog(options?: { linkedNoteId?: string | null; origin?: EventInsertOrigin | null }): void {
@@ -9572,6 +9647,18 @@ export default function App() {
               </p>
             )}
             <footer>
+              <button
+                type="button"
+                disabled={!filteredOpenTasks.length}
+                onClick={() => {
+                  const completedCount = completeOpenTasksBatch(filteredOpenTasks);
+                  setToastMessage(
+                    completedCount === 1 ? "1 task completed" : `${completedCount} tasks completed`
+                  );
+                }}
+              >
+                Complete shown
+              </button>
               <button
                 type="button"
                 onClick={() => {

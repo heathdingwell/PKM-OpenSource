@@ -1032,6 +1032,25 @@ function noteHasTaskDueDate(markdown: string): boolean {
   return /^\s*-\s\[\s\]\s+.*(?:due:|📅\s*)\d{4}-\d{2}-\d{2}\b/mi.test(markdown);
 }
 
+function noteHasTaskDueBucket(markdown: string, bucket: "overdue" | "today" | "upcoming" | "undated"): boolean {
+  const today = toDateInputValue(new Date());
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+
+  for (const line of lines) {
+    const match = line.match(/^\s*-\s\[\s\]\s+(.+)$/);
+    if (!match) {
+      continue;
+    }
+    const dueDate = extractTaskTextAndDue(match[1].trim()).dueDate;
+    const dueBucket = getTaskDueBucket(dueDate, today);
+    if (dueBucket === bucket) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function noteHasAttachmentKind(markdown: string, kind: string): boolean {
   const normalized = kind.trim().toLowerCase();
   if (!normalized) {
@@ -1046,6 +1065,18 @@ function noteHasAttachmentKind(markdown: string, kind: string): boolean {
   }
   if (normalized === "due" || normalized === "deadline") {
     return noteHasTaskDueDate(markdown);
+  }
+  if (normalized === "overdue") {
+    return noteHasTaskDueBucket(markdown, "overdue");
+  }
+  if (normalized === "today") {
+    return noteHasTaskDueBucket(markdown, "today");
+  }
+  if (normalized === "upcoming") {
+    return noteHasTaskDueBucket(markdown, "upcoming");
+  }
+  if (normalized === "undated" || normalized === "no-due") {
+    return noteHasTaskDueBucket(markdown, "undated");
   }
   if (normalized === "image") {
     return /!\[[^\]]*\]\(([^)]+)\)/i.test(markdown);
@@ -9250,7 +9281,7 @@ export default function App() {
                 </button>
               ) : null}
             </div>
-            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, has:attachment|task|due|image|pdf</p>
+            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, has:attachment|task|due|overdue|today|upcoming|undated|image|pdf</p>
             <div className="search-results">
               <h4>Recent searches</h4>
               <ul>

@@ -192,6 +192,24 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
+  it("supports has:upcoming search filter for due tasks", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Upcoming filter task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2099-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "has:upcoming" }
+    });
+
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
   it("supports due-task chip filter in search", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));

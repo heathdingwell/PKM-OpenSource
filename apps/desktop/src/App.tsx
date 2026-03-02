@@ -199,6 +199,8 @@ interface AppPrefs {
   viewMode?: NoteViewMode;
   noteDensity?: NoteDensityMode;
   noteGroupMode?: NoteGroupMode;
+  editorFontFamily?: EditorFontFamilyId;
+  editorFontSize?: number;
   focusMode?: boolean;
   taskDueFilter?: TaskDueFilter;
   reminderDueFilter?: ReminderDueFilter;
@@ -238,6 +240,7 @@ interface FindMatchRange {
 }
 
 type EditorMode = "markdown" | "rich";
+type EditorFontFamilyId = "palatino" | "georgia" | "sans" | "mono";
 type NoteViewMode = "cards" | "list";
 type NoteDensityMode = "comfortable" | "compact";
 type NoteGroupMode = "none" | "updated-date" | "notebook" | "tag";
@@ -380,6 +383,29 @@ const DEFAULT_TAG_PANE_HEIGHT = 52;
 const NOTE_LIST_INITIAL_BATCH = 24;
 const NOTE_LIST_BATCH = 24;
 const themeIds: ThemeId[] = ["cobalt", "sky", "slate"];
+const editorFontFamilies: Array<{ id: EditorFontFamilyId; label: string; value: string }> = [
+  {
+    id: "palatino",
+    label: "Palatino",
+    value: '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif'
+  },
+  {
+    id: "georgia",
+    label: "Georgia",
+    value: 'Georgia, "Times New Roman", "Palatino Linotype", serif'
+  },
+  {
+    id: "sans",
+    label: "Sans Serif",
+    value: '"Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif'
+  },
+  {
+    id: "mono",
+    label: "Monospace",
+    value: '"JetBrains Mono", "Fira Code", Menlo, Consolas, monospace'
+  }
+];
+const editorFontSizes = [14, 15, 16, 17, 18, 20];
 const aiProviders: AiProvider[] = ["openai", "anthropic", "gemini", "perplexity", "openai-compatible", "ollama"];
 
 function clampTagPaneHeight(value: number): number {
@@ -1691,6 +1717,8 @@ function defaultPrefs(): AppPrefs {
     viewMode: "cards",
     noteDensity: "comfortable",
     noteGroupMode: "none",
+    editorFontFamily: "palatino",
+    editorFontSize: 16,
     focusMode: false,
     taskDueFilter: "all",
     reminderDueFilter: "all",
@@ -1750,6 +1778,13 @@ function loadPrefs(): AppPrefs {
         parsed.noteGroupMode === "updated-date" || parsed.noteGroupMode === "notebook" || parsed.noteGroupMode === "tag"
           ? parsed.noteGroupMode
           : "none",
+      editorFontFamily: editorFontFamilies.some((entry) => entry.id === parsed.editorFontFamily)
+        ? (parsed.editorFontFamily as EditorFontFamilyId)
+        : "palatino",
+      editorFontSize:
+        typeof parsed.editorFontSize === "number" && editorFontSizes.includes(parsed.editorFontSize)
+          ? parsed.editorFontSize
+          : 16,
       focusMode: typeof parsed.focusMode === "boolean" ? parsed.focusMode : false,
       taskDueFilter:
         parsed.taskDueFilter === "overdue" ||
@@ -2162,6 +2197,10 @@ export default function App() {
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [noteDensity, setNoteDensity] = useState<NoteDensityMode>(initialPrefs.noteDensity ?? "comfortable");
   const [noteGroupMode, setNoteGroupMode] = useState<NoteGroupMode>(initialPrefs.noteGroupMode ?? "none");
+  const [editorFontFamily, setEditorFontFamily] = useState<EditorFontFamilyId>(
+    initialPrefs.editorFontFamily ?? "palatino"
+  );
+  const [editorFontSize, setEditorFontSize] = useState<number>(initialPrefs.editorFontSize ?? 16);
   const [focusMode, setFocusMode] = useState<boolean>(initialPrefs.focusMode ?? false);
   const [sortMode, setSortMode] = useState<NoteSortMode>(initialPrefs.sortMode ?? "updated-desc");
   const [tagFilters, setTagFilters] = useState<string[]>(initialPrefs.tagFilters ?? []);
@@ -3358,6 +3397,8 @@ export default function App() {
       viewMode,
       noteDensity,
       noteGroupMode,
+      editorFontFamily,
+      editorFontSize,
       focusMode,
       taskDueFilter,
       reminderDueFilter,
@@ -3388,6 +3429,8 @@ export default function App() {
     viewMode,
     noteDensity,
     noteGroupMode,
+    editorFontFamily,
+    editorFontSize,
     focusMode,
     taskDueFilter,
     reminderDueFilter,
@@ -8107,8 +8150,12 @@ export default function App() {
     applyMarkdownSlashCommand(command);
   }
 
+  const activeEditorFont = editorFontFamilies.find((entry) => entry.id === editorFontFamily)?.value ?? editorFontFamilies[0].value;
+
   const editorMainStyle = {
-    "--tag-pane-height": `${tagPaneHeight}px`
+    "--tag-pane-height": `${tagPaneHeight}px`,
+    "--editor-font-family": activeEditorFont,
+    "--editor-font-size": `${editorFontSize}px`
   } as CSSProperties;
 
   function loadMoreVisibleNotes(): void {
@@ -9643,8 +9690,38 @@ export default function App() {
               >
                 Aa
               </button>
-              <button type="button">Sans Serif</button>
-              <button type="button">15</button>
+              <select
+                aria-label="Editor font family"
+                value={editorFontFamily}
+                onChange={(event) => {
+                  const next = event.target.value as EditorFontFamilyId;
+                  if (editorFontFamilies.some((entry) => entry.id === next)) {
+                    setEditorFontFamily(next);
+                  }
+                }}
+              >
+                {editorFontFamilies.map((font) => (
+                  <option key={font.id} value={font.id}>
+                    {font.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Editor font size"
+                value={String(editorFontSize)}
+                onChange={(event) => {
+                  const parsed = Number.parseInt(event.target.value, 10);
+                  if (Number.isFinite(parsed) && editorFontSizes.includes(parsed)) {
+                    setEditorFontSize(parsed);
+                  }
+                }}
+              >
+                {editorFontSizes.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
               <button type="button" onClick={() => runRichToolbarAction("bold")}>
                 B
               </button>

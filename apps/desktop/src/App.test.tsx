@@ -304,6 +304,28 @@ describe("App", () => {
     expect(groupHeadings).toContain("Untagged");
   });
 
+  it("persists editor typography toolbar preferences", () => {
+    const first = render(<App />);
+    const familySelect = screen.getByLabelText("Editor font family") as HTMLSelectElement;
+    const sizeSelect = screen.getByLabelText("Editor font size") as HTMLSelectElement;
+
+    fireEvent.change(familySelect, { target: { value: "georgia" } });
+    fireEvent.change(sizeSelect, { target: { value: "18" } });
+
+    expect(familySelect.value).toBe("georgia");
+    expect(sizeSelect.value).toBe("18");
+    const editorMain = document.querySelector(".editor-main") as HTMLElement | null;
+    expect(editorMain).toBeTruthy();
+    expect((editorMain as HTMLElement).style.getPropertyValue("--editor-font-size")).toBe("18px");
+    expect((editorMain as HTMLElement).style.getPropertyValue("--editor-font-family")).toContain("Georgia");
+
+    first.unmount();
+
+    render(<App />);
+    expect(screen.getByLabelText("Editor font family")).toHaveValue("georgia");
+    expect(screen.getByLabelText("Editor font size")).toHaveValue("18");
+  });
+
   it("loads note list incrementally", () => {
     render(<App />);
     const createButton = screen.getByRole("button", { name: "+ Note" });

@@ -72,7 +72,8 @@ body,
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -1309,8 +1310,22 @@ body.is-resizing {
   background: transparent;
 }
 
+.editor-toolbar select {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #d3deee;
+  border-radius: 7px;
+  color: #395478;
+  background: #ffffff;
+  font-size: 12px;
+}
+
 .editor-toolbar button:hover {
   background: #eef4ff;
+}
+
+.editor-toolbar select:hover {
+  border-color: #b8c9e1;
 }
 
 .editor-toolbar button.active {
@@ -1478,7 +1493,7 @@ body.is-resizing {
   border: 0;
   color: #1f2937;
   background: #ffffff;
-  font: 500 16px/1.45 var(--font-code);
+  font: 500 var(--editor-font-size, 16px)/1.45 var(--editor-font-family, var(--font-editor));
   resize: none;
 }
 
@@ -1538,7 +1553,7 @@ body.is-resizing {
   min-height: 100%;
   padding: 14px;
   color: #1f2937;
-  font: 500 16px/1.45 var(--font-editor);
+  font: 500 var(--editor-font-size, 16px)/1.45 var(--editor-font-family, var(--font-editor));
 }
 
 .rich-editor-content:focus {
@@ -2147,24 +2162,26 @@ body.is-resizing {
   max-width: 760px;
   margin: 0 auto;
   padding: 14px 16px 22px;
+  font-family: var(--editor-font-family, var(--font-editor));
+  font-size: var(--editor-font-size, 16px);
 }
 
 .preview-document h2 {
   margin: 2px 0 14px;
-  font-size: 42px;
+  font-size: calc(var(--editor-font-size, 16px) * 2.1);
   font-weight: 700;
 }
 
 .preview-document h4 {
   margin: 22px 0 8px;
-  font-size: 31px;
+  font-size: calc(var(--editor-font-size, 16px) * 1.55);
   font-weight: 700;
 }
 
 .preview-document p {
   margin: 0;
   color: var(--muted);
-  font-size: 22px;
+  font-size: calc(var(--editor-font-size, 16px) * 1.35);
   line-height: 1.4;
 }
 

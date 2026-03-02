@@ -274,6 +274,8 @@ type SearchFilterKind =
   | "reminders-today"
   | "reminders-upcoming"
   | "image"
+  | "video"
+  | "audio"
   | "pdf";
 type SearchUpdatedPreset = "none" | "today" | "week" | "month";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
@@ -1384,6 +1386,16 @@ function noteHasAttachmentKind(markdown: string, kind: string): boolean {
   }
   if (normalized === "image") {
     return /!\[[^\]]*\]\(([^)]+)\)/i.test(markdown);
+  }
+  if (normalized === "video") {
+    return /\[[^\]]+\]\([^)]*\.(mp4|mov|m4v|avi|webm|mkv)(?:$|[?#)])|!\[[^\]]*\]\([^)]*\.(mp4|mov|m4v|avi|webm|mkv)(?:$|[?#)])|<video\b/i.test(
+      markdown
+    );
+  }
+  if (normalized === "audio") {
+    return /\[[^\]]+\]\([^)]*\.(mp3|wav|m4a|aac|flac|ogg|oga|opus)(?:$|[?#)])|!\[[^\]]*\]\([^)]*\.(mp3|wav|m4a|aac|flac|ogg|oga|opus)(?:$|[?#)])|<audio\b/i.test(
+      markdown
+    );
   }
 
   const extPattern = normalized.startsWith(".") ? normalized : `.${normalized}`;
@@ -2761,6 +2773,12 @@ export default function App() {
         return false;
       }
       if (searchFilters.includes("pdf") && !noteHasAttachmentKind(note.markdown, "pdf")) {
+        return false;
+      }
+      if (searchFilters.includes("video") && !noteHasAttachmentKind(note.markdown, "video")) {
+        return false;
+      }
+      if (searchFilters.includes("audio") && !noteHasAttachmentKind(note.markdown, "audio")) {
         return false;
       }
       if (searchFilters.includes("tasks") && !noteHasOpenTasks(note.markdown)) {
@@ -5015,6 +5033,12 @@ export default function App() {
     if (searchFilters.includes("pdf") && !/\bhas:pdf\b/i.test(query)) {
       query = `${query}${query ? " " : ""}has:pdf`;
     }
+    if (searchFilters.includes("video") && !/\bhas:video\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:video`;
+    }
+    if (searchFilters.includes("audio") && !/\bhas:audio\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:audio`;
+    }
     if (searchFilters.includes("tasks") && !/\bhas:(task|todo)\b/i.test(query)) {
       query = `${query}${query ? " " : ""}has:task`;
     }
@@ -5083,6 +5107,12 @@ export default function App() {
     }
     if (/\bhas:pdf\b/i.test(saved.query)) {
       restoredFilters.push("pdf");
+    }
+    if (/\bhas:video\b/i.test(saved.query)) {
+      restoredFilters.push("video");
+    }
+    if (/\bhas:audio\b/i.test(saved.query)) {
+      restoredFilters.push("audio");
     }
     if (/\bhas:(task|todo)\b/i.test(saved.query)) {
       restoredFilters.push("tasks");
@@ -11507,6 +11537,20 @@ export default function App() {
               </button>
               <button
                 type="button"
+                className={searchFilters.includes("video") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("video")}
+              >
+                Has videos
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("audio") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("audio")}
+              >
+                Has audio
+              </button>
+              <button
+                type="button"
                 className={searchFilters.includes("tasks") ? "chip active" : "chip"}
                 onClick={() => toggleSearchFilter("tasks")}
               >
@@ -11602,7 +11646,7 @@ export default function App() {
                 </button>
               ) : null}
             </div>
-            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, updated:today|week|month|YYYY-MM-DD..YYYY-MM-DD, created:, has:attachment|task|due|overdue|today|upcoming|undated|reminder|reminder-overdue|reminder-today|reminder-upcoming|image|pdf</p>
+            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, updated:today|week|month|YYYY-MM-DD..YYYY-MM-DD, created:, has:attachment|task|due|overdue|today|upcoming|undated|reminder|reminder-overdue|reminder-today|reminder-upcoming|image|video|audio|pdf</p>
             <div className="search-results">
               <div className="search-section-header">
                 <h4>Recent searches</h4>

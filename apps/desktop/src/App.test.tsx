@@ -378,6 +378,22 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
+  it("confirms move dialog with enter key", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">move note" }
+    });
+    fireEvent.click(screen.getByText("Move note"));
+
+    const dialogInput = screen.getByPlaceholderText("Find a location");
+    fireEvent.change(dialogInput, { target: { value: "Inbox" } });
+    fireEvent.keyDown(dialogInput, { key: "Enter" });
+
+    expect(screen.queryByRole("heading", { name: "Move", level: 3 })).not.toBeInTheDocument();
+    expect(screen.getByText(/moved to Inbox/)).toBeInTheDocument();
+  });
+
   it("copies note link from command palette", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

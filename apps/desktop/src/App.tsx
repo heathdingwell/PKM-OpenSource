@@ -6140,6 +6140,24 @@ export default function App() {
     );
   }
 
+  function confirmMoveDialog(): void {
+    if (!moveDialog) {
+      return;
+    }
+
+    const destination = moveDialog.destination.trim();
+    if (!destination) {
+      return;
+    }
+
+    if (moveDialog.mode === "copy") {
+      void copyNotes(moveDialog.noteIds, destination);
+    } else {
+      moveNotes(moveDialog.noteIds, destination);
+    }
+    setMoveDialog(null);
+  }
+
   function moveNotesToTrash(noteIds: string[]): number {
     const selected = notes.filter((note) => noteIds.includes(note.id) && !note.trashedAt);
     if (!selected.length) {
@@ -11331,6 +11349,12 @@ export default function App() {
               placeholder="Find a location"
               value={moveDialog.destination}
               onChange={(event) => setMoveDialog({ ...moveDialog, destination: event.target.value })}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  confirmMoveDialog();
+                }
+              }}
             />
             <ul>
               {notebooks
@@ -11355,14 +11379,7 @@ export default function App() {
                 type="button"
                 className="primary"
                 disabled={!moveDialog.destination.trim()}
-                onClick={() => {
-                  if (moveDialog.mode === "copy") {
-                    void copyNotes(moveDialog.noteIds, moveDialog.destination.trim());
-                  } else {
-                    moveNotes(moveDialog.noteIds, moveDialog.destination.trim());
-                  }
-                  setMoveDialog(null);
-                }}
+                onClick={confirmMoveDialog}
               >
                 Done
               </button>

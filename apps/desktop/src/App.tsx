@@ -431,6 +431,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-home", label: "Open home", keywords: ["home", "dashboard"] },
   { id: "open-notes", label: "Open notes", keywords: ["notes", "sidebar"] },
   { id: "open-note-info", label: "Open note info", keywords: ["metadata", "info", "note"] },
+  { id: "open-note-tags", label: "Edit note tags", keywords: ["tags", "labels", "metadata"] },
   { id: "open-note-history", label: "Open note history", keywords: ["history", "restore", "versions"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
   { id: "open-reminders", label: "Open reminders", keywords: ["reminders", "dates", "follow-up"] },
@@ -3418,6 +3419,12 @@ export default function App() {
         return;
       }
 
+      if ((event.metaKey || event.ctrlKey) && event.altKey && event.key.toLowerCase() === "t") {
+        event.preventDefault();
+        openTagEditor();
+        return;
+      }
+
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f" && activeNote) {
         event.preventDefault();
         openFindInNote();
@@ -4936,6 +4943,37 @@ export default function App() {
     setSearchOpen(false);
   }
 
+  function focusTagEditorInput(): void {
+    window.requestAnimationFrame(() => {
+      const input = document.getElementById("tag-input");
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+      }
+    });
+  }
+
+  function openTagEditor(noteId?: string): void {
+    const targetId = noteId ?? activeNote?.id;
+    if (!targetId) {
+      setToastMessage("Open a note before editing tags");
+      return;
+    }
+
+    const openEditor = () => {
+      setTagEditorOpen(true);
+      focusTagEditorInput();
+    };
+
+    setSearchOpen(false);
+    if (targetId !== activeId) {
+      focusNote(targetId);
+      window.setTimeout(openEditor, 0);
+      return;
+    }
+
+    openEditor();
+  }
+
   function openNoteInfo(noteId?: string): void {
     const targetId = noteId ?? activeNote?.id;
     if (!targetId) {
@@ -5141,6 +5179,11 @@ export default function App() {
 
     if (actionId === "open-note-info") {
       openNoteInfo();
+      return;
+    }
+
+    if (actionId === "open-note-tags") {
+      openTagEditor();
       return;
     }
 
@@ -6283,14 +6326,8 @@ export default function App() {
     }
 
     if (action === "edit-tags") {
-      setTagEditorOpen(true);
+      openTagEditor(targetId);
       setContextMenu(null);
-      window.requestAnimationFrame(() => {
-        const input = document.getElementById("tag-input");
-        if (input instanceof HTMLInputElement) {
-          input.focus();
-        }
-      });
       return;
     }
 
@@ -9954,15 +9991,7 @@ export default function App() {
               />
               <button
                 type="button"
-                onClick={() => {
-                  setTagEditorOpen(true);
-                  window.requestAnimationFrame(() => {
-                    const input = document.getElementById("tag-input");
-                    if (input instanceof HTMLInputElement) {
-                      input.focus();
-                    }
-                  });
-                }}
+                onClick={() => openTagEditor()}
               >
                 +
               </button>

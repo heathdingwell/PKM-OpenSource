@@ -167,6 +167,14 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
   });
 
+  it("opens note tags editor with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "t", metaKey: true, altKey: true });
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
+  });
+
   it("opens notes from graph node clicks", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));
@@ -275,6 +283,18 @@ describe("App", () => {
     fireEvent.click(screen.getByText("Open note info"));
 
     expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
+  });
+
+  it("opens note tags editor from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">tags" }
+    });
+    fireEvent.click(screen.getByText("Edit note tags"));
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
   it("opens or creates today's note from command palette without duplicates", async () => {
@@ -1169,6 +1189,21 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /Find in note/i }));
 
     expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
+  });
+
+  it("opens tag editor for the context menu target note", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const toDoCard = Array.from(document.querySelectorAll<HTMLButtonElement>(".note-grid .note-card")).find((entry) =>
+      entry.textContent?.includes("To-do list")
+    );
+    expect(toDoCard).toBeTruthy();
+    fireEvent.contextMenu(toDoCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Edit tags/i }));
+
+    expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
+    await waitFor(() => expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement));
   });
 
   it("shows bulk actions for multi-select and can trash selected notes", () => {

@@ -1763,6 +1763,28 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Quick task/i })).toBeInTheDocument();
   });
 
+  it("applies due date presets in the task dialog", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Preset task" } });
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowLabel = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(
+      tomorrow.getDate()
+    ).padStart(2, "0")}`;
+
+    fireEvent.click(screen.getByRole("button", { name: "Tomorrow" }));
+    const dueInput = screen.getByLabelText("Due date (optional)") as HTMLInputElement;
+    expect(dueInput.value).toBe(tomorrowLabel);
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+
+    const tasksModal = screen.getByRole("heading", { name: "Tasks", level: 3 }).closest("section");
+    expect(tasksModal).toBeTruthy();
+    expect(within(tasksModal as HTMLElement).getByText(/Preset task/)).toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).getByText(new RegExp(`Due ${tomorrowLabel}`))).toBeInTheDocument();
+  });
+
   it("creates a task with due date metadata and surfaces due label", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));

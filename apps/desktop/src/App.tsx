@@ -12804,6 +12804,40 @@ export default function App() {
                 value={quickTaskDialog.dueDate}
                 onChange={(event) => setQuickTaskDialog({ ...quickTaskDialog, dueDate: event.target.value })}
               />
+              <div className="quick-task-presets">
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() => {
+                    const now = new Date();
+                    setQuickTaskDialog({ ...quickTaskDialog, dueDate: toDateInputValue(now) });
+                  }}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() => {
+                    const now = new Date();
+                    now.setDate(now.getDate() + 1);
+                    setQuickTaskDialog({ ...quickTaskDialog, dueDate: toDateInputValue(now) });
+                  }}
+                >
+                  Tomorrow
+                </button>
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() => {
+                    const now = new Date();
+                    now.setDate(now.getDate() + 7);
+                    setQuickTaskDialog({ ...quickTaskDialog, dueDate: toDateInputValue(now) });
+                  }}
+                >
+                  Next week
+                </button>
+              </div>
             </label>
             <footer>
               <button type="button" onClick={() => setQuickTaskDialog(null)}>

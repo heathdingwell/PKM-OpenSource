@@ -2719,6 +2719,12 @@ body.is-resizing {
   line-height: 1.4;
 }
 
+.quick-task-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .bulk-tag-summary {
   margin: 0 0 10px;
   color: #6b7f9e;

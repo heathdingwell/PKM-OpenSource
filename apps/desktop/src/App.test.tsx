@@ -407,6 +407,30 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
+  it("duplicates the active note from command palette", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">duplicate" }
+    });
+    fireEvent.click(screen.getByText("Duplicate note"));
+
+    expect(await screen.findByRole("heading", { name: "Agenda copy", level: 2 })).toBeInTheDocument();
+  });
+
+  it("moves the active note to trash from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">trash" }
+    });
+    fireEvent.click(screen.getByText("Move note to trash"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    expect(screen.getByRole("heading", { name: "Trash", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
+  });
+
   it("opens or creates today's note from command palette without duplicates", async () => {
     render(<App />);
     const now = new Date();

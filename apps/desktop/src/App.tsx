@@ -436,6 +436,8 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-note-window", label: "Open note in new window", keywords: ["window", "detach", "note"] },
   { id: "open-note-lite-edit", label: "Open note in Lite edit mode", keywords: ["lite", "edit", "focus"] },
   { id: "copy-note-link", label: "Copy note link", keywords: ["link", "copy", "share", "note"] },
+  { id: "duplicate-note", label: "Duplicate note", keywords: ["duplicate", "copy", "note"] },
+  { id: "trash-note", label: "Move note to trash", keywords: ["trash", "delete", "note"] },
   { id: "rename-note", label: "Rename note", keywords: ["rename", "title", "note"] },
   { id: "move-note", label: "Move note", keywords: ["move", "notebook", "note"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
@@ -5324,6 +5326,36 @@ export default function App() {
         void copyNoteLink(activeNote.id);
       } else {
         setToastMessage("Open a note before copying a link");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "duplicate-note") {
+      if (!activeNote) {
+        setToastMessage("Open a note before duplicating");
+      } else if (activeNote.trashedAt) {
+        setToastMessage("Restore note from Trash before duplicating");
+      } else {
+        void duplicateNotes([activeNote.id]);
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "trash-note") {
+      if (!activeNote) {
+        setToastMessage("Open a note before moving to Trash");
+      } else if (activeNote.trashedAt) {
+        const removed = deleteNotesPermanently([activeNote.id]);
+        if (removed > 0) {
+          setToastMessage(`"${activeNote.title}" deleted permanently`);
+        }
+      } else {
+        const moved = moveNotesToTrash([activeNote.id]);
+        if (moved > 0) {
+          setToastMessage(`"${activeNote.title}" moved to Trash`);
+        }
       }
       setSearchOpen(false);
       return;

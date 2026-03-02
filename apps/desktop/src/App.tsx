@@ -1684,8 +1684,14 @@ function expandTemplateVariables(markdown: string, options: { title: string; now
   const time = toTimeInputValue(options.now);
   const datetime = `${date} ${time}`;
   const timestamp = options.now.toISOString();
+  const year = String(options.now.getFullYear());
+  const month = String(options.now.getMonth() + 1).padStart(2, "0");
+  const day = String(options.now.getDate()).padStart(2, "0");
+  const weekday = options.now.toLocaleDateString(undefined, { weekday: "long" });
 
-  return markdown.replace(/\{\{\s*(title|notebook|date|time|datetime|timestamp)\s*\}\}/gi, (_match, key: string) => {
+  return markdown.replace(
+    /\{\{\s*(title|notebook|date|time|datetime|timestamp|year|month|day|weekday)\s*\}\}/gi,
+    (_match, key: string) => {
     const normalized = key.toLowerCase();
     if (normalized === "title") {
       return options.title;
@@ -1702,8 +1708,21 @@ function expandTemplateVariables(markdown: string, options: { title: string; now
     if (normalized === "datetime") {
       return datetime;
     }
+    if (normalized === "year") {
+      return year;
+    }
+    if (normalized === "month") {
+      return month;
+    }
+    if (normalized === "day") {
+      return day;
+    }
+    if (normalized === "weekday") {
+      return weekday;
+    }
     return timestamp;
-  });
+    }
+  );
 }
 
 function rewriteWikilinks(markdown: string, titleMap: ReadonlyMap<string, string>): string {

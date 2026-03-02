@@ -1669,7 +1669,7 @@ describe("App", () => {
     fireEvent.change(editor as HTMLTextAreaElement, {
       target: {
         value:
-          "# Agenda\n\nDate {{date}}\nTime {{time}}\nWhen {{datetime}}\nStamp {{timestamp}}\nTitle {{title}}\nNotebook {{notebook}}"
+          "# Agenda\n\nDate {{date}}\nTime {{time}}\nWhen {{datetime}}\nStamp {{timestamp}}\nYear {{year}}\nMonth {{month}}\nDay {{day}}\nWeekday {{weekday}}\nTitle {{title}}\nNotebook {{notebook}}"
       }
     });
 
@@ -1684,8 +1684,16 @@ describe("App", () => {
     expect(resultEditor?.value).not.toContain("{{time}}");
     expect(resultEditor?.value).not.toContain("{{datetime}}");
     expect(resultEditor?.value).not.toContain("{{timestamp}}");
+    expect(resultEditor?.value).not.toContain("{{year}}");
+    expect(resultEditor?.value).not.toContain("{{month}}");
+    expect(resultEditor?.value).not.toContain("{{day}}");
+    expect(resultEditor?.value).not.toContain("{{weekday}}");
     expect(resultEditor?.value).not.toContain("{{title}}");
     expect(resultEditor?.value).not.toContain("{{notebook}}");
+    expect(resultEditor?.value).toMatch(/Year \d{4}/);
+    expect(resultEditor?.value).toMatch(/Month \d{2}/);
+    expect(resultEditor?.value).toMatch(/Day \d{2}/);
+    expect(resultEditor?.value).toMatch(/Weekday [A-Za-z]+/);
     expect(resultEditor?.value).toContain("Notebook Daily Notes");
   });
 

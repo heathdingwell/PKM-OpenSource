@@ -210,6 +210,36 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
+  it("supports updated:today search filter", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "updated:today" }
+    });
+
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Untitled")).toBeInTheDocument();
+  });
+
+  it("supports created date range search filter", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: `created:${today}..${today}` }
+    });
+
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Untitled")).toBeInTheDocument();
+  });
+
   it("supports due-task chip filter in search", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));

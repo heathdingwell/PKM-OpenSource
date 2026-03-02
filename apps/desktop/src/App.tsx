@@ -237,8 +237,10 @@ interface ParsedSearchQuery {
   text: string;
   tags: string[];
   notebook: string | null;
-  afterDate: string | null;
-  beforeDate: string | null;
+  updatedAfterDate: string | null;
+  updatedBeforeDate: string | null;
+  createdAfterDate: string | null;
+  createdBeforeDate: string | null;
   hasKinds: string[];
 }
 
@@ -1201,18 +1203,67 @@ function noteHasAttachmentKind(markdown: string, kind: string): boolean {
   return new RegExp(`\\[[^\\]]+\\]\\([^)]*${escaped}(?:$|[?#)])`, "i").test(markdown);
 }
 
+function parseSearchDateRangeToken(value: string): { afterDate: string | null; beforeDate: string | null } | null {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  const today = new Date();
+  const todayLabel = toDateInputValue(today);
+
+  if (normalized === "today") {
+    return { afterDate: todayLabel, beforeDate: todayLabel };
+  }
+  if (normalized === "yesterday") {
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const label = toDateInputValue(yesterday);
+    return { afterDate: label, beforeDate: label };
+  }
+  if (normalized === "week" || normalized === "last-week" || normalized === "7d" || normalized === "last7d") {
+    const start = new Date(today);
+    start.setDate(today.getDate() - 6);
+    return { afterDate: toDateInputValue(start), beforeDate: todayLabel };
+  }
+  if (normalized === "month" || normalized === "last-month" || normalized === "30d" || normalized === "last30d") {
+    const start = new Date(today);
+    start.setDate(today.getDate() - 29);
+    return { afterDate: toDateInputValue(start), beforeDate: todayLabel };
+  }
+
+  if (normalized.includes("..")) {
+    const [rawAfter, rawBefore] = normalized.split("..", 2);
+    const afterDate = rawAfter.trim() ? normalizeTaskDueDate(rawAfter.trim()) : null;
+    const beforeDate = rawBefore.trim() ? normalizeTaskDueDate(rawBefore.trim()) : null;
+    if (!afterDate && !beforeDate) {
+      return null;
+    }
+    return { afterDate, beforeDate };
+  }
+
+  const exact = normalizeTaskDueDate(normalized);
+  if (!exact) {
+    return null;
+  }
+
+  return { afterDate: exact, beforeDate: exact };
+}
+
 function parseSearchQuery(rawQuery: string): ParsedSearchQuery {
   const tokens: ParsedSearchQuery = {
     text: rawQuery,
     tags: [],
     notebook: null,
-    afterDate: null,
-    beforeDate: null,
+    updatedAfterDate: null,
+    updatedBeforeDate: null,
+    createdAfterDate: null,
+    createdBeforeDate: null,
     hasKinds: []
   };
 
   const extracted: string[] = [];
-  const tokenPattern = /\b(tag|notebook|folder|after|before|has):(?:"([^"]+)"|(\S+))/gi;
+  const tokenPattern = /\b(tag|notebook|folder|after|before|updated|created|has):(?:"([^"]+)"|(\S+))/gi;
   let match: RegExpExecArray | null;
 
   while ((match = tokenPattern.exec(rawQuery)) !== null) {
@@ -1235,12 +1286,36 @@ function parseSearchQuery(rawQuery: string): ParsedSearchQuery {
     }
 
     if (key === "after") {
-      tokens.afterDate = value;
+      const normalized = normalizeTaskDueDate(value);
+      if (normalized) {
+        tokens.updatedAfterDate = normalized;
+      }
       continue;
     }
 
     if (key === "before") {
-      tokens.beforeDate = value;
+      const normalized = normalizeTaskDueDate(value);
+      if (normalized) {
+        tokens.updatedBeforeDate = normalized;
+      }
+      continue;
+    }
+
+    if (key === "updated") {
+      const range = parseSearchDateRangeToken(value);
+      if (range) {
+        tokens.updatedAfterDate = range.afterDate;
+        tokens.updatedBeforeDate = range.beforeDate;
+      }
+      continue;
+    }
+
+    if (key === "created") {
+      const range = parseSearchDateRangeToken(value);
+      if (range) {
+        tokens.createdAfterDate = range.afterDate;
+        tokens.createdBeforeDate = range.beforeDate;
+      }
       continue;
     }
 
@@ -2210,8 +2285,10 @@ export default function App() {
         ? activeNotes.filter((note) => note.notebook === selectedNotebook)
         : activeNotes;
 
-    const filterAfter = parsedQuickQuery.afterDate ? new Date(`${parsedQuickQuery.afterDate}T00:00:00`) : null;
-    const filterBefore = parsedQuickQuery.beforeDate ? new Date(`${parsedQuickQuery.beforeDate}T23:59:59`) : null;
+    const updatedAfter = parsedQuickQuery.updatedAfterDate ? new Date(`${parsedQuickQuery.updatedAfterDate}T00:00:00`) : null;
+    const updatedBefore = parsedQuickQuery.updatedBeforeDate ? new Date(`${parsedQuickQuery.updatedBeforeDate}T23:59:59`) : null;
+    const createdAfter = parsedQuickQuery.createdAfterDate ? new Date(`${parsedQuickQuery.createdAfterDate}T00:00:00`) : null;
+    const createdBefore = parsedQuickQuery.createdBeforeDate ? new Date(`${parsedQuickQuery.createdBeforeDate}T23:59:59`) : null;
     const notebookFilter = parsedQuickQuery.notebook?.toLowerCase() ?? null;
 
     const filteredScope = scopedNotes.filter((note) => {
@@ -2233,12 +2310,21 @@ export default function App() {
       if (parsedQuickQuery.hasKinds.length && !parsedQuickQuery.hasKinds.every((kind) => noteHasAttachmentKind(note.markdown, kind))) {
         return false;
       }
-      if (filterAfter || filterBefore) {
+      if (updatedAfter || updatedBefore) {
         const updated = new Date(note.updatedAt);
-        if (filterAfter && updated < filterAfter) {
+        if (updatedAfter && updated < updatedAfter) {
           return false;
         }
-        if (filterBefore && updated > filterBefore) {
+        if (updatedBefore && updated > updatedBefore) {
+          return false;
+        }
+      }
+      if (createdAfter || createdBefore) {
+        const created = new Date(note.createdAt);
+        if (createdAfter && created < createdAfter) {
+          return false;
+        }
+        if (createdBefore && created > createdBefore) {
           return false;
         }
       }
@@ -9432,7 +9518,7 @@ export default function App() {
                 </button>
               ) : null}
             </div>
-            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, has:attachment|task|due|overdue|today|upcoming|undated|image|pdf</p>
+            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, updated:today|week|month|YYYY-MM-DD..YYYY-MM-DD, created:, has:attachment|task|due|overdue|today|upcoming|undated|image|pdf</p>
             <div className="search-results">
               <h4>Recent searches</h4>
               <ul>

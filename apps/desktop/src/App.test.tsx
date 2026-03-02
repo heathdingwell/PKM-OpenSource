@@ -321,6 +321,20 @@ describe("App", () => {
     expect(screen.getByText("No reminders scheduled.")).toBeInTheDocument();
   });
 
+  it("opens new stack modal from command palette action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">new stack" }
+    });
+    fireEvent.click(screen.getByText("New stack"));
+
+    expect(screen.getByRole("heading", { name: "New stack", level: 3 })).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Stack name"), { target: { value: "Planning" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(screen.getByRole("button", { name: /Planning/i })).toBeInTheDocument();
+  });
+
   it("opens note history from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -1245,6 +1259,17 @@ describe("App", () => {
 
     fireEvent.keyDown(notebookItem as HTMLButtonElement, { key: "ContextMenu" });
     expect(screen.getByRole("button", { name: "Rename notebook" })).toBeInTheDocument();
+  });
+
+  it("opens stack context menu from keyboard context-menu key", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ New stack" }));
+    fireEvent.change(screen.getByPlaceholderText("Stack name"), { target: { value: "Planning" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    const stackHeader = screen.getByRole("button", { name: /Planning/i });
+    fireEvent.keyDown(stackHeader, { key: "ContextMenu" });
+    expect(screen.getByRole("button", { name: "Rename stack" })).toBeInTheDocument();
   });
 
   it("adds notebook shortcuts from notebook context menu", () => {

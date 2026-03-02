@@ -49,6 +49,12 @@ interface MoveDialogState {
   mode: "move" | "copy";
 }
 
+interface BulkTagDialogState {
+  noteIds: string[];
+  mode: "add" | "remove";
+  tag: string;
+}
+
 interface RenameDialogState {
   oldName: string;
   newName: string;
@@ -2182,6 +2188,7 @@ export default function App() {
   const [stackMenu, setStackMenu] = useState<StackMenuState | null>(null);
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState | null>(null);
+  const [bulkTagDialog, setBulkTagDialog] = useState<BulkTagDialogState | null>(null);
   const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
   const [createNotebookDialog, setCreateNotebookDialog] = useState<CreateNotebookDialogState | null>(null);
   const [createStackDialog, setCreateStackDialog] = useState<CreateStackDialogState | null>(null);
@@ -5363,6 +5370,99 @@ export default function App() {
     openEditor();
   }
 
+  function openBulkTagDialog(noteIds: string[]): void {
+    const targetIds = Array.from(
+      new Set(
+        noteIds.filter((noteId) => {
+          const note = notes.find((entry) => entry.id === noteId);
+          return Boolean(note) && !note?.trashedAt;
+        })
+      )
+    );
+    if (!targetIds.length) {
+      setToastMessage("Restore notes from Trash to edit tags");
+      return;
+    }
+
+    setTagEditorOpen(false);
+    setSearchOpen(false);
+    setBulkTagDialog({
+      noteIds: targetIds,
+      mode: "add",
+      tag: ""
+    });
+  }
+
+  function confirmBulkTagDialog(): void {
+    if (!bulkTagDialog) {
+      return;
+    }
+
+    const normalizedTag = bulkTagDialog.tag.trim().replace(/^#/, "");
+    if (!normalizedTag) {
+      setToastMessage("Enter a tag");
+      return;
+    }
+
+    const noteIdSet = new Set(bulkTagDialog.noteIds);
+    const selected = notes.filter((note) => noteIdSet.has(note.id) && !note.trashedAt);
+    if (!selected.length) {
+      setBulkTagDialog(null);
+      setToastMessage("Restore notes from Trash to edit tags");
+      return;
+    }
+
+    const changedCount = selected.filter((note) =>
+      bulkTagDialog.mode === "add" ? !note.tags.includes(normalizedTag) : note.tags.includes(normalizedTag)
+    ).length;
+
+    if (changedCount > 0) {
+      const now = new Date().toISOString();
+      setNotes((previous) =>
+        previous.map((note) => {
+          if (!noteIdSet.has(note.id) || note.trashedAt) {
+            return note;
+          }
+
+          if (bulkTagDialog.mode === "add") {
+            if (note.tags.includes(normalizedTag)) {
+              return note;
+            }
+            return {
+              ...note,
+              tags: [...note.tags, normalizedTag].sort((left, right) => left.localeCompare(right)),
+              updatedAt: now
+            };
+          }
+
+          if (!note.tags.includes(normalizedTag)) {
+            return note;
+          }
+
+          return {
+            ...note,
+            tags: note.tags.filter((entry) => entry !== normalizedTag),
+            updatedAt: now
+          };
+        })
+      );
+    }
+
+    setBulkTagDialog(null);
+
+    if (changedCount === 0) {
+      setToastMessage(
+        bulkTagDialog.mode === "add"
+          ? `#${normalizedTag} is already on selected notes`
+          : `#${normalizedTag} is not on selected notes`
+      );
+      return;
+    }
+
+    const action = bulkTagDialog.mode === "add" ? "added to" : "removed from";
+    setToastMessage(`#${normalizedTag} ${action} ${changedCount === 1 ? "1 note" : `${changedCount} notes`}`);
+  }
+
   function openNoteRename(noteId?: string): void {
     const targetId = noteId ?? activeNote?.id;
     if (!targetId) {
@@ -7032,7 +7132,11 @@ export default function App() {
     }
 
     if (action === "edit-tags") {
-      openTagEditor(targetId);
+      if (contextMenu.noteIds.length > 1) {
+        openBulkTagDialog(contextMenu.noteIds);
+      } else {
+        openTagEditor(targetId);
+      }
       setContextMenu(null);
       return;
     }
@@ -9411,6 +9515,18 @@ export default function App() {
                   }
                 >
                   Copy
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setBulkTagDialog({
+                      noteIds: selectedVisibleNoteIds,
+                      mode: "add",
+                      tag: ""
+                    })
+                  }
+                >
+                  Edit Tags
                 </button>
                 <button
                   type="button"
@@ -12110,6 +12226,50 @@ export default function App() {
                 onClick={() => void confirmTemplateDialog()}
               >
                 Create note
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {bulkTagDialog ? (
+        <div className="overlay" onClick={() => setBulkTagDialog(null)}>
+          <section className="rename-modal bulk-tag-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>Edit tags</h3>
+            <p className="bulk-tag-summary">{bulkTagDialog.noteIds.length} selected</p>
+            <div className="bulk-tag-mode" role="group" aria-label="Tag action">
+              <button
+                type="button"
+                className={bulkTagDialog.mode === "add" ? "active" : ""}
+                onClick={() => setBulkTagDialog({ ...bulkTagDialog, mode: "add" })}
+              >
+                Add tag
+              </button>
+              <button
+                type="button"
+                className={bulkTagDialog.mode === "remove" ? "active" : ""}
+                onClick={() => setBulkTagDialog({ ...bulkTagDialog, mode: "remove" })}
+              >
+                Remove tag
+              </button>
+            </div>
+            <input
+              placeholder="tag"
+              value={bulkTagDialog.tag}
+              onChange={(event) => setBulkTagDialog({ ...bulkTagDialog, tag: event.target.value })}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  confirmBulkTagDialog();
+                }
+              }}
+            />
+            <footer>
+              <button type="button" onClick={() => setBulkTagDialog(null)}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={confirmBulkTagDialog}>
+                Apply
               </button>
             </footer>
           </section>

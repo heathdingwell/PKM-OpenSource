@@ -2672,6 +2672,33 @@ body.is-resizing {
   font-size: 12px;
 }
 
+.bulk-tag-summary {
+  margin: 0 0 10px;
+  color: #6b7f9e;
+  font-size: 12px;
+}
+
+.bulk-tag-mode {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.bulk-tag-mode button {
+  flex: 1;
+  height: 32px;
+  border: 1px solid #c9d8ef;
+  border-radius: 8px;
+  color: #395478;
+  background: #f4f8ff;
+}
+
+.bulk-tag-mode button.active {
+  border-color: var(--primary-strong);
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+}
+
 .move-modal ul {
   max-height: 260px;
   margin: 0;

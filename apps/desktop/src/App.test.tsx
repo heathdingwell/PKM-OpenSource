@@ -1810,6 +1810,50 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Remove Shortcuts" })).toBeInTheDocument();
   });
 
+  it("edits tags for multi-selected notes from bulk actions", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Tags" }));
+    expect(screen.getByRole("heading", { name: "Edit tags", level: 3 })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("tag"), { target: { value: "focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(
+      screen.getByText((content) => content.includes("#focus") && (content.includes("added to") || content.includes("already")))
+    ).toBeInTheDocument();
+
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    expect(screen.getByRole("button", { name: "#focus" })).toBeInTheDocument();
+    fireEvent.click(cards[1] as HTMLButtonElement);
+    expect(screen.getByRole("button", { name: "#focus" })).toBeInTheDocument();
+  });
+
+  it("opens bulk tag editor from note context menu on multi-select", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.contextMenu(cards[1] as HTMLButtonElement);
+    const contextMenu = document.querySelector(".context-menu") as HTMLElement | null;
+    expect(contextMenu).toBeTruthy();
+    fireEvent.click(within(contextMenu as HTMLElement).getByRole("button", { name: /Edit tags/i }));
+
+    expect(screen.getByRole("heading", { name: "Edit tags", level: 3 })).toBeInTheDocument();
+    const bulkTagModal = document.querySelector(".bulk-tag-modal") as HTMLElement | null;
+    expect(bulkTagModal).toBeTruthy();
+    expect(within(bulkTagModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
+  });
+
   it("moves multi-selected notes by dragging one selected card", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

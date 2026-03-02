@@ -1454,16 +1454,19 @@ function rewriteHeading(markdown: string, title: string): string {
   return `# ${title}\n\n${body}`;
 }
 
-function expandTemplateVariables(markdown: string, options: { title: string; now: Date }): string {
+function expandTemplateVariables(markdown: string, options: { title: string; now: Date; notebook: string }): string {
   const date = toDateInputValue(options.now);
   const time = toTimeInputValue(options.now);
   const datetime = `${date} ${time}`;
   const timestamp = options.now.toISOString();
 
-  return markdown.replace(/\{\{\s*(title|date|time|datetime|timestamp)\s*\}\}/gi, (_match, key: string) => {
+  return markdown.replace(/\{\{\s*(title|notebook|date|time|datetime|timestamp)\s*\}\}/gi, (_match, key: string) => {
     const normalized = key.toLowerCase();
     if (normalized === "title") {
       return options.title;
+    }
+    if (normalized === "notebook") {
+      return options.notebook;
     }
     if (normalized === "date") {
       return date;
@@ -5917,7 +5920,11 @@ export default function App() {
     const allocatePath = createPathAllocator(notes);
     const path = allocatePath(safeNotebook, safeTitle);
     const rewrittenHeading = rewriteHeading(note.markdown, safeTitle);
-    const expanded = expandTemplateVariables(rewrittenHeading, { title: safeTitle, now: nowDate });
+    const expanded = expandTemplateVariables(rewrittenHeading, {
+      title: safeTitle,
+      now: nowDate,
+      notebook: safeNotebook
+    });
     const markdown = await cloneNoteAttachmentsForCopy(note.path, path, expanded);
     const created = noteFromMarkdown(
       {

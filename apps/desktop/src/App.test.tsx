@@ -857,7 +857,10 @@ describe("App", () => {
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
     fireEvent.change(editor as HTMLTextAreaElement, {
-      target: { value: "# Agenda\n\nDate {{date}}\nTime {{time}}\nWhen {{datetime}}\nStamp {{timestamp}}\nTitle {{title}}" }
+      target: {
+        value:
+          "# Agenda\n\nDate {{date}}\nTime {{time}}\nWhen {{datetime}}\nStamp {{timestamp}}\nTitle {{title}}\nNotebook {{notebook}}"
+      }
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Use this template" }));
@@ -872,6 +875,8 @@ describe("App", () => {
     expect(resultEditor?.value).not.toContain("{{datetime}}");
     expect(resultEditor?.value).not.toContain("{{timestamp}}");
     expect(resultEditor?.value).not.toContain("{{title}}");
+    expect(resultEditor?.value).not.toContain("{{notebook}}");
+    expect(resultEditor?.value).toContain("Notebook Daily Notes");
   });
 
   it("creates a task from the task dialog", () => {

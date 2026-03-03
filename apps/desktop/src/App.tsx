@@ -11347,6 +11347,7 @@ export default function App() {
                                   <button type="button" onClick={() => openLinkedNote(entry.note)}>
                                     {entry.note.title}
                                   </button>
+                                  {entry.context ? <small className="link-context">{entry.context}</small> : null}
                                 </li>
                               ))
                             ) : (

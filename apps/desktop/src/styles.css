@@ -2341,6 +2341,14 @@ body.is-resizing {
   margin-bottom: 0;
 }
 
+.link-sections .link-context {
+  display: block;
+  margin: 3px 8px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .link-sections button {
   width: 100%;
   border: 0;

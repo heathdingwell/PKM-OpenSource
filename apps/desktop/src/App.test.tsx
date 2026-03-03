@@ -2438,6 +2438,25 @@ describe("App", () => {
     expect(within(backlinksDock).getByText(/Review Agenda before standup/i)).toBeInTheDocument();
   });
 
+  it("shows backlink context snippets in preview link section", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    const sourceEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(sourceEditor).toBeTruthy();
+    fireEvent.change(sourceEditor as HTMLTextAreaElement, {
+      target: { value: "# Link Source\n\n- [ ] Review [[Agenda]] before standup" }
+    });
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.click(agendaCard as HTMLButtonElement);
+
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" });
+    expect(within(previewPane).getByText(/Review Agenda before standup/i)).toBeInTheDocument();
+  });
+
   it("opens a note in lite edit mode from context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

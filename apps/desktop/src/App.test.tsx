@@ -1712,6 +1712,35 @@ describe("App", () => {
     expect(screen.queryByText("Doc PDF")).not.toBeInTheDocument();
   });
 
+  it("filters files modal to attachments from the current note", () => {
+    render(<App />);
+
+    let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Capture\n\n![Photo shot](./attachments/photo.png)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open files" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    expect(screen.getByText("Doc PDF")).toBeInTheDocument();
+    expect(screen.getByText("Photo shot")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Current note \(/ }));
+    expect(screen.getByText("Photo shot")).toBeInTheDocument();
+    expect(screen.queryByText("Doc PDF")).not.toBeInTheDocument();
+  });
+
   it("copies attachment path from files modal", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

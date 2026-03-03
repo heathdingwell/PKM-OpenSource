@@ -287,6 +287,7 @@ type SearchUpdatedPreset = "none" | "today" | "week" | "month";
 type SearchCreatedPreset = "none" | "today" | "week" | "month";
 type AttachmentKind = "image" | "pdf" | "video" | "audio" | "other";
 type AttachmentSortMode = "recent" | "name-asc" | "name-desc";
+type AttachmentScopeMode = "all" | "current-note";
 type CalendarSortMode = "soonest" | "latest";
 type TaskSortMode = "recent" | "due-asc" | "due-desc";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
@@ -2389,6 +2390,7 @@ export default function App() {
   const [filesQuery, setFilesQuery] = useState("");
   const [filesFilterKind, setFilesFilterKind] = useState<"all" | AttachmentKind>("all");
   const [filesSortMode, setFilesSortMode] = useState<AttachmentSortMode>("recent");
+  const [filesScopeMode, setFilesScopeMode] = useState<AttachmentScopeMode>("all");
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [calendarQuery, setCalendarQuery] = useState("");
   const [calendarFilter, setCalendarFilter] = useState("all");
@@ -3182,6 +3184,12 @@ export default function App() {
     });
   }, [openTasks, taskDueFilter, taskQuery, taskSortMode]);
   const attachmentItems = useMemo(() => extractAttachments(liveDerivedNotes), [liveDerivedNotes]);
+  const currentNoteAttachmentCount = useMemo(() => {
+    if (!activeNote) {
+      return 0;
+    }
+    return attachmentItems.filter((item) => item.noteId === activeNote.id).length;
+  }, [attachmentItems, activeNote]);
   const attachmentItemCounts = useMemo(() => {
     const counts = {
       all: attachmentItems.length,
@@ -3199,6 +3207,9 @@ export default function App() {
   const filteredAttachmentItems = useMemo(() => {
     const query = filesQuery.trim().toLowerCase();
     const filtered = attachmentItems.filter((item) => {
+      if (filesScopeMode === "current-note" && activeNote && item.noteId !== activeNote.id) {
+        return false;
+      }
       if (filesFilterKind !== "all" && getAttachmentKind(item.target) !== filesFilterKind) {
         return false;
       }
@@ -3216,7 +3227,7 @@ export default function App() {
         ? left.label.localeCompare(right.label)
         : right.label.localeCompare(left.label)
     );
-  }, [attachmentItems, filesFilterKind, filesQuery, filesSortMode]);
+  }, [attachmentItems, filesFilterKind, filesQuery, filesScopeMode, filesSortMode, activeNote]);
   const calendarEventsById = useMemo(() => new Map(calendarEvents.map((event) => [event.id, event])), [calendarEvents]);
   const calendarFilterCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -3784,6 +3795,7 @@ export default function App() {
       setFilesQuery("");
       setFilesFilterKind("all");
       setFilesSortMode("recent");
+      setFilesScopeMode("all");
     }
   }, [filesDialogOpen]);
 
@@ -6443,6 +6455,7 @@ export default function App() {
       setFilesQuery("");
       setFilesFilterKind("all");
       setFilesSortMode("recent");
+      setFilesScopeMode("all");
       setFilesDialogOpen(true);
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
@@ -9626,6 +9639,7 @@ export default function App() {
                   setFilesQuery("");
                   setFilesFilterKind("all");
                   setFilesSortMode("recent");
+                  setFilesScopeMode("all");
                   setFilesDialogOpen(true);
                   setCalendarDialogOpen(false);
                   return;
@@ -12772,6 +12786,7 @@ export default function App() {
             setFilesQuery("");
             setFilesFilterKind("all");
             setFilesSortMode("recent");
+            setFilesScopeMode("all");
           }}
         >
           <section className="move-modal files-modal" onClick={(event) => event.stopPropagation()}>
@@ -12818,6 +12833,21 @@ export default function App() {
                   </button>
                   <button
                     type="button"
+                    className={filesScopeMode === "all" ? "chip active" : "chip"}
+                    onClick={() => setFilesScopeMode("all")}
+                  >
+                    All notes
+                  </button>
+                  <button
+                    type="button"
+                    className={filesScopeMode === "current-note" ? "chip active" : "chip"}
+                    onClick={() => setFilesScopeMode("current-note")}
+                    disabled={!activeNote}
+                  >
+                    Current note ({currentNoteAttachmentCount})
+                  </button>
+                  <button
+                    type="button"
                     className={filesFilterKind === "all" ? "chip active" : "chip"}
                     onClick={() => setFilesFilterKind("all")}
                   >
@@ -12858,12 +12888,16 @@ export default function App() {
                   >
                     Other ({attachmentItemCounts.other})
                   </button>
-                  {filesSortMode !== "recent" || filesFilterKind !== "all" || filesQuery.trim() ? (
+                  {filesSortMode !== "recent" ||
+                  filesScopeMode !== "all" ||
+                  filesFilterKind !== "all" ||
+                  filesQuery.trim() ? (
                     <button
                       type="button"
                       className="chip"
                       onClick={() => {
                         setFilesSortMode("recent");
+                        setFilesScopeMode("all");
                         setFilesFilterKind("all");
                         setFilesQuery("");
                       }}
@@ -12889,6 +12923,7 @@ export default function App() {
                           setFilesQuery("");
                           setFilesFilterKind("all");
                           setFilesSortMode("recent");
+                          setFilesScopeMode("all");
                         }}
                       >
                         <strong>{file.label}</strong>
@@ -12927,6 +12962,7 @@ export default function App() {
                   setFilesQuery("");
                   setFilesFilterKind("all");
                   setFilesSortMode("recent");
+                  setFilesScopeMode("all");
                 }}
               >
                 Close

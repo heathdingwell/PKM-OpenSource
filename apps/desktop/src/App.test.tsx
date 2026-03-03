@@ -3247,6 +3247,36 @@ describe("App", () => {
     expect(trashedCards.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("copies multi-selected notes from bulk actions", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = Array.from(document.querySelectorAll<HTMLButtonElement>(".note-grid .note-card"));
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    const moveModal = screen.getByRole("heading", { name: "Copy to", level: 3 }).closest("section");
+    expect(moveModal).toBeTruthy();
+    fireEvent.click(within(moveModal as HTMLElement).getByRole("button", { name: "Inbox" }));
+    fireEvent.click(within(moveModal as HTMLElement).getByRole("button", { name: "Done" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("2 notes copied to Inbox")).toBeInTheDocument();
+    });
+
+    const notebookItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".notebook-item"));
+    const inboxNotebook = notebookItems.find((entry) => entry.textContent?.includes("Inbox"));
+    expect(inboxNotebook).toBeTruthy();
+    fireEvent.click(inboxNotebook as HTMLButtonElement);
+
+    expect(screen.getByRole("heading", { name: "Inbox", level: 1 })).toBeInTheDocument();
+    const notesList = screen.getByLabelText("Notes list");
+    expect(within(notesList).getByText("Agenda copy 1")).toBeInTheDocument();
+    expect(within(notesList).getByText("To-do list copy 2")).toBeInTheDocument();
+  });
+
   it("toggles shortcuts from bulk actions", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

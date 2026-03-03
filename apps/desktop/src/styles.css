@@ -2954,6 +2954,10 @@ body.is-resizing {
   min-width: 0;
 }
 
+.files-modal .file-source {
+  color: var(--muted);
+}
+
 .files-modal .file-copy {
   height: 28px;
   padding: 0 10px;

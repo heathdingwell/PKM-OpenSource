@@ -1684,6 +1684,7 @@ describe("App", () => {
     expect(screen.getByText("Doc PDF")).toBeInTheDocument();
     expect(screen.getByText("Voice memo")).toBeInTheDocument();
     expect(screen.getByText("Archive")).toBeInTheDocument();
+    expect(screen.getAllByText("Agenda · Daily Notes").length).toBeGreaterThan(0);
     const filesModal = screen.getByRole("heading", { name: "Files", level: 3 }).closest("section");
     expect(filesModal).toBeTruthy();
     const rowsBefore = Array.from((filesModal as HTMLElement).querySelectorAll<HTMLElement>("li strong"));

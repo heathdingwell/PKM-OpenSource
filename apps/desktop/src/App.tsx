@@ -12928,6 +12928,9 @@ export default function App() {
                       >
                         <strong>{file.label}</strong>
                         <small>{file.target}</small>
+                        <small className="file-source">
+                          {file.noteTitle} · {file.notebook}
+                        </small>
                       </button>
                       <div className="file-actions">
                         <button

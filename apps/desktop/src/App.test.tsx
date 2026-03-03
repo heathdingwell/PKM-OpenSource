@@ -2257,6 +2257,19 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
+  it("opens local graph scope from note context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Open local graph" }));
+
+    expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+  });
+
   it("toggles collapsible preview sections from note context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

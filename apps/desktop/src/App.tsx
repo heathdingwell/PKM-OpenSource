@@ -607,6 +607,7 @@ const seedCalendarEvents: Array<Pick<CalendarEvent, "title" | "startAt" | "endAt
 const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
   { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
   { id: "open-lite-edit", label: "Open in Lite edit mode", shortcut: "alt+cmd+o" },
+  { id: "open-local-graph", label: "Open local graph" },
   { id: "share", label: "Share", shortcut: "cmd+alt+s" },
   { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
   { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
@@ -7632,6 +7633,22 @@ export default function App() {
 
     if (action === "open-lite-edit") {
       openNoteInLiteEdit(targetId);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-local-graph") {
+      if (targetId && targetId !== activeId) {
+        focusNote(targetId);
+      }
+      setSidebarView("notes");
+      setBrowseMode("graph");
+      setGraphScope("local");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
       setContextMenu(null);
       return;
     }

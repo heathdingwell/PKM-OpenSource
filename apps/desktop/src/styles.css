@@ -2310,7 +2310,7 @@ body.is-resizing {
 
 .link-sections {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
   margin-top: 16px;
   padding-top: 14px;
@@ -2371,6 +2371,32 @@ body.is-resizing {
 .link-sections .muted {
   color: #94a3b8;
   font-size: 13px;
+}
+
+.link-sections .preview-meta-list {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.link-sections .preview-meta-list div {
+  display: grid;
+  gap: 2px;
+}
+
+.link-sections .preview-meta-list dt {
+  color: #6d7f9b;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.link-sections .preview-meta-list dd {
+  margin: 0;
+  color: #2a3f61;
+  font-size: 12px;
+  word-break: break-word;
 }
 
 .line-space {

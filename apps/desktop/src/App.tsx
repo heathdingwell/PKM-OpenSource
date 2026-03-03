@@ -11574,6 +11574,35 @@ export default function App() {
                             )}
                           </ul>
                         </section>
+                        <section>
+                          <h5>Metadata</h5>
+                          <dl className="preview-meta-list">
+                            <div>
+                              <dt>Notebook</dt>
+                              <dd>{activeNote.notebook}</dd>
+                            </div>
+                            <div>
+                              <dt>Path</dt>
+                              <dd>{activeNote.path}</dd>
+                            </div>
+                            <div>
+                              <dt>Updated</dt>
+                              <dd>{new Date(activeNote.updatedAt).toLocaleString()}</dd>
+                            </div>
+                            <div>
+                              <dt>Words</dt>
+                              <dd>{draftWordCount}</dd>
+                            </div>
+                            <div>
+                              <dt>Characters</dt>
+                              <dd>{draftCharCount}</dd>
+                            </div>
+                            <div>
+                              <dt>Tags</dt>
+                              <dd>{activeNote.tags.length ? activeNote.tags.join(", ") : "None"}</dd>
+                            </div>
+                          </dl>
+                        </section>
                       </div>
                     </div>
                   </section>

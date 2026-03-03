@@ -2533,6 +2533,18 @@ describe("App", () => {
     expect(within(linkedEventsSection as HTMLElement).getByText(/^Events · /i)).toBeInTheDocument();
   });
 
+  it("shows note metadata in preview panel", () => {
+    render(<App />);
+
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" });
+    const metadataSection = within(previewPane).getByRole("heading", { name: "Metadata", level: 5 }).closest("section");
+    expect(metadataSection).toBeTruthy();
+    expect(within(metadataSection as HTMLElement).getByText("Notebook")).toBeInTheDocument();
+    expect(within(metadataSection as HTMLElement).getByText("Path")).toBeInTheDocument();
+    expect(within(metadataSection as HTMLElement).getByText("Daily Notes")).toBeInTheDocument();
+    expect(within(metadataSection as HTMLElement).getByText("Daily Notes/Agenda.md")).toBeInTheDocument();
+  });
+
   it("prevents duplicate event references from calendar modal", () => {
     render(<App />);
 

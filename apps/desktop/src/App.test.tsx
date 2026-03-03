@@ -183,6 +183,18 @@ describe("App", () => {
     expect(within(graphCanvas).queryByRole("button", { name: "Agenda" })).not.toBeInTheDocument();
   });
 
+  it("persists graph scope preference", () => {
+    const first = render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    fireEvent.click(screen.getByRole("button", { name: "Local" }));
+    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+    first.unmount();
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+  });
+
   it("toggles focus mode from the editor topbar", () => {
     render(<App />);
     const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });

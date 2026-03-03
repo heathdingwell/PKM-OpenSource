@@ -2571,6 +2571,38 @@ describe("App", () => {
     expect((editor as HTMLTextAreaElement).value).toContain("1. item");
   });
 
+  it("applies large header from editor context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.change(editor as HTMLTextAreaElement, { target: { value: "Roadmap" } });
+    (editor as HTMLTextAreaElement).focus();
+    (editor as HTMLTextAreaElement).setSelectionRange(0, 7);
+    fireEvent.contextMenu(editor as HTMLTextAreaElement);
+
+    const menu = document.querySelector(".editor-context-menu") as HTMLElement | null;
+    expect(menu).toBeTruthy();
+    fireEvent.click(within(menu as HTMLElement).getByRole("button", { name: "Large header" }));
+
+    expect((editor as HTMLTextAreaElement).value).toContain("# Roadmap");
+  });
+
+  it("inserts code block from editor context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.contextMenu(editor as HTMLTextAreaElement);
+    const menu = document.querySelector(".editor-context-menu") as HTMLElement | null;
+    expect(menu).toBeTruthy();
+    fireEvent.click(within(menu as HTMLElement).getByRole("button", { name: "Code block" }));
+
+    expect((editor as HTMLTextAreaElement).value).toContain("```text");
+  });
+
   it("inserts a table from rich editor context menu", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Rich" }));
@@ -2584,6 +2616,22 @@ describe("App", () => {
     await waitFor(() => {
       const markdownEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
       expect(markdownEditor?.value).toContain("| --- | --- |");
+    });
+  });
+
+  it("inserts formula from rich editor context menu", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Rich" }));
+    const editor = document.querySelector(".rich-editor-content") as HTMLElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.contextMenu(editor as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Formula" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Markdown" }));
+    await waitFor(() => {
+      const markdownEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+      expect(markdownEditor?.value).toContain("$$");
     });
   });
 

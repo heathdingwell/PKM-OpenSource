@@ -677,6 +677,13 @@ const slashCommands: SlashCommand[] = [
 ];
 
 const editorContextRows: Array<{ id: string; label: string; divider?: boolean }> = [
+  { id: "quote", label: "Quote" },
+  { id: "divider-0", label: "", divider: true },
+  { id: "heading-1", label: "Large header" },
+  { id: "heading-2", label: "Medium header" },
+  { id: "heading-3", label: "Small header" },
+  { id: "paragraph", label: "Normal text" },
+  { id: "divider-0b", label: "", divider: true },
   { id: "bold", label: "Bold" },
   { id: "italic", label: "Italic" },
   { id: "underline", label: "Underline" },
@@ -698,6 +705,10 @@ const editorContextRows: Array<{ id: string; label: string; divider?: boolean }>
   { id: "table-column-after", label: "Add table column right" },
   { id: "table-delete", label: "Delete table" },
   { id: "divider-3", label: "", divider: true },
+  { id: "divider", label: "Divider" },
+  { id: "code-block", label: "Code block" },
+  { id: "formula", label: "Formula" },
+  { id: "divider-3b", label: "", divider: true },
   { id: "link", label: "Insert link" },
   { id: "find", label: "Find in note" },
   { id: "divider-4", label: "", divider: true },
@@ -8636,7 +8647,17 @@ export default function App() {
     }
 
     if (editorMode === "rich") {
-      if (action === "bold") {
+      if (action === "quote") {
+        richEditorRef.current?.toggleBlockquote();
+      } else if (action === "heading-1") {
+        richEditorRef.current?.setHeading(1);
+      } else if (action === "heading-2") {
+        richEditorRef.current?.setHeading(2);
+      } else if (action === "heading-3") {
+        richEditorRef.current?.setHeading(3);
+      } else if (action === "paragraph") {
+        richEditorRef.current?.setParagraph();
+      } else if (action === "bold") {
         richEditorRef.current?.toggleBold();
       } else if (action === "italic") {
         richEditorRef.current?.toggleItalic();
@@ -8670,6 +8691,12 @@ export default function App() {
         richEditorRef.current?.addTableColumnAfter();
       } else if (action === "table-delete") {
         richEditorRef.current?.deleteTable();
+      } else if (action === "divider") {
+        richEditorRef.current?.setHorizontalRule();
+      } else if (action === "code-block") {
+        richEditorRef.current?.toggleCodeBlock();
+      } else if (action === "formula") {
+        richEditorRef.current?.insertContent("$$\n\n$$");
       } else if (action === "link") {
         runRichToolbarAction("link");
       }
@@ -8678,7 +8705,17 @@ export default function App() {
       return;
     }
 
-    if (action === "bold") {
+    if (action === "quote") {
+      applyMarkdownInlineFormat("", "", "Quote", { linePrefix: "> " });
+    } else if (action === "heading-1") {
+      applyMarkdownSlashCommand({ id: "heading-1", label: "Large header", section: "Text Styles", keywords: ["h1"] });
+    } else if (action === "heading-2") {
+      applyMarkdownSlashCommand({ id: "heading-2", label: "Medium header", section: "Text Styles", keywords: ["h2"] });
+    } else if (action === "heading-3") {
+      applyMarkdownSlashCommand({ id: "heading-3", label: "Small header", section: "Text Styles", keywords: ["h3"] });
+    } else if (action === "paragraph") {
+      applyMarkdownSlashCommand({ id: "paragraph", label: "Normal text", section: "Text Styles", keywords: ["text"] });
+    } else if (action === "bold") {
       applyMarkdownInlineFormat("**", "**", "bold text");
     } else if (action === "italic") {
       applyMarkdownInlineFormat("*", "*", "italic text");
@@ -8708,6 +8745,12 @@ export default function App() {
       applyMarkdownSlashCommand({ id: "table", label: "Table", section: "Essentials", keywords: ["table"] });
     } else if (action === "table-row-after" || action === "table-column-after" || action === "table-delete") {
       setToastMessage("Table row and column actions are available in Rich editor");
+    } else if (action === "divider") {
+      applyMarkdownSlashCommand({ id: "divider", label: "Divider", section: "Essentials", keywords: ["hr"] });
+    } else if (action === "code-block") {
+      applyMarkdownSlashCommand({ id: "code-block", label: "Code Block", section: "Advanced", keywords: ["code"] });
+    } else if (action === "formula") {
+      applyMarkdownSlashCommand({ id: "formula", label: "Formula", section: "Advanced", keywords: ["math"] });
     } else if (action === "link") {
       applyMarkdownInlineFormat("[", "](https://)", "link text");
     }

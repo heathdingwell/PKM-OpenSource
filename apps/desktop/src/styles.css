@@ -2156,6 +2156,11 @@ body.is-resizing {
   margin-bottom: 4px;
 }
 
+.ai-msg-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
 .ai-msg-insert {
   border: 1px solid #c8dafc;
   background: #ffffff;

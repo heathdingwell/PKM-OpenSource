@@ -3182,6 +3182,33 @@ describe("App", () => {
     expect(editor?.value).toContain("- Follow-up item");
   });
 
+  it("copies AI response text from assistant message", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    const chatWithLlm = vi.fn().mockResolvedValue({
+      message: "Try batching your deep-work blocks."
+    });
+    (window as unknown as { pkmShell?: { chatWithLlm: typeof chatWithLlm } }).pkmShell = { chatWithLlm };
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.change(screen.getByPlaceholderText("Ask about this note or your vault..."), {
+      target: { value: "How should I plan this week?" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText(/deep-work blocks/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Copy response" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("Try batching your deep-work blocks."));
+    expect(screen.getByText("AI response copied")).toBeInTheDocument();
+  });
+
   it("inserts AI chat transcript into the active note from the AI panel", async () => {
     const chatWithLlm = vi.fn().mockResolvedValue({
       message: "Start with your highest leverage task."

@@ -7635,6 +7635,26 @@ export default function App() {
     setToastMessage(value);
   }
 
+  async function copyAiResponse(message: AiChatMessage): Promise<void> {
+    const value = message.content.trim();
+    if (!value) {
+      setToastMessage("AI response is empty");
+      return;
+    }
+
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        setToastMessage("AI response copied");
+        return;
+      } catch {
+        // Fall through to showing the generated text when clipboard is unavailable.
+      }
+    }
+
+    setToastMessage(value);
+  }
+
   function insertAttachmentLinkFromFiles(file: AttachmentItem): void {
     const link = `${file.isEmbed ? "!" : ""}[${file.label}](${file.target})`;
     if (editorMode === "rich") {
@@ -11651,9 +11671,14 @@ export default function App() {
                             <div className="ai-msg-head">
                               <strong>{message.role === "user" ? "You" : "Copilot"}</strong>
                               {message.role === "assistant" ? (
-                                <button type="button" className="ai-msg-insert" onClick={() => insertAiReplyIntoNote(message)}>
-                                  Insert into note
-                                </button>
+                                <div className="ai-msg-actions">
+                                  <button type="button" className="ai-msg-insert" onClick={() => insertAiReplyIntoNote(message)}>
+                                    Insert into note
+                                  </button>
+                                  <button type="button" className="ai-msg-insert" onClick={() => void copyAiResponse(message)}>
+                                    Copy response
+                                  </button>
+                                </div>
                               ) : null}
                             </div>
                             <p>{message.content}</p>

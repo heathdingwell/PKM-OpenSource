@@ -525,6 +525,39 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
+  it("opens calendar modal scoped to current note from command palette", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open calendar" }
+    });
+    fireEvent.click(screen.getByText("Open calendar"));
+
+    const firstCalendarModal = screen.getByRole("heading", { name: "Calendar", level: 3 }).closest("section");
+    expect(firstCalendarModal).toBeTruthy();
+    const weeklyRow = within(firstCalendarModal as HTMLElement).getByText("Weekly planning").closest(".calendar-row");
+    expect(weeklyRow).toBeTruthy();
+    fireEvent.click(
+      within(weeklyRow as HTMLElement).getByRole("button", { name: "Link active note for Weekly planning" })
+    );
+    fireEvent.click(within(firstCalendarModal as HTMLElement).getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open calendar for current note" }
+    });
+    fireEvent.click(screen.getByText("Open calendar for current note"));
+
+    const scopedCalendarModal = screen.getByRole("heading", { name: "Calendar", level: 3 }).closest("section");
+    expect(scopedCalendarModal).toBeTruthy();
+    expect(within(scopedCalendarModal as HTMLElement).getByText("Weekly planning")).toBeInTheDocument();
+    expect(within(scopedCalendarModal as HTMLElement).queryByText("Research block")).not.toBeInTheDocument();
+    expect(within(scopedCalendarModal as HTMLElement).getByRole("button", { name: /^Current note \(/ })).toHaveClass(
+      "active"
+    );
+  });
+
   it("sets graph scope to local from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

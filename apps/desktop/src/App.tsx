@@ -289,6 +289,7 @@ type AttachmentKind = "image" | "pdf" | "video" | "audio" | "other";
 type AttachmentSortMode = "recent" | "name-asc" | "name-desc";
 type AttachmentScopeMode = "all" | "current-note";
 type CalendarSortMode = "soonest" | "latest";
+type CalendarScopeMode = "all" | "current-note";
 type TaskSortMode = "recent" | "due-asc" | "due-desc";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
@@ -553,6 +554,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-files-current-note", label: "Open files for current note", keywords: ["attachments", "files", "note", "current"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
+  { id: "open-calendar-current-note", label: "Open calendar for current note", keywords: ["events", "calendar", "note", "current"] },
   { id: "open-graph", label: "Open graph", keywords: ["graph", "links", "network"] },
   { id: "open-active-local-graph", label: "Open active note local graph", keywords: ["graph", "local", "active", "note"] },
   { id: "graph-scope-workspace", label: "Set graph scope: Workspace", keywords: ["graph", "scope", "workspace"] },
@@ -2396,6 +2398,7 @@ export default function App() {
   const [calendarQuery, setCalendarQuery] = useState("");
   const [calendarFilter, setCalendarFilter] = useState("all");
   const [calendarSortMode, setCalendarSortMode] = useState<CalendarSortMode>("soonest");
+  const [calendarScopeMode, setCalendarScopeMode] = useState<CalendarScopeMode>("all");
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
   const [quickTaskDialog, setQuickTaskDialog] = useState<QuickTaskDialogState | null>(null);
   const [scratchNoteDialog, setScratchNoteDialog] = useState<ScratchNoteDialogState | null>(null);
@@ -3230,6 +3233,12 @@ export default function App() {
     );
   }, [attachmentItems, filesFilterKind, filesQuery, filesScopeMode, filesSortMode, activeNote]);
   const calendarEventsById = useMemo(() => new Map(calendarEvents.map((event) => [event.id, event])), [calendarEvents]);
+  const currentNoteLinkedCalendarCount = useMemo(() => {
+    if (!activeNote) {
+      return 0;
+    }
+    return calendarEvents.filter((event) => event.noteId === activeNote.id).length;
+  }, [activeNote, calendarEvents]);
   const calendarFilterCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const event of calendarEvents) {
@@ -3240,6 +3249,9 @@ export default function App() {
   const filteredCalendarEvents = useMemo(() => {
     const query = calendarQuery.trim().toLowerCase();
     return calendarEvents.filter((event) => {
+      if (calendarScopeMode === "current-note" && activeNote && event.noteId !== activeNote.id) {
+        return false;
+      }
       if (calendarFilter !== "all" && event.calendar !== calendarFilter) {
         return false;
       }
@@ -3252,7 +3264,7 @@ export default function App() {
       } ${linkedNote?.notebook ?? ""}`.toLowerCase();
       return haystack.includes(query);
     });
-  }, [calendarEvents, calendarFilter, calendarQuery, liveNotesById]);
+  }, [activeNote, calendarEvents, calendarFilter, calendarQuery, calendarScopeMode, liveNotesById]);
   const calendarGroups = useMemo(() => {
     const sorted = [...filteredCalendarEvents].sort((left, right) => {
       if (calendarSortMode === "latest") {
@@ -3788,6 +3800,7 @@ export default function App() {
       setCalendarQuery("");
       setCalendarFilter("all");
       setCalendarSortMode("soonest");
+      setCalendarScopeMode("all");
     }
   }, [calendarDialogOpen]);
 
@@ -5967,6 +5980,16 @@ export default function App() {
     setSearchOpen(false);
   }
 
+  function openCalendarPanel(scope: CalendarScopeMode): void {
+    setSidebarView("calendar");
+    setTasksDialogOpen(false);
+    setFilesDialogOpen(false);
+    setCalendarScopeMode(scope);
+    setCalendarDialogOpen(true);
+    setAiPanelOpen(false);
+    setSearchOpen(false);
+  }
+
   function focusTagEditorInput(): void {
     window.requestAnimationFrame(() => {
       const input = document.getElementById("tag-input");
@@ -6507,12 +6530,17 @@ export default function App() {
     }
 
     if (actionId === "open-calendar") {
-      setSidebarView("calendar");
-      setTasksDialogOpen(false);
-      setFilesDialogOpen(false);
-      setCalendarDialogOpen(true);
-      setAiPanelOpen(false);
-      setSearchOpen(false);
+      openCalendarPanel("all");
+      return;
+    }
+
+    if (actionId === "open-calendar-current-note") {
+      if (!activeNote) {
+        setToastMessage("Open a note first");
+        setSearchOpen(false);
+        return;
+      }
+      openCalendarPanel("current-note");
       return;
     }
 
@@ -9695,10 +9723,7 @@ export default function App() {
                   return;
                 }
                 if (item === "Calendar") {
-                  setSidebarView("calendar");
-                  setTasksDialogOpen(false);
-                  setFilesDialogOpen(false);
-                  setCalendarDialogOpen(true);
+                  openCalendarPanel("all");
                   return;
                 }
                 if (item === "Graph") {
@@ -13076,6 +13101,21 @@ export default function App() {
               </button>
               <button
                 type="button"
+                className={calendarScopeMode === "all" ? "chip active" : "chip"}
+                onClick={() => setCalendarScopeMode("all")}
+              >
+                All notes
+              </button>
+              <button
+                type="button"
+                className={calendarScopeMode === "current-note" ? "chip active" : "chip"}
+                onClick={() => setCalendarScopeMode("current-note")}
+                disabled={!activeNote}
+              >
+                Current note ({currentNoteLinkedCalendarCount})
+              </button>
+              <button
+                type="button"
                 className={calendarFilter === "all" ? "chip active" : "chip"}
                 onClick={() => setCalendarFilter("all")}
               >
@@ -13091,12 +13131,16 @@ export default function App() {
                   {name} ({count})
                 </button>
               ))}
-              {calendarSortMode !== "soonest" || calendarFilter !== "all" || calendarQuery.trim() ? (
+              {calendarSortMode !== "soonest" ||
+              calendarScopeMode !== "all" ||
+              calendarFilter !== "all" ||
+              calendarQuery.trim() ? (
                 <button
                   type="button"
                   className="chip"
                   onClick={() => {
                     setCalendarSortMode("soonest");
+                    setCalendarScopeMode("all");
                     setCalendarFilter("all");
                     setCalendarQuery("");
                   }}

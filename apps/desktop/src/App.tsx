@@ -11547,6 +11547,11 @@ export default function App() {
                                   >
                                     {entry.event?.title ?? entry.title}
                                   </button>
+                                  {entry.event ? (
+                                    <small className="link-context">
+                                      {entry.event.calendar} · {formatCalendarTimeRange(entry.event)}
+                                    </small>
+                                  ) : null}
                                 </li>
                               ))
                             ) : (

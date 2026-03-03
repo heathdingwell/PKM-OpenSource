@@ -2495,6 +2495,24 @@ describe("App", () => {
     expect(screen.getByText("Event reference inserted")).toBeInTheDocument();
   });
 
+  it("shows linked event metadata in preview panel", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open calendar" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Insert event reference for Weekly planning" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" });
+    const linkedEventsSection = within(previewPane).getByRole("heading", { name: "Linked events", level: 5 }).closest("section");
+    expect(linkedEventsSection).toBeTruthy();
+    expect(within(linkedEventsSection as HTMLElement).getByRole("button", { name: "Weekly planning" })).toBeInTheDocument();
+    expect(within(linkedEventsSection as HTMLElement).getByText(/^Events · /i)).toBeInTheDocument();
+  });
+
   it("prevents duplicate event references from calendar modal", () => {
     render(<App />);
 

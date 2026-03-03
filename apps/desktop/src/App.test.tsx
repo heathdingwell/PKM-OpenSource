@@ -146,6 +146,42 @@ describe("App", () => {
     expect(screen.getByText("No recent notes yet")).toBeInTheDocument();
   });
 
+  it("moves edited notes to the top of recent notes", async () => {
+    render(<App />);
+    const notesList = screen.getByLabelText("Notes list");
+    const findCard = (title: string) =>
+      Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+        entry.textContent?.includes(title)
+      );
+    const recentTitles = () =>
+      Array.from(document.querySelectorAll<HTMLButtonElement>(".recent-item")).map(
+        (entry) => entry.querySelector("span")?.textContent?.trim() ?? ""
+      );
+
+    const todoCard = findCard("To-do list");
+    const agendaCard = findCard("Agenda");
+    expect(todoCard).toBeTruthy();
+    expect(agendaCard).toBeTruthy();
+
+    fireEvent.click(todoCard as HTMLButtonElement);
+    fireEvent.click(agendaCard as HTMLButtonElement);
+    expect(recentTitles()[0]).toBe("Agenda");
+
+    fireEvent.contextMenu(todoCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Rename/i }));
+
+    const renameModal = screen.getByRole("heading", { name: "Rename note" }).closest("section");
+    expect(renameModal).toBeTruthy();
+    fireEvent.change(within(renameModal as HTMLElement).getByRole("textbox"), {
+      target: { value: "To-do list edited" }
+    });
+    fireEvent.click(within(renameModal as HTMLElement).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(recentTitles()[0]).toBe("To-do list edited");
+    });
+  });
+
   it("filters graph nodes by query", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));

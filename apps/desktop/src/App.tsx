@@ -3727,6 +3727,7 @@ export default function App() {
         }
         return nextHistory;
       });
+      touchRecentBatch(updates.map((entry) => entry.noteId));
     }
 
     previousNotesRef.current = notes;
@@ -4838,6 +4839,20 @@ export default function App() {
 
   function touchRecent(noteId: string): void {
     setRecentNoteIds((previous) => [noteId, ...previous.filter((entry) => entry !== noteId)].slice(0, 24));
+  }
+
+  function touchRecentBatch(noteIds: string[]): void {
+    if (!noteIds.length) {
+      return;
+    }
+
+    setRecentNoteIds((previous) => {
+      let next = [...previous];
+      for (const noteId of noteIds) {
+        next = [noteId, ...next.filter((entry) => entry !== noteId)];
+      }
+      return next.slice(0, 24);
+    });
   }
 
   function clearRecentNotes(): void {

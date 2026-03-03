@@ -497,6 +497,34 @@ describe("App", () => {
     expect(screen.getByText("No reminders scheduled.")).toBeInTheDocument();
   });
 
+  it("opens files modal scoped to current note from command palette", () => {
+    render(<App />);
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    const secondEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(secondEditor).toBeTruthy();
+    fireEvent.change(secondEditor as HTMLTextAreaElement, {
+      target: { value: "# Capture\n\n![Photo shot](./attachments/photo.png)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open files for current note" }
+    });
+    fireEvent.click(screen.getByText("Open files for current note"));
+
+    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
+    expect(screen.getByText("Photo shot")).toBeInTheDocument();
+    expect(screen.queryByText("Doc PDF")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
   it("sets graph scope to local from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -1765,6 +1793,29 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Copy path for Doc PDF" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("./attachments/brief.pdf"));
     expect(screen.getByText("Attachment path copied")).toBeInTheDocument();
+  });
+
+  it("copies attachment markdown from files modal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n![Photo shot](./attachments/photo.png)" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open files" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy markdown for Photo shot" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("![Photo shot](./attachments/photo.png)"));
+    expect(screen.getByText("Attachment markdown copied")).toBeInTheDocument();
   });
 
   it("inserts attachment link from files modal into current note", () => {

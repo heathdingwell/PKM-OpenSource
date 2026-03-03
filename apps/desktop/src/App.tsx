@@ -551,6 +551,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-reminders", label: "Open reminders", keywords: ["reminders", "dates", "follow-up"] },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
+  { id: "open-files-current-note", label: "Open files for current note", keywords: ["attachments", "files", "note", "current"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
   { id: "open-graph", label: "Open graph", keywords: ["graph", "links", "network"] },
   { id: "open-active-local-graph", label: "Open active note local graph", keywords: ["graph", "local", "active", "note"] },
@@ -5953,6 +5954,19 @@ export default function App() {
     setSearchOpen(false);
   }
 
+  function openFilesPanel(scope: AttachmentScopeMode): void {
+    setSidebarView("notes");
+    setTasksDialogOpen(false);
+    setFilesQuery("");
+    setFilesFilterKind("all");
+    setFilesSortMode("recent");
+    setFilesScopeMode(scope);
+    setFilesDialogOpen(true);
+    setCalendarDialogOpen(false);
+    setAiPanelOpen(false);
+    setSearchOpen(false);
+  }
+
   function focusTagEditorInput(): void {
     window.requestAnimationFrame(() => {
       const input = document.getElementById("tag-input");
@@ -6478,16 +6492,17 @@ export default function App() {
     }
 
     if (actionId === "open-files") {
-      setSidebarView("notes");
-      setTasksDialogOpen(false);
-      setFilesQuery("");
-      setFilesFilterKind("all");
-      setFilesSortMode("recent");
-      setFilesScopeMode("all");
-      setFilesDialogOpen(true);
-      setCalendarDialogOpen(false);
-      setAiPanelOpen(false);
-      setSearchOpen(false);
+      openFilesPanel("all");
+      return;
+    }
+
+    if (actionId === "open-files-current-note") {
+      if (!activeNote) {
+        setToastMessage("Open a note first");
+        setSearchOpen(false);
+        return;
+      }
+      openFilesPanel("current-note");
       return;
     }
 
@@ -7698,6 +7713,20 @@ export default function App() {
       }
     }
 
+    setToastMessage(value);
+  }
+
+  async function copyAttachmentMarkdown(file: AttachmentItem): Promise<void> {
+    const value = `${file.isEmbed ? "!" : ""}[${file.label}](${file.target})`;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        setToastMessage("Attachment markdown copied");
+        return;
+      } catch {
+        // Fall through to showing generated markdown when clipboard is unavailable.
+      }
+    }
     setToastMessage(value);
   }
 
@@ -9662,14 +9691,7 @@ export default function App() {
                   return;
                 }
                 if (item === "Files") {
-                  setSidebarView("notes");
-                  setTasksDialogOpen(false);
-                  setFilesQuery("");
-                  setFilesFilterKind("all");
-                  setFilesSortMode("recent");
-                  setFilesScopeMode("all");
-                  setFilesDialogOpen(true);
-                  setCalendarDialogOpen(false);
+                  openFilesPanel("all");
                   return;
                 }
                 if (item === "Calendar") {
@@ -12968,6 +12990,14 @@ export default function App() {
                           onClick={() => void copyAttachmentPath(file.target)}
                         >
                           Copy path
+                        </button>
+                        <button
+                          type="button"
+                          className="file-copy"
+                          aria-label={`Copy markdown for ${file.label}`}
+                          onClick={() => void copyAttachmentMarkdown(file)}
+                        >
+                          Copy markdown
                         </button>
                         <button
                           type="button"

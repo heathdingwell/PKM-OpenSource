@@ -551,6 +551,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
   { id: "open-graph", label: "Open graph", keywords: ["graph", "links", "network"] },
+  { id: "open-active-local-graph", label: "Open active note local graph", keywords: ["graph", "local", "active", "note"] },
   { id: "graph-scope-workspace", label: "Set graph scope: Workspace", keywords: ["graph", "scope", "workspace"] },
   { id: "graph-scope-local", label: "Set graph scope: Local", keywords: ["graph", "scope", "local"] },
   { id: "open-trash", label: "Open trash", keywords: ["trash", "deleted"] },
@@ -6413,6 +6414,23 @@ export default function App() {
       setSidebarView("notes");
       setBrowseMode("graph");
       setGraphScope("workspace");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-active-local-graph") {
+      if (!activeNote) {
+        setToastMessage("Open a note first");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("graph");
+      setGraphScope("local");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);

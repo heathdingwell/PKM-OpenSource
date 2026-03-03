@@ -219,6 +219,18 @@ describe("App", () => {
     expect(within(graphCanvas).queryByRole("button", { name: "Agenda" })).not.toBeInTheDocument();
   });
 
+  it("opens local graph for active note from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open active note local graph" }
+    });
+    fireEvent.click(screen.getByText("Open active note local graph"));
+
+    expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+  });
+
   it("persists graph scope preference", () => {
     const first = render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));

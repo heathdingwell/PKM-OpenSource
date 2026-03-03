@@ -292,6 +292,7 @@ type CalendarSortMode = "soonest" | "latest";
 type CalendarScopeMode = "all" | "current-note";
 type TaskSortMode = "recent" | "due-asc" | "due-desc";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
+type TaskScopeMode = "all" | "current-note";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 type GraphScope = "workspace" | "local";
 
@@ -551,6 +552,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
   { id: "open-reminders", label: "Open reminders", keywords: ["reminders", "dates", "follow-up"] },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
+  { id: "open-tasks-current-note", label: "Open tasks for current note", keywords: ["tasks", "todos", "note", "current"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-files-current-note", label: "Open files for current note", keywords: ["attachments", "files", "note", "current"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
@@ -2387,6 +2389,7 @@ export default function App() {
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [taskDueFilter, setTaskDueFilter] = useState<TaskDueFilter>(initialPrefs.taskDueFilter ?? "all");
   const [taskSortMode, setTaskSortMode] = useState<TaskSortMode>("recent");
+  const [taskScopeMode, setTaskScopeMode] = useState<TaskScopeMode>("all");
   const [taskQuery, setTaskQuery] = useState("");
   const [reminderDueFilter, setReminderDueFilter] = useState<ReminderDueFilter>(initialPrefs.reminderDueFilter ?? "all");
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
@@ -3145,6 +3148,12 @@ export default function App() {
 
     return counts;
   }, [openTasks]);
+  const currentNoteOpenTaskCount = useMemo(() => {
+    if (!activeNote) {
+      return 0;
+    }
+    return openTasks.filter((task) => task.noteId === activeNote.id).length;
+  }, [activeNote, openTasks]);
   const reminderCounts = useMemo(() => {
     const today = toDateInputValue(new Date());
     const counts = { all: 0, overdue: 0, today: 0, upcoming: 0 };
@@ -3158,10 +3167,14 @@ export default function App() {
     return counts;
   }, [activeNotes]);
   const filteredOpenTasks = useMemo(() => {
+    const scopeScoped =
+      taskScopeMode === "current-note" && activeNote
+        ? openTasks.filter((task) => task.noteId === activeNote.id)
+        : openTasks;
     const dueScoped =
       taskDueFilter === "all"
-        ? openTasks
-        : openTasks.filter((task) => getTaskDueBucket(task.dueDate, toDateInputValue(new Date())) === taskDueFilter);
+        ? scopeScoped
+        : scopeScoped.filter((task) => getTaskDueBucket(task.dueDate, toDateInputValue(new Date())) === taskDueFilter);
     const query = taskQuery.trim().toLowerCase();
     const queryScoped = query
       ? dueScoped.filter((task) => {
@@ -3186,7 +3199,7 @@ export default function App() {
       }
       return taskSortMode === "due-asc" ? leftDue.localeCompare(rightDue) : rightDue.localeCompare(leftDue);
     });
-  }, [openTasks, taskDueFilter, taskQuery, taskSortMode]);
+  }, [activeNote, openTasks, taskDueFilter, taskQuery, taskScopeMode, taskSortMode]);
   const attachmentItems = useMemo(() => extractAttachments(liveDerivedNotes), [liveDerivedNotes]);
   const currentNoteAttachmentCount = useMemo(() => {
     if (!activeNote) {
@@ -3817,6 +3830,7 @@ export default function App() {
     if (!tasksDialogOpen) {
       setTaskDueFilter("all");
       setTaskSortMode("recent");
+      setTaskScopeMode("all");
       setTaskQuery("");
     }
   }, [tasksDialogOpen]);
@@ -5956,11 +5970,12 @@ export default function App() {
     setSearchOpen(true);
   }
 
-  function openTasksPanel(): void {
+  function openTasksPanel(scope: TaskScopeMode = "all"): void {
     setSidebarView("tasks");
     setTasksDialogOpen(true);
     setTaskDueFilter("all");
     setTaskSortMode("recent");
+    setTaskScopeMode(scope);
     setTaskQuery("");
     setFilesDialogOpen(false);
     setCalendarDialogOpen(false);
@@ -6510,6 +6525,17 @@ export default function App() {
 
     if (actionId === "open-tasks") {
       openTasksPanel();
+      setAiPanelOpen(false);
+      return;
+    }
+
+    if (actionId === "open-tasks-current-note") {
+      if (!activeNote) {
+        setToastMessage("Open a note first");
+        setSearchOpen(false);
+        return;
+      }
+      openTasksPanel("current-note");
       setAiPanelOpen(false);
       return;
     }
@@ -12690,6 +12716,7 @@ export default function App() {
             setTasksDialogOpen(false);
             setTaskDueFilter("all");
             setTaskSortMode("recent");
+            setTaskScopeMode("all");
             setTaskQuery("");
             setSidebarView("notes");
           }}
@@ -12732,6 +12759,21 @@ export default function App() {
               </button>
               <button
                 type="button"
+                className={taskScopeMode === "all" ? "chip active" : "chip"}
+                onClick={() => setTaskScopeMode("all")}
+              >
+                All notes
+              </button>
+              <button
+                type="button"
+                className={taskScopeMode === "current-note" ? "chip active" : "chip"}
+                onClick={() => setTaskScopeMode("current-note")}
+                disabled={!activeNote}
+              >
+                Current note ({currentNoteOpenTaskCount})
+              </button>
+              <button
+                type="button"
                 className={taskDueFilter === "all" ? "chip active" : "chip"}
                 onClick={() => setTaskDueFilter("all")}
               >
@@ -12765,12 +12807,16 @@ export default function App() {
               >
                 No due ({openTaskCounts.undated})
               </button>
-              {taskSortMode !== "recent" || taskDueFilter !== "all" || taskQuery.trim() ? (
+              {taskSortMode !== "recent" ||
+              taskScopeMode !== "all" ||
+              taskDueFilter !== "all" ||
+              taskQuery.trim() ? (
                 <button
                   type="button"
                   className="chip"
                   onClick={() => {
                     setTaskSortMode("recent");
+                    setTaskScopeMode("all");
                     setTaskDueFilter("all");
                     setTaskQuery("");
                   }}
@@ -12792,6 +12838,7 @@ export default function App() {
                         setTasksDialogOpen(false);
                         setTaskDueFilter("all");
                         setTaskSortMode("recent");
+                        setTaskScopeMode("all");
                         setTaskQuery("");
                         setSidebarView("notes");
                       }}
@@ -12842,6 +12889,7 @@ export default function App() {
                   setTasksDialogOpen(false);
                   setTaskDueFilter("all");
                   setTaskSortMode("recent");
+                  setTaskScopeMode("all");
                   setTaskQuery("");
                   setSidebarView("notes");
                 }}

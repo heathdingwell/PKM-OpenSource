@@ -6560,7 +6560,9 @@ export default function App() {
   }
 
   function openCardMenu(noteId: string, clientX: number, clientY: number): void {
-    const noteIds = selectedIds.has(noteId) ? Array.from(selectedIds) : [noteId];
+    const noteIds = selectedIds.has(noteId)
+      ? [noteId, ...Array.from(selectedIds).filter((selectedId) => selectedId !== noteId)]
+      : [noteId];
     const position = clampMenuPosition(clientX, clientY);
     setContextMenu({ x: position.x, y: position.y, noteIds });
     setStackMenu(null);

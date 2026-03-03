@@ -2270,6 +2270,26 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
   });
 
+  it("targets the right-clicked note first when context menu opens on multi-select", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    const todoCard = screen.getAllByText("To-do list")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    expect(todoCard).toBeTruthy();
+
+    fireEvent.click(agendaCard as HTMLButtonElement);
+    fireEvent.click(todoCard as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Open in Lite edit mode/i }));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    expect(editor?.value).toContain("# Agenda");
+  });
+
   it("toggles collapsible preview sections from note context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

@@ -1117,6 +1117,36 @@ describe("App", () => {
     expect(screen.queryByText("journal")).not.toBeInTheDocument();
   });
 
+  it("copies note link from quick search footer action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy link/i }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note link copied")).toBeInTheDocument();
+  });
+
+  it("opens selected quick search result in new window from footer action", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Open in new window/i }));
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    openSpy.mockRestore();
+  });
+
   it("clears recent searches from command palette action", () => {
     render(<App />);
 

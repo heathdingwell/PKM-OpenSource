@@ -12411,7 +12411,7 @@ export default function App() {
                       }
                     }}
                   >
-                    Copy Link
+                    Copy link <kbd>⌘L</kbd>
                   </button>
                   <button
                     type="button"
@@ -12422,7 +12422,7 @@ export default function App() {
                       }
                     }}
                   >
-                    Open in New Window
+                    Open in new window <kbd>⌘O</kbd>
                   </button>
                 </>
               )}

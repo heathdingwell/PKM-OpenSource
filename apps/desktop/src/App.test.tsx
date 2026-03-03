@@ -2754,6 +2754,33 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
   });
 
+  it("copies a note to another notebook from note context menu", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Copy to" }));
+
+    const moveModal = screen.getByRole("heading", { name: "Copy to", level: 3 }).closest("section");
+    expect(moveModal).toBeTruthy();
+    fireEvent.click(within(moveModal as HTMLElement).getByRole("button", { name: "Clippings" }));
+    fireEvent.click(within(moveModal as HTMLElement).getByRole("button", { name: "Done" }));
+
+    await waitFor(() => {
+      expect(screen.getByText('"Agenda copy" copied to Clippings')).toBeInTheDocument();
+    });
+
+    const notebookItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".notebook-item"));
+    const clippingsNotebook = notebookItems.find((entry) => entry.textContent?.includes("Clippings"));
+    expect(clippingsNotebook).toBeTruthy();
+    fireEvent.click(clippingsNotebook as HTMLButtonElement);
+
+    expect(screen.getByRole("heading", { name: "Clippings", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Agenda copy", level: 2 })).toBeInTheDocument();
+  });
+
   it("targets the right-clicked note first when context menu opens on multi-select", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

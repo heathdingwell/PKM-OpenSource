@@ -552,6 +552,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "share-note", label: "Share note link", keywords: ["share", "link", "note"] },
   { id: "copy-note-link", label: "Copy note link", keywords: ["link", "copy", "share", "note"] },
   { id: "copy-note-markdown", label: "Copy note markdown", keywords: ["markdown", "copy", "note"] },
+  { id: "export-note-pdf", label: "Export note as PDF", keywords: ["export", "pdf", "note"] },
   { id: "duplicate-note", label: "Duplicate note", keywords: ["duplicate", "copy", "note"] },
   { id: "trash-note", label: "Move note to trash", keywords: ["trash", "delete", "note"] },
   { id: "rename-note", label: "Rename note", keywords: ["rename", "title", "note"] },
@@ -6564,6 +6565,16 @@ export default function App() {
         void copyNoteMarkdown(activeNote.id);
       } else {
         setToastMessage("Open a note before copying markdown");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "export-note-pdf") {
+      if (activeNote) {
+        void exportNotePdf(activeNote.id);
+      } else {
+        setToastMessage("Open a note before exporting");
       }
       setSearchOpen(false);
       return;

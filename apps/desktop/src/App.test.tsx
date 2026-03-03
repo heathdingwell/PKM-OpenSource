@@ -832,6 +832,22 @@ describe("App", () => {
     openSpy.mockRestore();
   });
 
+  it("exports note as PDF from command palette", async () => {
+    const exportNotePdf = vi.fn().mockResolvedValue({ ok: true, path: "/tmp/Agenda.pdf" });
+    (window as unknown as { pkmShell?: { exportNotePdf: typeof exportNotePdf } }).pkmShell = { exportNotePdf };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">export note pdf" }
+    });
+    fireEvent.click(screen.getByText("Export note as PDF"));
+
+    await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
+    expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
+    expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+  });
+
   it("exports a vault snapshot from command palette", () => {
     const createObjectURL = vi.fn(() => "blob:pkm-snapshot");
     const revokeObjectURL = vi.fn();

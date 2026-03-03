@@ -12314,8 +12314,14 @@ export default function App() {
                             onMouseEnter={() => setSearchSelected(index)}
                             onClick={() => openSearchResult(note, "open")}
                           >
-                            <strong>{note.title}</strong>
-                            <small>{note.notebook}</small>
+                            <div className="search-result-main">
+                              <strong>{note.title}</strong>
+                              <span className="search-result-snippet">{note.snippet || "No preview text"}</span>
+                            </div>
+                            <div className="search-result-meta">
+                              <small>{note.notebook}</small>
+                              <small>{formatRelativeTime(note.updatedAt)}</small>
+                            </div>
                           </li>
                         ))}
                       </ul>

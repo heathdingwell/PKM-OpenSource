@@ -2629,7 +2629,8 @@ body.is-resizing {
 .search-results li {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
   padding: 8px 0;
   color: #395478;
   border-bottom: 1px solid #e2eaf6;
@@ -2643,6 +2644,7 @@ body.is-resizing {
 }
 
 .recent-search-item {
+  align-items: center;
   gap: 10px;
 }
 
@@ -2672,6 +2674,32 @@ body.is-resizing {
 
 .search-results li small {
   color: #8a8a8a;
+}
+
+.search-result-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-result-snippet {
+  color: #607391;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-meta {
+  flex: 0 0 auto;
+  min-width: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
 .search-actions {

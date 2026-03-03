@@ -27,6 +27,9 @@ declare global {
         enabled: boolean;
         commitPrefix: string;
         autosaveDelayMs: number;
+        autoPush: boolean;
+        pushRemote: string;
+        pushBranch: string;
         available: boolean | null;
         repoReady: boolean;
         dirty: boolean;
@@ -40,6 +43,9 @@ declare global {
         enabled: boolean;
         commitPrefix: string;
         autosaveDelayMs: number;
+        autoPush: boolean;
+        pushRemote: string;
+        pushBranch: string;
         available: boolean | null;
         repoReady: boolean;
         dirty: boolean;
@@ -52,10 +58,16 @@ declare global {
       setGitBackupSettings?: (payload: {
         commitPrefix?: string;
         autosaveDelayMs?: number;
+        autoPush?: boolean;
+        pushRemote?: string;
+        pushBranch?: string;
       }) => Promise<{
         enabled: boolean;
         commitPrefix: string;
         autosaveDelayMs: number;
+        autoPush: boolean;
+        pushRemote: string;
+        pushBranch: string;
         available: boolean | null;
         repoReady: boolean;
         dirty: boolean;
@@ -69,6 +81,9 @@ declare global {
         enabled: boolean;
         commitPrefix: string;
         autosaveDelayMs: number;
+        autoPush: boolean;
+        pushRemote: string;
+        pushBranch: string;
         available: boolean | null;
         repoReady: boolean;
         dirty: boolean;

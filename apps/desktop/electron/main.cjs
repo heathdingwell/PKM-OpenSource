@@ -16,6 +16,8 @@ const GIT_BACKUP_DEFAULT_COMMIT_PREFIX = "Vault backup";
 const GIT_BACKUP_DEFAULT_AUTOSAVE_DELAY_MS = 4000;
 const GIT_BACKUP_MIN_AUTOSAVE_DELAY_MS = 1000;
 const GIT_BACKUP_MAX_AUTOSAVE_DELAY_MS = 120000;
+const GIT_BACKUP_DEFAULT_PUSH_REMOTE = "origin";
+const GIT_BACKUP_DEFAULT_PUSH_BRANCH = "main";
 
 function vaultRootPath() {
   return path.join(app.getPath("userData"), VAULT_DIR_NAME);
@@ -38,6 +40,9 @@ let lastGitBackupStatus = {
   enabled: true,
   commitPrefix: GIT_BACKUP_DEFAULT_COMMIT_PREFIX,
   autosaveDelayMs: GIT_BACKUP_DEFAULT_AUTOSAVE_DELAY_MS,
+  autoPush: false,
+  pushRemote: GIT_BACKUP_DEFAULT_PUSH_REMOTE,
+  pushBranch: GIT_BACKUP_DEFAULT_PUSH_BRANCH,
   available: null,
   repoReady: false,
   dirty: false,
@@ -60,12 +65,23 @@ function asString(value) {
   return typeof value === "string" ? value : "";
 }
 
+function normalizeGitName(value, fallback) {
+  const trimmed = asString(value).trim();
+  if (!trimmed || /\s/.test(trimmed)) {
+    return fallback;
+  }
+  return trimmed;
+}
+
 function normalizeGitBackupState(value) {
   if (!isObject(value)) {
     return {
       enabled: true,
       commitPrefix: GIT_BACKUP_DEFAULT_COMMIT_PREFIX,
-      autosaveDelayMs: GIT_BACKUP_DEFAULT_AUTOSAVE_DELAY_MS
+      autosaveDelayMs: GIT_BACKUP_DEFAULT_AUTOSAVE_DELAY_MS,
+      autoPush: false,
+      pushRemote: GIT_BACKUP_DEFAULT_PUSH_REMOTE,
+      pushBranch: GIT_BACKUP_DEFAULT_PUSH_BRANCH
     };
   }
   const rawPrefix = asString(value.commitPrefix).trim();
@@ -73,10 +89,16 @@ function normalizeGitBackupState(value) {
   const autosaveDelayMs = Number.isFinite(rawDelay)
     ? Math.max(GIT_BACKUP_MIN_AUTOSAVE_DELAY_MS, Math.min(rawDelay, GIT_BACKUP_MAX_AUTOSAVE_DELAY_MS))
     : GIT_BACKUP_DEFAULT_AUTOSAVE_DELAY_MS;
+  const autoPush = value.autoPush === true;
+  const pushRemote = normalizeGitName(value.pushRemote, GIT_BACKUP_DEFAULT_PUSH_REMOTE);
+  const pushBranch = normalizeGitName(value.pushBranch, GIT_BACKUP_DEFAULT_PUSH_BRANCH);
   return {
     enabled: value.enabled !== false,
     commitPrefix: rawPrefix || GIT_BACKUP_DEFAULT_COMMIT_PREFIX,
-    autosaveDelayMs
+    autosaveDelayMs,
+    autoPush,
+    pushRemote,
+    pushBranch
   };
 }
 
@@ -122,6 +144,9 @@ async function setGitBackupEnabled(enabled) {
     enabled: next.enabled,
     commitPrefix: next.commitPrefix,
     autosaveDelayMs: next.autosaveDelayMs,
+    autoPush: next.autoPush,
+    pushRemote: next.pushRemote,
+    pushBranch: next.pushBranch,
     lastError: next.enabled ? lastGitBackupStatus.lastError : ""
   };
   return next;
@@ -140,6 +165,9 @@ async function updateGitBackupSettings(payload) {
     enabled: next.enabled,
     commitPrefix: next.commitPrefix,
     autosaveDelayMs: next.autosaveDelayMs,
+    autoPush: next.autoPush,
+    pushRemote: next.pushRemote,
+    pushBranch: next.pushBranch,
     lastError: next.enabled ? lastGitBackupStatus.lastError : ""
   };
   return next;
@@ -213,6 +241,9 @@ async function performVaultGitBackup(reason = "autosave") {
     enabled: state.enabled,
     commitPrefix: state.commitPrefix,
     autosaveDelayMs: state.autosaveDelayMs,
+    autoPush: state.autoPush,
+    pushRemote: state.pushRemote,
+    pushBranch: state.pushBranch,
     lastRunAt
   };
 
@@ -306,15 +337,38 @@ async function performVaultGitBackup(reason = "autosave") {
   }
 
   const head = await runGitCommand(["rev-parse", "--short", "HEAD"], rootDir);
+  const commitAt = new Date().toISOString();
+  const commitHash = head.ok ? head.stdout.trim() : lastGitBackupStatus.lastCommitHash;
   lastGitBackupStatus = {
     ...lastGitBackupStatus,
     available: true,
     repoReady: true,
     dirty: false,
-    lastCommitAt: new Date().toISOString(),
-    lastCommitHash: head.ok ? head.stdout.trim() : lastGitBackupStatus.lastCommitHash,
+    lastCommitAt: commitAt,
+    lastCommitHash: commitHash,
     lastError: ""
   };
+
+  if (state.autoPush) {
+    const remoteCheck = await runGitCommand(["remote", "get-url", state.pushRemote], rootDir);
+    if (!remoteCheck.ok) {
+      lastGitBackupStatus = {
+        ...lastGitBackupStatus,
+        lastError: `Auto-push failed: ${gitCommandError(remoteCheck, "Remote not configured")}`
+      };
+      return { ...lastGitBackupStatus };
+    }
+
+    const push = await runGitCommand(["push", "-u", state.pushRemote, `HEAD:${state.pushBranch}`], rootDir);
+    if (!push.ok) {
+      lastGitBackupStatus = {
+        ...lastGitBackupStatus,
+        lastError: `Auto-push failed: ${gitCommandError(push, "Git push failed")}`
+      };
+      return { ...lastGitBackupStatus };
+    }
+  }
+
   return { ...lastGitBackupStatus };
 }
 
@@ -383,6 +437,9 @@ async function gitBackupStatus() {
     enabled: state.enabled,
     commitPrefix: state.commitPrefix,
     autosaveDelayMs: state.autosaveDelayMs,
+    autoPush: state.autoPush,
+    pushRemote: state.pushRemote,
+    pushBranch: state.pushBranch,
     busy: gitBackupInFlight || Boolean(gitBackupTimer)
   };
 }

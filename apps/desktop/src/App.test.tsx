@@ -3595,6 +3595,9 @@ describe("App", () => {
       enabled: true,
       commitPrefix: "Vault backup",
       autosaveDelayMs: 4000,
+      autoPush: false,
+      pushRemote: "origin",
+      pushBranch: "main",
       available: true,
       repoReady: true,
       dirty: false,
@@ -3608,6 +3611,9 @@ describe("App", () => {
       enabled: true,
       commitPrefix: "Snapshots",
       autosaveDelayMs: 7000,
+      autoPush: true,
+      pushRemote: "origin",
+      pushBranch: "main",
       available: true,
       repoReady: true,
       dirty: false,
@@ -3629,12 +3635,18 @@ describe("App", () => {
     const prefixInput = await screen.findByLabelText("Commit prefix");
     fireEvent.change(prefixInput, { target: { value: "Snapshots" } });
     fireEvent.change(screen.getByLabelText("Autosave delay (seconds)"), { target: { value: "7" } });
+    fireEvent.click(screen.getByLabelText("Auto-push backups"));
+    fireEvent.change(screen.getByLabelText("Push remote"), { target: { value: "origin" } });
+    fireEvent.change(screen.getByLabelText("Push branch"), { target: { value: "main" } });
     fireEvent.click(screen.getByRole("button", { name: "Save backup settings" }));
 
     await waitFor(() =>
       expect(setGitBackupSettings).toHaveBeenCalledWith({
         commitPrefix: "Snapshots",
-        autosaveDelayMs: 7000
+        autosaveDelayMs: 7000,
+        autoPush: true,
+        pushRemote: "origin",
+        pushBranch: "main"
       })
     );
   });

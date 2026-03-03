@@ -2115,6 +2115,20 @@ body.is-resizing {
   font-size: 12px;
 }
 
+.vault-backup-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #334a6f;
+  font-size: 12px;
+}
+
+.vault-backup-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+}
+
 .ai-chat-log {
   min-height: 0;
   overflow: auto;

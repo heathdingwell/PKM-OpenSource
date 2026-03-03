@@ -380,6 +380,9 @@ interface GitBackupStatus {
   enabled: boolean;
   commitPrefix: string;
   autosaveDelayMs: number;
+  autoPush: boolean;
+  pushRemote: string;
+  pushBranch: string;
   available: boolean | null;
   repoReady: boolean;
   dirty: boolean;
@@ -2477,6 +2480,9 @@ export default function App() {
   const [gitBackupBusy, setGitBackupBusy] = useState(false);
   const [gitBackupCommitPrefix, setGitBackupCommitPrefix] = useState("Vault backup");
   const [gitBackupDelaySeconds, setGitBackupDelaySeconds] = useState("4");
+  const [gitBackupAutoPush, setGitBackupAutoPush] = useState(false);
+  const [gitBackupPushRemote, setGitBackupPushRemote] = useState("origin");
+  const [gitBackupPushBranch, setGitBackupPushBranch] = useState("main");
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [shortcutTagInput, setShortcutTagInput] = useState("");
@@ -4579,6 +4585,9 @@ export default function App() {
     setGitBackupStatus(status);
     setGitBackupCommitPrefix(status.commitPrefix || "Vault backup");
     setGitBackupDelaySeconds(String(Math.max(1, Math.round(status.autosaveDelayMs / 1000))));
+    setGitBackupAutoPush(status.autoPush === true);
+    setGitBackupPushRemote(status.pushRemote || "origin");
+    setGitBackupPushBranch(status.pushBranch || "main");
   }
 
   function describeGitBackup(status: GitBackupStatus | null): string {
@@ -4593,7 +4602,8 @@ export default function App() {
     }
     if (status.lastCommitAt) {
       const hash = status.lastCommitHash ? ` (${status.lastCommitHash})` : "";
-      return `Last commit ${new Date(status.lastCommitAt).toLocaleString()}${hash} · ${formatAutosaveDelay(status.autosaveDelayMs)} delay`;
+      const pushTarget = status.autoPush ? ` · auto-push ${status.pushRemote}/${status.pushBranch}` : "";
+      return `Last commit ${new Date(status.lastCommitAt).toLocaleString()}${hash} · ${formatAutosaveDelay(status.autosaveDelayMs)} delay${pushTarget}`;
     }
     if (status.dirty) {
       return "Pending changes";
@@ -4680,7 +4690,10 @@ export default function App() {
       setGitBackupBusy(true);
       const status = (await window.pkmShell.setGitBackupSettings({
         commitPrefix: gitBackupCommitPrefix,
-        autosaveDelayMs: seconds * 1000
+        autosaveDelayMs: seconds * 1000,
+        autoPush: gitBackupAutoPush,
+        pushRemote: gitBackupPushRemote,
+        pushBranch: gitBackupPushBranch
       })) as GitBackupStatus | null;
       applyGitBackupStatus(status);
       setToastMessage("Git backup settings saved");
@@ -11798,6 +11811,36 @@ export default function App() {
                               value={gitBackupDelaySeconds}
                               onChange={(event) => setGitBackupDelaySeconds(event.target.value)}
                               disabled={gitBackupBusy}
+                            />
+                          </label>
+                          <label className="vault-backup-toggle">
+                            <input
+                              type="checkbox"
+                              aria-label="Auto-push backups"
+                              checked={gitBackupAutoPush}
+                              onChange={(event) => setGitBackupAutoPush(event.target.checked)}
+                              disabled={gitBackupBusy}
+                            />
+                            <span>Auto-push commits</span>
+                          </label>
+                          <label className="vault-backup-field">
+                            <span>Push remote</span>
+                            <input
+                              aria-label="Push remote"
+                              value={gitBackupPushRemote}
+                              onChange={(event) => setGitBackupPushRemote(event.target.value)}
+                              disabled={gitBackupBusy || !gitBackupAutoPush}
+                              placeholder="origin"
+                            />
+                          </label>
+                          <label className="vault-backup-field">
+                            <span>Push branch</span>
+                            <input
+                              aria-label="Push branch"
+                              value={gitBackupPushBranch}
+                              onChange={(event) => setGitBackupPushBranch(event.target.value)}
+                              disabled={gitBackupBusy || !gitBackupAutoPush}
+                              placeholder="main"
                             />
                           </label>
                           <button type="button" onClick={() => void saveGitBackupSettings()} disabled={gitBackupBusy}>

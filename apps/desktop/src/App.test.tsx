@@ -1901,6 +1901,36 @@ describe("App", () => {
     expect(updatedEditor?.value).not.toContain("alert(1)");
   });
 
+  it("normalizes HTML paste in rich editor and keeps sanitized markdown output", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rich" }));
+
+    const richPane = screen.getByLabelText("Rich editor");
+    const clipboardData = {
+      files: [],
+      getData: (type: string) => {
+        if (type === "text/html") {
+          return "<h2>Agenda</h2><p>Visit <a href=\"https://example.com\">Example</a></p><script>alert(1)</script>";
+        }
+        if (type === "text/plain") {
+          return "Agenda\nVisit Example";
+        }
+        return "";
+      }
+    } as unknown as DataTransfer;
+
+    fireEvent.paste(richPane, { clipboardData });
+    fireEvent.click(screen.getByRole("button", { name: "Markdown" }));
+
+    await waitFor(() => {
+      const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+      expect(editor?.value).toContain("## Agenda");
+      expect(editor?.value).toContain("[Example](https://example.com)");
+      expect(editor?.value).not.toContain("alert(1)");
+    });
+  });
+
 
   it("generates table of contents links from markdown headings", () => {
     render(<App />);

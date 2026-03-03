@@ -11193,6 +11193,19 @@ export default function App() {
                     onPaste={async (event) => {
                       const files = event.clipboardData?.files ? Array.from(event.clipboardData.files) : [];
                       if (!files.length) {
+                        const html = event.clipboardData?.getData("text/html") ?? "";
+                        if (!html.trim()) {
+                          return;
+                        }
+
+                        event.preventDefault();
+                        const plainText = event.clipboardData?.getData("text/plain") ?? "";
+                        const pasted = convertClipboardHtmlToMarkdown(html, plainText);
+                        if (!pasted) {
+                          return;
+                        }
+
+                        richEditorRef.current?.insertMarkdown(pasted);
                         return;
                       }
                       event.preventDefault();

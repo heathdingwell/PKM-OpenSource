@@ -138,6 +138,7 @@ export interface RichMarkdownEditorHandle {
   setParagraph: () => void;
   toggleCodeBlock: () => void;
   insertContent: (content: string) => void;
+  insertMarkdown: (markdown: string) => void;
   replaceRange: (from: number, to: number, content: string) => void;
   setLink: (href: string) => void;
   unsetLink: () => void;
@@ -380,6 +381,9 @@ function RichMarkdownEditorInner(
       },
       insertContent: (content: string) => {
         editor?.chain().focus().insertContent(content).run();
+      },
+      insertMarkdown: (markdown: string) => {
+        editor?.chain().focus().insertContent(markdownToHtml(markdown)).run();
       },
       replaceRange: (from: number, to: number, content: string) => {
         editor?.chain().focus().insertContentAt({ from, to }, content).run();

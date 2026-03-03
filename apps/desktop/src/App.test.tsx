@@ -1737,6 +1737,27 @@ describe("App", () => {
     expect(screen.getByText("Attachment path copied")).toBeInTheDocument();
   });
 
+  it("inserts attachment link from files modal into current note", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open files" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Insert link for Doc PDF" }));
+
+    const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(updatedEditor?.value).toContain("[Doc PDF](./attachments/brief.pdf)");
+    expect(screen.getByText("Attachment link inserted")).toBeInTheDocument();
+  });
+
 
   it("inserts a markdown linked note from typed slash menu via modal", () => {
     const promptSpy = vi.spyOn(window, "prompt");

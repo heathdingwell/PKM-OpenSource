@@ -2931,6 +2931,12 @@ body.is-resizing {
   gap: 8px;
 }
 
+.files-modal .file-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
 .files-modal .task-open {
   min-width: 0;
 }

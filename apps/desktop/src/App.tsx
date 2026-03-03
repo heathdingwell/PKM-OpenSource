@@ -7604,6 +7604,16 @@ export default function App() {
     setToastMessage(value);
   }
 
+  function insertAttachmentLinkFromFiles(file: AttachmentItem): void {
+    const link = `[${file.label}](${file.target})`;
+    if (editorMode === "rich") {
+      richEditorRef.current?.insertMarkdown(link);
+    } else {
+      insertMarkdownAtSelection(link);
+    }
+    setToastMessage("Attachment link inserted");
+  }
+
   function openNoteInNewWindow(noteId: string): void {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note || typeof window === "undefined") {
@@ -12785,14 +12795,24 @@ export default function App() {
                         <strong>{file.label}</strong>
                         <small>{file.target}</small>
                       </button>
-                      <button
-                        type="button"
-                        className="file-copy"
-                        aria-label={`Copy path for ${file.label}`}
-                        onClick={() => void copyAttachmentPath(file.target)}
-                      >
-                        Copy path
-                      </button>
+                      <div className="file-actions">
+                        <button
+                          type="button"
+                          className="file-copy"
+                          aria-label={`Copy path for ${file.label}`}
+                          onClick={() => void copyAttachmentPath(file.target)}
+                        >
+                          Copy path
+                        </button>
+                        <button
+                          type="button"
+                          className="file-copy"
+                          aria-label={`Insert link for ${file.label}`}
+                          onClick={() => insertAttachmentLinkFromFiles(file)}
+                        >
+                          Insert link
+                        </button>
+                      </div>
                     </div>
                   </li>
                 ))}

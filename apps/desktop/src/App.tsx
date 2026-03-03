@@ -701,6 +701,7 @@ const editorContextRows: Array<{ id: string; label: string; divider?: boolean }>
   { id: "numbered", label: "Numbered list" },
   { id: "divider-2", label: "", divider: true },
   { id: "table", label: "Insert table" },
+  { id: "table-of-contents", label: "Table of contents" },
   { id: "table-row-after", label: "Add table row below" },
   { id: "table-column-after", label: "Add table column right" },
   { id: "table-delete", label: "Delete table" },
@@ -708,6 +709,8 @@ const editorContextRows: Array<{ id: string; label: string; divider?: boolean }>
   { id: "divider", label: "Divider" },
   { id: "code-block", label: "Code block" },
   { id: "formula", label: "Formula" },
+  { id: "current-date", label: "Current date" },
+  { id: "current-time", label: "Current time" },
   { id: "divider-3b", label: "", divider: true },
   { id: "link", label: "Insert link" },
   { id: "find", label: "Find in note" },
@@ -8685,6 +8688,8 @@ export default function App() {
         richEditorRef.current?.toggleOrderedList();
       } else if (action === "table") {
         richEditorRef.current?.insertTable();
+      } else if (action === "table-of-contents") {
+        richEditorRef.current?.insertContent(buildTableOfContents(draftMarkdown));
       } else if (action === "table-row-after") {
         richEditorRef.current?.addTableRowAfter();
       } else if (action === "table-column-after") {
@@ -8697,6 +8702,10 @@ export default function App() {
         richEditorRef.current?.toggleCodeBlock();
       } else if (action === "formula") {
         richEditorRef.current?.insertContent("$$\n\n$$");
+      } else if (action === "current-date") {
+        richEditorRef.current?.insertContent(new Date().toLocaleDateString());
+      } else if (action === "current-time") {
+        richEditorRef.current?.insertContent(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
       } else if (action === "link") {
         runRichToolbarAction("link");
       }
@@ -8743,6 +8752,13 @@ export default function App() {
       applyMarkdownInlineFormat("", "", "item", { linePrefix: "1. " });
     } else if (action === "table") {
       applyMarkdownSlashCommand({ id: "table", label: "Table", section: "Essentials", keywords: ["table"] });
+    } else if (action === "table-of-contents") {
+      applyMarkdownSlashCommand({
+        id: "table-of-contents",
+        label: "Table of contents",
+        section: "Essentials",
+        keywords: ["toc"]
+      });
     } else if (action === "table-row-after" || action === "table-column-after" || action === "table-delete") {
       setToastMessage("Table row and column actions are available in Rich editor");
     } else if (action === "divider") {
@@ -8751,6 +8767,10 @@ export default function App() {
       applyMarkdownSlashCommand({ id: "code-block", label: "Code Block", section: "Advanced", keywords: ["code"] });
     } else if (action === "formula") {
       applyMarkdownSlashCommand({ id: "formula", label: "Formula", section: "Advanced", keywords: ["math"] });
+    } else if (action === "current-date") {
+      applyMarkdownSlashCommand({ id: "current-date", label: "Current date", section: "Utilities", keywords: ["date"] });
+    } else if (action === "current-time") {
+      applyMarkdownSlashCommand({ id: "current-time", label: "Current time", section: "Utilities", keywords: ["time"] });
     } else if (action === "link") {
       applyMarkdownInlineFormat("[", "](https://)", "link text");
     }

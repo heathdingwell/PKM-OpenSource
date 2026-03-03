@@ -2603,6 +2603,25 @@ describe("App", () => {
     expect((editor as HTMLTextAreaElement).value).toContain("```text");
   });
 
+  it("inserts table of contents from editor context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n## Meetings\n\n## Appointments\n" }
+    });
+    fireEvent.contextMenu(editor as HTMLTextAreaElement);
+    const menu = document.querySelector(".editor-context-menu") as HTMLElement | null;
+    expect(menu).toBeTruthy();
+    fireEvent.click(within(menu as HTMLElement).getByRole("button", { name: "Table of contents" }));
+
+    expect((editor as HTMLTextAreaElement).value).toContain("## Table of contents");
+    expect((editor as HTMLTextAreaElement).value).toContain("- [Agenda](#agenda)");
+    expect((editor as HTMLTextAreaElement).value).toContain("  - [Meetings](#meetings)");
+  });
+
   it("inserts a table from rich editor context menu", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Rich" }));

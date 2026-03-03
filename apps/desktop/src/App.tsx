@@ -273,6 +273,8 @@ type SearchFilterKind =
   | "reminders-overdue"
   | "reminders-today"
   | "reminders-upcoming"
+  | "links"
+  | "tags"
   | "image"
   | "video"
   | "audio"
@@ -1412,6 +1414,14 @@ function noteHasAttachmentKind(markdown: string, kind: string): boolean {
 
 function noteMatchesHasFilter(note: AppNote, kind: string): boolean {
   const normalized = kind.trim().toLowerCase();
+  if (normalized === "link" || normalized === "links" || normalized === "wikilink" || normalized === "wikilinks") {
+    return note.linksOut.length > 0;
+  }
+
+  if (normalized === "tag" || normalized === "tags") {
+    return note.tags.length > 0;
+  }
+
   if (normalized === "reminder") {
     return Boolean(note.reminderAt);
   }
@@ -2916,6 +2926,12 @@ export default function App() {
         if (!upcoming) {
           return false;
         }
+      }
+      if (searchFilters.includes("links") && note.linksOut.length === 0) {
+        return false;
+      }
+      if (searchFilters.includes("tags") && note.tags.length === 0) {
+        return false;
       }
       if (notebookFilter && !note.notebook.toLowerCase().includes(notebookFilter)) {
         return false;
@@ -5285,6 +5301,12 @@ export default function App() {
     if (searchFilters.includes("reminders-upcoming") && !/\bhas:(reminder-upcoming|upcoming-reminder)\b/i.test(query)) {
       query = `${query}${query ? " " : ""}has:reminder-upcoming`;
     }
+    if (searchFilters.includes("links") && !/\bhas:(link|links|wikilink|wikilinks)\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:link`;
+    }
+    if (searchFilters.includes("tags") && !/\bhas:(tag|tags)\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:tag`;
+    }
 
     if (!query) {
       setToastMessage("Enter a query to save");
@@ -5359,6 +5381,12 @@ export default function App() {
     }
     if (/\bhas:(reminder-upcoming|upcoming-reminder)\b/i.test(saved.query)) {
       restoredFilters.push("reminders-upcoming");
+    }
+    if (/\bhas:(link|links|wikilink|wikilinks)\b/i.test(saved.query)) {
+      restoredFilters.push("links");
+    }
+    if (/\bhas:(tag|tags)\b/i.test(saved.query)) {
+      restoredFilters.push("tags");
     }
     setSearchFilters(restoredFilters);
     setQuickQuery(saved.query);
@@ -11875,6 +11903,20 @@ export default function App() {
               </button>
               <button
                 type="button"
+                className={searchFilters.includes("links") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("links")}
+              >
+                Has links
+              </button>
+              <button
+                type="button"
+                className={searchFilters.includes("tags") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("tags")}
+              >
+                Has tags
+              </button>
+              <button
+                type="button"
                 className={updatedSearchPreset === "today" ? "chip active" : "chip"}
                 onClick={() => setUpdatedSearchPreset(updatedSearchPreset === "today" ? "none" : "today")}
               >
@@ -11921,7 +11963,7 @@ export default function App() {
                 </button>
               ) : null}
             </div>
-            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, updated:today|week|month|YYYY-MM-DD..YYYY-MM-DD, created:, has:attachment|task|due|overdue|today|upcoming|undated|reminder|reminder-overdue|reminder-today|reminder-upcoming|image|video|audio|pdf</p>
+            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, updated:today|week|month|YYYY-MM-DD..YYYY-MM-DD, created:, has:attachment|task|due|overdue|today|upcoming|undated|reminder|reminder-overdue|reminder-today|reminder-upcoming|link|tag|image|video|audio|pdf</p>
             <div className="search-results">
               <div className="search-section-header">
                 <h4>Recent searches</h4>

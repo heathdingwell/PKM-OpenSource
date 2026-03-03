@@ -1125,6 +1125,25 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
+  it("supports has:link search filter", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Link Source\n\n[[Agenda]]" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "has:link" }
+    });
+
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Link Source")).toBeInTheDocument();
+  });
+
   it("supports updated:today search filter", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
@@ -1294,6 +1313,50 @@ describe("App", () => {
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
+  it("supports links chip filter in search", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Link Source\n\n[[Agenda]]" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Has links" }));
+
+    const chip = screen.getByRole("button", { name: "Has links" });
+    expect(chip).toHaveClass("active");
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Link Source")).toBeInTheDocument();
+  });
+
+  it("supports tags chip filter in search", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Tagged Note\n\n#project #planning" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Has tags" }));
+
+    const chip = screen.getByRole("button", { name: "Has tags" });
+    expect(chip).toHaveClass("active");
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Tagged Note")).toBeInTheDocument();
   });
 
   it("supports image attachment chip filter in search", () => {

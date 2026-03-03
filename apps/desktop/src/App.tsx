@@ -623,6 +623,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "open-local-graph", label: "Open local graph" },
   { id: "share", label: "Share", shortcut: "cmd+alt+s" },
   { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
+  { id: "copy-markdown", label: "Copy markdown" },
   { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
   { id: "divider-1", label: "", divider: true },
   { id: "move", label: "Move", shortcut: "cmd+shift+m" },
@@ -5960,11 +5961,16 @@ export default function App() {
     }
   }
 
-  function openSearchResult(note: AppNote, mode: "open" | "copy-link" | "open-window" = "open"): void {
+  function openSearchResult(note: AppNote, mode: "open" | "copy-link" | "copy-markdown" | "open-window" = "open"): void {
     rememberSearchQuery(quickQuery);
 
     if (mode === "copy-link") {
       void copyNoteLink(note.id);
+      return;
+    }
+
+    if (mode === "copy-markdown") {
+      void copyNoteMarkdown(note.id);
       return;
     }
 
@@ -7765,6 +7771,25 @@ export default function App() {
     setToastMessage(link);
   }
 
+  async function copyNoteMarkdown(noteId: string): Promise<void> {
+    const note = notes.find((entry) => entry.id === noteId);
+    if (!note) {
+      return;
+    }
+
+    const value = note.markdown.trim() || `# ${note.title}`;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        setToastMessage("Note markdown copied");
+        return;
+      } catch {
+        // Fall through to showing generated markdown when clipboard is unavailable.
+      }
+    }
+    setToastMessage(value);
+  }
+
   async function copyAttachmentPath(targetPath: string): Promise<void> {
     const value = targetPath.trim();
     if (!value) {
@@ -7931,6 +7956,12 @@ export default function App() {
 
     if (action === "copy-link") {
       void copyNoteLink(targetId);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "copy-markdown") {
+      void copyNoteMarkdown(targetId);
       setContextMenu(null);
       return;
     }
@@ -12439,6 +12470,12 @@ export default function App() {
                   return;
                 }
 
+                if (hasMeta && event.shiftKey && lowerKey === "m" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "copy-markdown");
+                  return;
+                }
+
                 if (event.key === "ArrowDown") {
                   if (!resultLength) {
                     return;
@@ -12794,6 +12831,17 @@ export default function App() {
                     }}
                   >
                     Copy link <kbd>⌘L</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "copy-markdown");
+                      }
+                    }}
+                  >
+                    Copy markdown <kbd>⇧⌘M</kbd>
                   </button>
                   <button
                     type="button"

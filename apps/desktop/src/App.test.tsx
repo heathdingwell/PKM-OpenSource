@@ -521,7 +521,7 @@ describe("App", () => {
 
     const tasksModal = screen.getByRole("heading", { name: "Tasks", level: 3 }).closest("section");
     expect(tasksModal).toBeTruthy();
-    expect(within(tasksModal as HTMLElement).getByRole("button", { name: /Capture task/i })).toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).getByText("Capture task")).toBeInTheDocument();
     expect(within(tasksModal as HTMLElement).queryByRole("button", { name: /Agenda task/i })).not.toBeInTheDocument();
     expect(within(tasksModal as HTMLElement).getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
@@ -2278,8 +2278,10 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "New task", level: 3 })).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Quick task" } });
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
-    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Quick task/i })).toBeInTheDocument();
+    const tasksModal = screen.getByRole("heading", { name: "Tasks", level: 3 }).closest("section");
+    expect(tasksModal).toBeTruthy();
+    const taskTitles = Array.from((tasksModal as HTMLElement).querySelectorAll<HTMLElement>(".task-row strong"));
+    expect(taskTitles.some((title) => title.textContent === "Quick task")).toBe(true);
   });
 
   it("applies due date presets in the task dialog", () => {
@@ -2316,7 +2318,7 @@ describe("App", () => {
     expect(within(tasksModal as HTMLElement).getByText("Future task")).toBeInTheDocument();
     expect(within(tasksModal as HTMLElement).getByText(/Due 2099-01-01/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Future task/i }));
+    fireEvent.click(within(tasksModal as HTMLElement).getByText("Future task"));
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor?.value).toContain("- [ ] Future task due:2099-01-01");
   });
@@ -2433,6 +2435,24 @@ describe("App", () => {
     fireEvent.click(within(tasksModal as HTMLElement).getByRole("button", { name: /All \(/i }));
     expect(within(tasksModal as HTMLElement).queryByText("Batch due task")).not.toBeInTheDocument();
     expect(within(tasksModal as HTMLElement).getByText("Batch no-due task")).toBeInTheDocument();
+  });
+
+  it("copies task markdown from tasks modal row action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Batch due task" } });
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2099-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy markdown for task Batch due task" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("- [ ] Batch due task due:2099-01-01"));
+    expect(screen.getByText("Task markdown copied")).toBeInTheDocument();
   });
 
   it("filters calendar events by query and resets on reopen", () => {
@@ -2599,7 +2619,8 @@ describe("App", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
-    expect(screen.getByRole("button", { name: /Unsaved task from draft/i })).toBeInTheDocument();
+    const taskTitles = Array.from(document.querySelectorAll<HTMLElement>(".task-row strong"));
+    expect(taskTitles.some((title) => title.textContent === "Unsaved task from draft")).toBe(true);
   });
 
   it("toggles backlinks dock in notes view", () => {

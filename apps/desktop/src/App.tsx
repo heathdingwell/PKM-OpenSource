@@ -7784,6 +7784,21 @@ export default function App() {
     setToastMessage(value);
   }
 
+  async function copyTaskMarkdown(task: OpenTaskItem): Promise<void> {
+    const dueSuffix = task.dueDate ? ` due:${task.dueDate}` : "";
+    const value = `- [ ] ${task.text}${dueSuffix}`;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        setToastMessage("Task markdown copied");
+        return;
+      } catch {
+        // Fall through to showing generated markdown when clipboard is unavailable.
+      }
+    }
+    setToastMessage(value);
+  }
+
   async function copyAiResponse(message: AiChatMessage): Promise<void> {
     const value = message.content.trim();
     if (!value) {
@@ -12854,13 +12869,23 @@ export default function App() {
                         {task.dueDate ? ` · ${describeTaskDueDate(task.dueDate)}` : ""}
                       </small>
                     </button>
-                    <button
-                      type="button"
-                      className="task-complete"
-                      onClick={() => completeOpenTask(task)}
-                    >
-                      Done
-                    </button>
+                    <div className="task-actions">
+                      <button
+                        type="button"
+                        className="task-complete"
+                        aria-label={`Copy markdown for task ${task.text}`}
+                        onClick={() => void copyTaskMarkdown(task)}
+                      >
+                        Copy markdown
+                      </button>
+                      <button
+                        type="button"
+                        className="task-complete"
+                        onClick={() => completeOpenTask(task)}
+                      >
+                        Done
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

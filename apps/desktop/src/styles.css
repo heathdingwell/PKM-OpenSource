@@ -2919,6 +2919,12 @@ body.is-resizing {
   min-width: 0;
 }
 
+.tasks-modal .task-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
 .tasks-modal li button strong {
   font-size: 13px;
   white-space: nowrap;

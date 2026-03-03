@@ -132,6 +132,7 @@ interface AttachmentItem {
   notebook: string;
   label: string;
   target: string;
+  isEmbed: boolean;
   updatedAt: string;
 }
 
@@ -1708,6 +1709,7 @@ function extractAttachments(notes: AppNote[]): AttachmentItem[] {
         notebook: note.notebook,
         label,
         target: normalized,
+        isEmbed: Boolean(match[1]?.startsWith("!")),
         updatedAt: note.updatedAt
       });
     }
@@ -7605,13 +7607,13 @@ export default function App() {
   }
 
   function insertAttachmentLinkFromFiles(file: AttachmentItem): void {
-    const link = `[${file.label}](${file.target})`;
+    const link = `${file.isEmbed ? "!" : ""}[${file.label}](${file.target})`;
     if (editorMode === "rich") {
       richEditorRef.current?.insertMarkdown(link);
     } else {
       insertMarkdownAtSelection(link);
     }
-    setToastMessage("Attachment link inserted");
+    setToastMessage(file.isEmbed ? "Attachment embed inserted" : "Attachment link inserted");
   }
 
   function openNoteInNewWindow(noteId: string): void {
@@ -12807,10 +12809,10 @@ export default function App() {
                         <button
                           type="button"
                           className="file-copy"
-                          aria-label={`Insert link for ${file.label}`}
+                          aria-label={`${file.isEmbed ? "Insert embed" : "Insert link"} for ${file.label}`}
                           onClick={() => insertAttachmentLinkFromFiles(file)}
                         >
-                          Insert link
+                          {file.isEmbed ? "Insert embed" : "Insert link"}
                         </button>
                       </div>
                     </div>

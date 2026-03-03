@@ -551,6 +551,8 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
   { id: "open-graph", label: "Open graph", keywords: ["graph", "links", "network"] },
+  { id: "graph-scope-workspace", label: "Set graph scope: Workspace", keywords: ["graph", "scope", "workspace"] },
+  { id: "graph-scope-local", label: "Set graph scope: Local", keywords: ["graph", "scope", "local"] },
   { id: "open-trash", label: "Open trash", keywords: ["trash", "deleted"] },
   { id: "clear-recent-notes", label: "Clear recent notes", keywords: ["recent", "history", "clear"] },
   { id: "clear-recent-searches", label: "Clear recent searches", keywords: ["search", "recent", "clear"] },
@@ -6379,6 +6381,31 @@ export default function App() {
     if (actionId === "open-graph") {
       setSidebarView("notes");
       setBrowseMode("graph");
+      setGraphScope("workspace");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "graph-scope-workspace") {
+      setSidebarView("notes");
+      setBrowseMode("graph");
+      setGraphScope("workspace");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "graph-scope-local") {
+      setSidebarView("notes");
+      setBrowseMode("graph");
+      setGraphScope("local");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);

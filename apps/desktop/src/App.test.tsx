@@ -437,6 +437,18 @@ describe("App", () => {
     expect(screen.getByText("No reminders scheduled.")).toBeInTheDocument();
   });
 
+  it("sets graph scope to local from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">graph scope local" }
+    });
+    fireEvent.click(screen.getByText("Set graph scope: Local"));
+
+    expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+  });
+
   it("cycles grouping mode from command palette action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

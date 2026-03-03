@@ -864,6 +864,57 @@ async function saveVaultAttachment(payload) {
   };
 }
 
+async function exportNotePdf(payload) {
+  if (!isObject(payload)) {
+    return { ok: false, error: "Invalid export payload" };
+  }
+
+  const title = normalizeSegment(asString(payload.title)) || "Untitled";
+  const html = asString(payload.html);
+  if (!html.trim()) {
+    return { ok: false, error: "No note content to export" };
+  }
+
+  const exportsDir = path.join(vaultRootPath(), "Exports");
+  await fs.mkdir(exportsDir, { recursive: true });
+
+  const fileName = sanitizeAttachmentName(`${title}.pdf`);
+  const uniqueFileName = await uniqueFileNameInDir(exportsDir, fileName);
+  const outputPath = path.join(exportsDir, uniqueFileName);
+
+  let printWindow = null;
+  try {
+    printWindow = new BrowserWindow({
+      show: false,
+      width: 1024,
+      height: 1320,
+      backgroundColor: "#ffffff",
+      webPreferences: {
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false
+      }
+    });
+
+    await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const pdf = await printWindow.webContents.printToPDF({
+      printBackground: true,
+      landscape: false,
+      pageSize: "A4",
+      marginsType: 1
+    });
+    await fs.writeFile(outputPath, pdf);
+    return { ok: true, path: outputPath };
+  } catch (error) {
+    console.error("Failed to export note as PDF", error);
+    return { ok: false, error: "Failed to export PDF" };
+  } finally {
+    if (printWindow && !printWindow.isDestroyed()) {
+      printWindow.destroy();
+    }
+  }
+}
+
 function isExternalReference(value) {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -1416,6 +1467,15 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error("Failed to clone note attachments", error);
       return null;
+    }
+  });
+
+  ipcMain.handle("vault:export-note-pdf", async (_event, payload) => {
+    try {
+      return await exportNotePdf(payload);
+    } catch (error) {
+      console.error("Failed to export note as PDF", error);
+      return { ok: false, error: "Failed to export PDF" };
     }
   });
 

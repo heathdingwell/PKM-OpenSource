@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("pkmShell", {
   saveVaultState: (notes) => ipcRenderer.invoke("vault:save", notes),
   saveAttachment: (payload) => ipcRenderer.invoke("vault:attach", payload),
   cloneAttachmentLinks: (payload) => ipcRenderer.invoke("vault:clone-attachments", payload),
+  exportNotePdf: (payload) => ipcRenderer.invoke("vault:export-note-pdf", payload),
   getGitBackupStatus: () => ipcRenderer.invoke("vault:git-status"),
   setGitBackupEnabled: (enabled) => ipcRenderer.invoke("vault:git-set-enabled", enabled),
   setGitBackupSettings: (payload) => ipcRenderer.invoke("vault:git-update-settings", payload),

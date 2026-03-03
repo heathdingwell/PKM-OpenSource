@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type UIEvent } from "react";
 import { SearchIndex } from "@pkm-os/indexer";
 import { type NoteRecord, VaultService } from "@pkm-os/vault-core";
+import MarkdownIt from "markdown-it";
+import markdownItTaskLists from "markdown-it-task-lists";
 import TurndownService from "turndown";
 import RichMarkdownEditor, { type RichMarkdownEditorHandle } from "./RichMarkdownEditor";
 import { applyMarkdownTableAction, type MarkdownTableAction } from "./markdownTables";
@@ -742,6 +744,12 @@ const sortModes: Array<{ id: NoteSortMode; label: string }> = [
   { id: "title-desc", label: "Title (Z-A)" }
 ];
 
+const pdfMarkdownParser = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: true
+}).use(markdownItTaskLists, { enabled: true, label: true, labelAfter: true });
+
 function toFileName(title: string): string {
   const base = title
     .trim()
@@ -749,6 +757,82 @@ function toFileName(title: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return `${base || "untitled"}.md`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildNotePdfHtml(note: AppNote): string {
+  const title = (note.title || "Untitled").trim() || "Untitled";
+  const markdown = note.markdown.trim() ? note.markdown : `# ${title}\n`;
+  const content = pdfMarkdownParser.render(markdown);
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: Georgia, "Palatino Linotype", Palatino, serif;
+        color: #0f172a;
+        line-height: 1.55;
+        padding: 42px 48px;
+        max-width: 850px;
+      }
+      h1, h2, h3 {
+        line-height: 1.2;
+        margin-top: 1.3em;
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 2rem;
+      }
+      code, pre {
+        font-family: "SFMono-Regular", ui-monospace, Menlo, monospace;
+      }
+      pre {
+        background: #f8fafc;
+        border: 1px solid #dbe4f0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        overflow: auto;
+      }
+      blockquote {
+        margin-left: 0;
+        padding-left: 14px;
+        border-left: 3px solid #93c5fd;
+        color: #334155;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      th, td {
+        border: 1px solid #cbd5e1;
+        padding: 6px 8px;
+      }
+      a {
+        color: #1d4ed8;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    ${content}
+  </body>
+</html>`;
 }
 
 function createPathAllocator(notes: AppNote[], excludeIds: ReadonlySet<string> = new Set()): (notebook: string, title: string) => string {
@@ -7929,6 +8013,30 @@ export default function App() {
     setToastMessage(`Exported "${note.title}"`);
   }
 
+  async function exportNotePdf(noteId: string): Promise<void> {
+    const note = notes.find((entry) => entry.id === noteId);
+    if (!note) {
+      return;
+    }
+
+    if (!window.pkmShell?.exportNotePdf) {
+      window.print();
+      return;
+    }
+
+    const result = await window.pkmShell.exportNotePdf({
+      title: note.title,
+      html: buildNotePdfHtml(note)
+    });
+
+    if (!result?.ok) {
+      setToastMessage(result?.error || "Failed to export PDF");
+      return;
+    }
+
+    setToastMessage(`Exported PDF to ${result.path}`);
+  }
+
   function handleMenuAction(action: string): void {
     if (!contextMenu) {
       return;
@@ -8163,7 +8271,7 @@ export default function App() {
     }
 
     if (action === "export-pdf") {
-      window.print();
+      void exportNotePdf(targetId);
       setContextMenu(null);
       return;
     }

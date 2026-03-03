@@ -2835,6 +2835,39 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Agenda copy", level: 2 })).toBeInTheDocument();
   });
 
+  it("exports a note as PDF via desktop shell from note context menu", async () => {
+    const exportNotePdf = vi.fn().mockResolvedValue({ ok: true, path: "/tmp/Agenda.pdf" });
+    (window as unknown as { pkmShell?: { exportNotePdf: typeof exportNotePdf } }).pkmShell = { exportNotePdf };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Export as PDF" }));
+
+    await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
+    expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
+    expect(String(exportNotePdf.mock.calls[0]?.[0]?.html ?? "")).toContain("<!doctype html>");
+    expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+  });
+
+  it("falls back to print when exporting note as PDF without desktop shell bridge", () => {
+    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Export as PDF" }));
+
+    expect(printSpy).toHaveBeenCalledTimes(1);
+    printSpy.mockRestore();
+  });
+
   it("copies markdown for multi-selected notes from note context menu", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

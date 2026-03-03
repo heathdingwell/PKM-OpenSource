@@ -23,6 +23,14 @@ declare global {
         markdown: string;
         copied?: number;
       } | null>;
+      exportNotePdf?: (payload: {
+        title: string;
+        html: string;
+      }) => Promise<{
+        ok: boolean;
+        path?: string;
+        error?: string;
+      } | null>;
       getGitBackupStatus?: () => Promise<{
         enabled: boolean;
         commitPrefix: string;

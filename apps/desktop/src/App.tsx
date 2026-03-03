@@ -5890,6 +5890,34 @@ export default function App() {
     setToastMessage(`Deleted "${existing.title}"`);
   }
 
+  function toggleEventLinkToActiveNote(event: CalendarEvent): void {
+    if (!activeNote) {
+      setToastMessage("Open a note before linking events");
+      return;
+    }
+
+    const isLinkedToActive = event.noteId === activeNote.id;
+    const nextNoteId = isLinkedToActive ? null : activeNote.id;
+    const now = new Date().toISOString();
+    setCalendarEvents((previous) =>
+      previous.map((entry) =>
+        entry.id === event.id
+          ? {
+              ...entry,
+              noteId: nextNoteId,
+              updatedAt: now
+            }
+          : entry
+      )
+    );
+
+    if (nextNoteId) {
+      setToastMessage(`Linked "${event.title}" to "${activeNote.title}"`);
+    } else {
+      setToastMessage(`Unlinked "${event.title}" from "${activeNote.title}"`);
+    }
+  }
+
   function openSearchResult(note: AppNote, mode: "open" | "copy-link" | "open-window" = "open"): void {
     rememberSearchQuery(quickQuery);
 
@@ -13064,6 +13092,7 @@ export default function App() {
                     <ul>
                       {group.events.map((event) => {
                         const linkedNote = event.noteId ? notes.find((note) => note.id === event.noteId) ?? null : null;
+                        const linkedToActive = Boolean(activeNote && event.noteId === activeNote.id);
                         return (
                           <li key={event.id} className="calendar-row">
                             <button
@@ -13105,6 +13134,15 @@ export default function App() {
                               onClick={() => void copyEventReference(event)}
                             >
                               Copy ref
+                            </button>
+                            <button
+                              type="button"
+                              className="task-complete"
+                              aria-label={`${linkedToActive ? "Unlink event" : "Link active note"} for ${event.title}`}
+                              onClick={() => toggleEventLinkToActiveNote(event)}
+                              disabled={!activeNote}
+                            >
+                              {linkedToActive ? "Unlink note" : "Link active note"}
                             </button>
                           </li>
                         );

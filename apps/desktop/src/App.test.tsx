@@ -2422,6 +2422,26 @@ describe("App", () => {
     expect(screen.getByText("Event reference copied")).toBeInTheDocument();
   });
 
+  it("links and unlinks a calendar event to the active note from calendar modal", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open calendar" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    const row = screen.getByText("Weekly planning").closest(".calendar-row");
+    expect(row).toBeTruthy();
+
+    fireEvent.click(within(row as HTMLElement).getByRole("button", { name: "Link active note for Weekly planning" }));
+    expect(within(row as HTMLElement).getByRole("button", { name: "Open note" })).toBeInTheDocument();
+    expect(screen.getByText('Linked "Weekly planning" to "Agenda"')).toBeInTheDocument();
+
+    fireEvent.click(within(row as HTMLElement).getByRole("button", { name: "Unlink event for Weekly planning" }));
+    expect(within(row as HTMLElement).queryByRole("button", { name: "Open note" })).not.toBeInTheDocument();
+    expect(screen.getByText('Unlinked "Weekly planning" from "Agenda"')).toBeInTheDocument();
+  });
+
   it("derives note title from first markdown line when no heading exists", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

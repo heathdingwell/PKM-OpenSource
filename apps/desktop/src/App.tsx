@@ -915,6 +915,10 @@ function normalizePastedMarkdown(content: string): string {
     .trim();
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function findMarkdownTextRanges(markdown: string, query: string): FindMatchRange[] {
   const source = markdown.toLowerCase();
   const needle = query.trim().toLowerCase();
@@ -5776,6 +5780,27 @@ export default function App() {
       editor.focus();
       editor.setSelectionRange(cursor, cursor);
     });
+  }
+
+  function insertEventReferenceFromCalendar(event: CalendarEvent): void {
+    if (!activeNote) {
+      setToastMessage("Open a note before inserting an event reference");
+      return;
+    }
+
+    const reference = formatCalendarReference(event);
+    if (new RegExp(`\\[\\[event:${escapeRegExp(event.id)}\\|`, "i").test(draftMarkdown)) {
+      setToastMessage("Event is already linked in this note");
+      return;
+    }
+
+    const content = `- [ ] Calendar event: ${reference}\n`;
+    if (editorMode === "rich") {
+      richEditorRef.current?.insertMarkdown(content.trimEnd());
+    } else {
+      insertMarkdownAtSelection(content);
+    }
+    setToastMessage("Event reference inserted");
   }
 
   function saveEventDialog(): void {
@@ -13012,6 +13037,14 @@ export default function App() {
                                 Open note
                               </button>
                             ) : null}
+                            <button
+                              type="button"
+                              className="task-complete"
+                              aria-label={`Insert event reference for ${event.title}`}
+                              onClick={() => insertEventReferenceFromCalendar(event)}
+                            >
+                              Insert ref
+                            </button>
                           </li>
                         );
                       })}

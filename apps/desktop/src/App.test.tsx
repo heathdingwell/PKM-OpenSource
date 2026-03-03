@@ -2335,6 +2335,38 @@ describe("App", () => {
     expect(within(calendarModal as HTMLElement).getByRole("button", { name: /^All \(/ })).toHaveClass("active");
   });
 
+  it("inserts an event reference from calendar modal into the active note", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open calendar" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Insert event reference for Weekly planning" }));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    expect(editor?.value).toContain("Calendar event: [[event:");
+    expect(editor?.value).toContain("|Weekly planning]]");
+    expect(screen.getByText("Event reference inserted")).toBeInTheDocument();
+  });
+
+  it("prevents duplicate event references from calendar modal", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open calendar" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    const insertButton = screen.getByRole("button", { name: "Insert event reference for Weekly planning" });
+    fireEvent.click(insertButton);
+    fireEvent.click(insertButton);
+
+    expect(screen.getByText("Event is already linked in this note")).toBeInTheDocument();
+  });
+
   it("derives note title from first markdown line when no heading exists", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

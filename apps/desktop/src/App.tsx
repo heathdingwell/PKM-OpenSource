@@ -7567,6 +7567,25 @@ export default function App() {
     setToastMessage(link);
   }
 
+  async function copyAttachmentPath(targetPath: string): Promise<void> {
+    const value = targetPath.trim();
+    if (!value) {
+      return;
+    }
+
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        setToastMessage("Attachment path copied");
+        return;
+      } catch {
+        // Fall through to showing the generated path when clipboard is unavailable.
+      }
+    }
+
+    setToastMessage(value);
+  }
+
   function openNoteInNewWindow(noteId: string): void {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note || typeof window === "undefined") {
@@ -12732,21 +12751,31 @@ export default function App() {
               <ul>
                 {filteredAttachmentItems.map((file) => (
                   <li key={file.id}>
-                    <button
-                      type="button"
-                      className="task-open"
-                      onClick={() => {
-                        setSelectedNotebook(file.notebook);
-                        focusNote(file.noteId);
-                        setFilesDialogOpen(false);
-                        setFilesQuery("");
-                        setFilesFilterKind("all");
-                        setFilesSortMode("recent");
-                      }}
-                    >
-                      <strong>{file.label}</strong>
-                      <small>{file.target}</small>
-                    </button>
+                    <div className="file-row">
+                      <button
+                        type="button"
+                        className="task-open"
+                        onClick={() => {
+                          setSelectedNotebook(file.notebook);
+                          focusNote(file.noteId);
+                          setFilesDialogOpen(false);
+                          setFilesQuery("");
+                          setFilesFilterKind("all");
+                          setFilesSortMode("recent");
+                        }}
+                      >
+                        <strong>{file.label}</strong>
+                        <small>{file.target}</small>
+                      </button>
+                      <button
+                        type="button"
+                        className="file-copy"
+                        aria-label={`Copy path for ${file.label}`}
+                        onClick={() => void copyAttachmentPath(file.target)}
+                      >
+                        Copy path
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

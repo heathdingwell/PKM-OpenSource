@@ -2924,6 +2924,32 @@ body.is-resizing {
   min-width: 0;
 }
 
+.files-modal .file-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.files-modal .task-open {
+  min-width: 0;
+}
+
+.files-modal .file-copy {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #c9d8ef;
+  border-radius: 7px;
+  color: #395478;
+  font-size: 11px;
+  white-space: nowrap;
+  background: #f4f8ff;
+}
+
+.files-modal .file-copy:hover {
+  background: #eaf1ff;
+}
+
 .files-filter-input {
   margin-bottom: 8px;
 }

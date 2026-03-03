@@ -1700,6 +1700,31 @@ describe("App", () => {
     expect(screen.queryByText("Doc PDF")).not.toBeInTheDocument();
   });
 
+  it("copies attachment path from files modal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open files" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy path for Doc PDF" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("./attachments/brief.pdf"));
+    expect(screen.getByText("Attachment path copied")).toBeInTheDocument();
+  });
+
 
   it("inserts a markdown linked note from typed slash menu via modal", () => {
     const promptSpy = vi.spyOn(window, "prompt");

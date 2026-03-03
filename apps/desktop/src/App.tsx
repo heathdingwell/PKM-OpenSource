@@ -3,6 +3,7 @@ import { SearchIndex } from "@pkm-os/indexer";
 import { type NoteRecord, VaultService } from "@pkm-os/vault-core";
 import TurndownService from "turndown";
 import RichMarkdownEditor, { type RichMarkdownEditorHandle } from "./RichMarkdownEditor";
+import { applyMarkdownTableAction, type MarkdownTableAction } from "./markdownTables";
 
 interface SeedNote {
   notebook: string;
@@ -9065,7 +9066,27 @@ export default function App() {
         keywords: ["toc"]
       });
     } else if (action === "table-row-after" || action === "table-column-after" || action === "table-delete") {
-      setToastMessage("Table row and column actions are available in Rich editor");
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        setToastMessage("Markdown editor is not ready");
+      } else {
+        const tableAction: MarkdownTableAction =
+          action === "table-row-after" ? "add-row-after" : action === "table-column-after" ? "add-column-after" : "delete-table";
+        const mutated = applyMarkdownTableAction(draftMarkdown, editor.selectionStart, editor.selectionEnd, tableAction);
+        if (!mutated.changed) {
+          setToastMessage("Place cursor inside a Markdown table first");
+        } else {
+          setDraftMarkdown(mutated.markdown);
+          window.requestAnimationFrame(() => {
+            const current = markdownEditorRef.current;
+            if (!current) {
+              return;
+            }
+            current.focus();
+            current.setSelectionRange(mutated.selectionStart, mutated.selectionEnd);
+          });
+        }
+      }
     } else if (action === "divider") {
       applyMarkdownSlashCommand({ id: "divider", label: "Divider", section: "Essentials", keywords: ["hr"] });
     } else if (action === "code-block") {
@@ -9499,21 +9520,15 @@ export default function App() {
 
   const activeEditorFont = editorFontFamilies.find((entry) => entry.id === editorFontFamily)?.value ?? editorFontFamilies[0].value;
   const visibleEditorContextRows = useMemo(() => {
-    const filtered =
-      editorMode === "rich"
-        ? editorContextRows
-        : editorContextRows.filter(
-            (row) => row.id !== "table-row-after" && row.id !== "table-column-after" && row.id !== "table-delete"
-          );
-    return filtered.filter((row, index) => {
+    return editorContextRows.filter((row, index) => {
       if (!row.divider) {
         return true;
       }
-      const previous = filtered[index - 1];
-      const next = filtered[index + 1];
+      const previous = editorContextRows[index - 1];
+      const next = editorContextRows[index + 1];
       return Boolean(previous && !previous.divider && next && !next.divider);
     });
-  }, [editorMode]);
+  }, []);
 
   const editorMainStyle = {
     "--tag-pane-height": `${tagPaneHeight}px`,

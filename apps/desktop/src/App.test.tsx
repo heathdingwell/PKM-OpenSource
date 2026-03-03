@@ -1144,6 +1144,30 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Link Source")).toBeInTheDocument();
   });
 
+  it("supports has:backlink search filter", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Backlink Target\n\nReference me" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Backlink Source\n\n[[Backlink Target]]" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "has:backlink" }
+    });
+
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Backlink Target")).toBeInTheDocument();
+  });
+
   it("supports updated:today search filter", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
@@ -1335,6 +1359,32 @@ describe("App", () => {
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Link Source")).toBeInTheDocument();
+  });
+
+  it("supports backlinks chip filter in search", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Backlink Target\n\nReference me" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Backlink Source\n\n[[Backlink Target]]" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Has backlinks" }));
+
+    const chip = screen.getByRole("button", { name: "Has backlinks" });
+    expect(chip).toHaveClass("active");
+    const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Backlink Target")).toBeInTheDocument();
   });
 
   it("supports tags chip filter in search", () => {

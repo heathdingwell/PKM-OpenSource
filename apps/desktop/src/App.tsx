@@ -274,6 +274,7 @@ type SearchFilterKind =
   | "reminders-today"
   | "reminders-upcoming"
   | "links"
+  | "backlinks"
   | "tags"
   | "image"
   | "video"
@@ -1419,6 +1420,10 @@ function noteMatchesHasFilter(note: AppNote, kind: string): boolean {
     return note.linksOut.length > 0;
   }
 
+  if (normalized === "backlink" || normalized === "backlinks" || normalized === "inbound") {
+    return false;
+  }
+
   if (normalized === "tag" || normalized === "tags") {
     return note.tags.length > 0;
   }
@@ -1839,6 +1844,26 @@ function isAppNote(value: unknown): value is AppNote {
     (note.trashedAt === undefined || typeof note.trashedAt === "string") &&
     (note.reminderAt === undefined || typeof note.reminderAt === "string")
   );
+}
+
+function buildBacklinkCountByNoteId(notes: AppNote[]): Map<string, number> {
+  const titleToId = new Map<string, string>();
+  notes.forEach((note) => {
+    titleToId.set(note.title.trim().toLowerCase(), note.id);
+  });
+
+  const counts = new Map<string, number>();
+  notes.forEach((source) => {
+    source.linksOut.forEach((linkTitle) => {
+      const targetId = titleToId.get(linkTitle.trim().toLowerCase());
+      if (!targetId || targetId === source.id) {
+        return;
+      }
+      counts.set(targetId, (counts.get(targetId) ?? 0) + 1);
+    });
+  });
+
+  return counts;
 }
 
 function loadInitialNotes(): AppNote[] {
@@ -2872,6 +2897,7 @@ export default function App() {
     const createdAfter = parsedQuickQuery.createdAfterDate ? new Date(`${parsedQuickQuery.createdAfterDate}T00:00:00`) : null;
     const createdBefore = parsedQuickQuery.createdBeforeDate ? new Date(`${parsedQuickQuery.createdBeforeDate}T23:59:59`) : null;
     const notebookFilter = parsedQuickQuery.notebook?.toLowerCase() ?? null;
+    const backlinkCountByNoteId = buildBacklinkCountByNoteId(activeNotes);
 
     const filteredScope = scopedNotes.filter((note) => {
       if (searchFilters.includes("attachments") && !noteHasAttachmentLink(note.markdown)) {
@@ -2931,6 +2957,9 @@ export default function App() {
       if (searchFilters.includes("links") && note.linksOut.length === 0) {
         return false;
       }
+      if (searchFilters.includes("backlinks") && (backlinkCountByNoteId.get(note.id) ?? 0) === 0) {
+        return false;
+      }
       if (searchFilters.includes("tags") && note.tags.length === 0) {
         return false;
       }
@@ -2940,8 +2969,17 @@ export default function App() {
       if (parsedQuickQuery.tags.length && !parsedQuickQuery.tags.every((tag) => note.tags.includes(tag))) {
         return false;
       }
-      if (parsedQuickQuery.hasKinds.length && !parsedQuickQuery.hasKinds.every((kind) => noteMatchesHasFilter(note, kind))) {
-        return false;
+      if (parsedQuickQuery.hasKinds.length) {
+        const hasKindsMatch = parsedQuickQuery.hasKinds.every((kind) => {
+          const normalized = kind.trim().toLowerCase();
+          if (normalized === "backlink" || normalized === "backlinks" || normalized === "inbound") {
+            return (backlinkCountByNoteId.get(note.id) ?? 0) > 0;
+          }
+          return noteMatchesHasFilter(note, normalized);
+        });
+        if (!hasKindsMatch) {
+          return false;
+        }
       }
       if (updatedAfter || updatedBefore) {
         const updated = new Date(note.updatedAt);
@@ -5305,6 +5343,9 @@ export default function App() {
     if (searchFilters.includes("links") && !/\bhas:(link|links|wikilink|wikilinks)\b/i.test(query)) {
       query = `${query}${query ? " " : ""}has:link`;
     }
+    if (searchFilters.includes("backlinks") && !/\bhas:(backlink|backlinks|inbound)\b/i.test(query)) {
+      query = `${query}${query ? " " : ""}has:backlink`;
+    }
     if (searchFilters.includes("tags") && !/\bhas:(tag|tags)\b/i.test(query)) {
       query = `${query}${query ? " " : ""}has:tag`;
     }
@@ -5385,6 +5426,9 @@ export default function App() {
     }
     if (/\bhas:(link|links|wikilink|wikilinks)\b/i.test(saved.query)) {
       restoredFilters.push("links");
+    }
+    if (/\bhas:(backlink|backlinks|inbound)\b/i.test(saved.query)) {
+      restoredFilters.push("backlinks");
     }
     if (/\bhas:(tag|tags)\b/i.test(saved.query)) {
       restoredFilters.push("tags");
@@ -11915,6 +11959,13 @@ export default function App() {
               </button>
               <button
                 type="button"
+                className={searchFilters.includes("backlinks") ? "chip active" : "chip"}
+                onClick={() => toggleSearchFilter("backlinks")}
+              >
+                Has backlinks
+              </button>
+              <button
+                type="button"
                 className={searchFilters.includes("tags") ? "chip active" : "chip"}
                 onClick={() => toggleSearchFilter("tags")}
               >
@@ -11968,7 +12019,7 @@ export default function App() {
                 </button>
               ) : null}
             </div>
-            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, updated:today|week|month|YYYY-MM-DD..YYYY-MM-DD, created:, has:attachment|task|due|overdue|today|upcoming|undated|reminder|reminder-overdue|reminder-today|reminder-upcoming|link|tag|image|video|audio|pdf</p>
+            <p className="search-hint">Use {'`>`'} for commands. Filters: tag:, notebook:, after:, before:, updated:today|week|month|YYYY-MM-DD..YYYY-MM-DD, created:, has:attachment|task|due|overdue|today|upcoming|undated|reminder|reminder-overdue|reminder-today|reminder-upcoming|link|backlink|tag|image|video|audio|pdf</p>
             <div className="search-results">
               <div className="search-section-header">
                 <h4>Recent searches</h4>

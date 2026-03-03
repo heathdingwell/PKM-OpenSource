@@ -561,6 +561,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "empty-trash", label: "Empty trash", keywords: ["trash", "delete"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
   { id: "insert-last-ai-reply", label: "Insert last AI reply into note", keywords: ["ai", "copilot", "insert"] },
+  { id: "insert-ai-transcript", label: "Insert AI chat transcript into note", keywords: ["ai", "copilot", "chat", "transcript", "insert"] },
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "toggle-density", label: "Toggle note density", keywords: ["density", "compact", "comfortable"] },
@@ -4503,6 +4504,28 @@ export default function App() {
     insertAiReplyIntoNote(latest);
   }
 
+  function insertAiTranscriptIntoNote(): void {
+    if (!activeNote) {
+      setToastMessage("Open a note before inserting AI output");
+      return;
+    }
+
+    const entries = aiMessages.filter((entry) => entry.content.trim());
+    if (!entries.length) {
+      setToastMessage("No AI chat to insert yet");
+      return;
+    }
+
+    const transcriptBody = entries
+      .map((entry) => `#### ${entry.role === "user" ? "You" : "Copilot"}\n\n${entry.content.trim()}`)
+      .join("\n\n");
+    const transcript = `### AI chat transcript\n\n${transcriptBody}`;
+    const base = draftMarkdown.replace(/\s+$/, "");
+    const nextMarkdown = `${base}${base ? "\n\n" : ""}${transcript}\n`;
+    setDraftMarkdown(nextMarkdown);
+    setToastMessage("Inserted AI chat transcript into note");
+  }
+
   function applyGitBackupStatus(status: GitBackupStatus | null): void {
     if (!status) {
       setGitBackupStatus(null);
@@ -6506,6 +6529,12 @@ export default function App() {
 
     if (actionId === "insert-last-ai-reply") {
       insertLastAiReplyIntoActiveNote();
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "insert-ai-transcript") {
+      insertAiTranscriptIntoNote();
       setSearchOpen(false);
       return;
     }
@@ -11404,6 +11433,9 @@ export default function App() {
                     <div className="ai-toolbar">
                       <button type="button" onClick={() => setAiShowSettings((previous) => !previous)}>
                         {aiShowSettings ? "Hide settings" : "Settings"}
+                      </button>
+                      <button type="button" onClick={insertAiTranscriptIntoNote}>
+                        Insert chat
                       </button>
                       <button type="button" onClick={clearAiChat}>
                         Clear chat

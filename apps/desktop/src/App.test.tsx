@@ -3163,6 +3163,59 @@ describe("App", () => {
     expect(editor?.value).toContain("- Follow-up item");
   });
 
+  it("inserts AI chat transcript into the active note from the AI panel", async () => {
+    const chatWithLlm = vi.fn().mockResolvedValue({
+      message: "Start with your highest leverage task."
+    });
+    (window as unknown as { pkmShell?: { chatWithLlm: typeof chatWithLlm } }).pkmShell = { chatWithLlm };
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.change(screen.getByPlaceholderText("Ask about this note or your vault..."), {
+      target: { value: "What should I do first today?" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText(/highest leverage task/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Insert chat" }));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    expect(editor?.value).toContain("### AI chat transcript");
+    expect(editor?.value).toContain("#### You");
+    expect(editor?.value).toContain("What should I do first today?");
+    expect(editor?.value).toContain("#### Copilot");
+    expect(editor?.value).toContain("Start with your highest leverage task.");
+  });
+
+  it("inserts AI chat transcript from command palette action", async () => {
+    const chatWithLlm = vi.fn().mockResolvedValue({
+      message: "Block 60 minutes for focused writing."
+    });
+    (window as unknown as { pkmShell?: { chatWithLlm: typeof chatWithLlm } }).pkmShell = { chatWithLlm };
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.change(screen.getByPlaceholderText("Ask about this note or your vault..."), {
+      target: { value: "How should I structure this afternoon?" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText(/focused writing/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">insert ai chat transcript" } });
+    fireEvent.click(screen.getByText("Insert AI chat transcript into note"));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    expect(editor?.value).toContain("### AI chat transcript");
+    expect(editor?.value).toContain("How should I structure this afternoon?");
+    expect(editor?.value).toContain("Block 60 minutes for focused writing.");
+  });
+
   it("saves configurable git backup settings", async () => {
     const getGitBackupStatus = vi.fn().mockResolvedValue({
       enabled: true,

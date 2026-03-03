@@ -157,6 +157,32 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: "To-do list" })).not.toBeInTheDocument();
   });
 
+  it("supports local graph scope around active note", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Target\n\nLinked target" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Source\n\n[[Target]]" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    fireEvent.click(screen.getByRole("button", { name: "Local" }));
+
+    const graphCanvas = screen.getByRole("img", { name: /Graph with/i });
+    expect(within(graphCanvas).getByRole("button", { name: "Source" })).toBeInTheDocument();
+    expect(within(graphCanvas).getByRole("button", { name: "Target" })).toBeInTheDocument();
+    expect(within(graphCanvas).queryByRole("button", { name: "Agenda" })).not.toBeInTheDocument();
+  });
+
   it("toggles focus mode from the editor topbar", () => {
     render(<App />);
     const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });

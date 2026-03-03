@@ -205,6 +205,7 @@ interface AppPrefs {
   viewMode?: NoteViewMode;
   noteDensity?: NoteDensityMode;
   noteGroupMode?: NoteGroupMode;
+  graphScope?: GraphScope;
   editorFontFamily?: EditorFontFamilyId;
   editorFontSize?: number;
   focusMode?: boolean;
@@ -289,6 +290,7 @@ type CalendarSortMode = "soonest" | "latest";
 type TaskSortMode = "recent" | "due-asc" | "due-desc";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
+type GraphScope = "workspace" | "local";
 
 interface ParsedSearchQuery {
   text: string;
@@ -1905,6 +1907,7 @@ function defaultPrefs(): AppPrefs {
     viewMode: "cards",
     noteDensity: "comfortable",
     noteGroupMode: "none",
+    graphScope: "workspace",
     editorFontFamily: "palatino",
     editorFontSize: 16,
     focusMode: false,
@@ -1967,6 +1970,7 @@ function loadPrefs(): AppPrefs {
         parsed.noteGroupMode === "updated-date" || parsed.noteGroupMode === "notebook" || parsed.noteGroupMode === "tag"
           ? parsed.noteGroupMode
           : "none",
+      graphScope: parsed.graphScope === "local" ? "local" : "workspace",
       editorFontFamily: editorFontFamilies.some((entry) => entry.id === parsed.editorFontFamily)
         ? (parsed.editorFontFamily as EditorFontFamilyId)
         : "palatino",
@@ -2397,6 +2401,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [noteDensity, setNoteDensity] = useState<NoteDensityMode>(initialPrefs.noteDensity ?? "comfortable");
   const [noteGroupMode, setNoteGroupMode] = useState<NoteGroupMode>(initialPrefs.noteGroupMode ?? "none");
+  const [graphScope, setGraphScope] = useState<GraphScope>(initialPrefs.graphScope ?? "workspace");
   const [editorFontFamily, setEditorFontFamily] = useState<EditorFontFamilyId>(
     initialPrefs.editorFontFamily ?? "palatino"
   );
@@ -2746,7 +2751,40 @@ export default function App() {
 
   const graphModel = useMemo(() => {
     const query = graphQuery.trim().toLowerCase();
-    const scoped = [...visibleNotes]
+    const graphSourceNotes = [...visibleNotes];
+    const centerIndex = graphSourceNotes.findIndex((note) => note.id === activeId);
+    let center = centerIndex >= 0 ? graphSourceNotes[centerIndex] : null;
+    if (center && !center.trashedAt && draftMarkdown !== center.markdown) {
+      center = noteFromMarkdown(center, draftMarkdown, center.updatedAt, { pathOverride: center.path });
+      graphSourceNotes[centerIndex] = center;
+    }
+
+    let scoped = graphSourceNotes;
+
+    if (graphScope === "local" && center) {
+      const notesByTitle = new Map(graphSourceNotes.map((note) => [note.title.trim().toLowerCase(), note]));
+      if (center) {
+        const neighborhood = new Set<string>([center.id]);
+        center.linksOut.forEach((link) => {
+          const target = notesByTitle.get(link.trim().toLowerCase());
+          if (target) {
+            neighborhood.add(target.id);
+          }
+        });
+        const centerTitle = center.title.trim().toLowerCase();
+        graphSourceNotes.forEach((note) => {
+          if (note.id === center.id) {
+            return;
+          }
+          if (note.linksOut.some((link) => link.trim().toLowerCase() === centerTitle)) {
+            neighborhood.add(note.id);
+          }
+        });
+        scoped = graphSourceNotes.filter((note) => neighborhood.has(note.id));
+      }
+    }
+
+    scoped = scoped
       .filter((note) => {
         if (!query) {
           return true;
@@ -2788,7 +2826,7 @@ export default function App() {
     });
 
     return { nodes, edges };
-  }, [graphQuery, visibleNotes]);
+  }, [activeId, draftMarkdown, graphQuery, graphScope, visibleNotes]);
 
   const graphNodeById = useMemo(() => new Map(graphModel.nodes.map((node) => [node.note.id, node])), [graphModel.nodes]);
 
@@ -3786,6 +3824,7 @@ export default function App() {
       viewMode,
       noteDensity,
       noteGroupMode,
+      graphScope,
       editorFontFamily,
       editorFontSize,
       focusMode,
@@ -3819,6 +3858,7 @@ export default function App() {
     viewMode,
     noteDensity,
     noteGroupMode,
+    graphScope,
     editorFontFamily,
     editorFontSize,
     focusMode,
@@ -10109,8 +10149,27 @@ export default function App() {
         ) : browseMode === "graph" ? (
           <section className="graph-view" aria-label="Graph view">
             <header className="graph-view-header">
-              <h2>Connections</h2>
-              <small>Click a node to open its note</small>
+              <div className="graph-view-meta">
+                <h2>Connections</h2>
+                <small>Click a node to open its note</small>
+              </div>
+              <div className="graph-scope-chips" role="group" aria-label="Graph scope">
+                <button
+                  type="button"
+                  className={graphScope === "workspace" ? "chip active" : "chip"}
+                  onClick={() => setGraphScope("workspace")}
+                >
+                  Workspace
+                </button>
+                <button
+                  type="button"
+                  className={graphScope === "local" ? "chip active" : "chip"}
+                  onClick={() => setGraphScope("local")}
+                  disabled={!activeNote}
+                >
+                  Local
+                </button>
+              </div>
             </header>
             <label className="graph-filter">
               <span>Filter graph</span>

@@ -878,9 +878,14 @@ body.is-resizing {
 
 .graph-view-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.graph-view-meta {
+  display: grid;
+  gap: 2px;
 }
 
 .graph-view-header h2 {
@@ -892,6 +897,11 @@ body.is-resizing {
 .graph-view-header small {
   color: #6b7f9e;
   font-size: 12px;
+}
+
+.graph-scope-chips {
+  display: flex;
+  gap: 6px;
 }
 
 .graph-filter {

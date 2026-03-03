@@ -2333,6 +2333,39 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Align center" })).toBeInTheDocument();
   });
 
+  it("inserts markdown link from editor context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.change(editor as HTMLTextAreaElement, { target: { value: "Agenda" } });
+    (editor as HTMLTextAreaElement).focus();
+    (editor as HTMLTextAreaElement).setSelectionRange(0, 6);
+    fireEvent.contextMenu(editor as HTMLTextAreaElement);
+
+    const menu = document.querySelector(".editor-context-menu") as HTMLElement | null;
+    expect(menu).toBeTruthy();
+    fireEvent.click(within(menu as HTMLElement).getByRole("button", { name: "Insert link" }));
+
+    expect((editor as HTMLTextAreaElement).value).toContain("[Agenda](https://)");
+    expect(document.querySelector(".editor-context-menu")).toBeNull();
+  });
+
+  it("inserts numbered list from editor context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.contextMenu(editor as HTMLTextAreaElement);
+    const menu = document.querySelector(".editor-context-menu") as HTMLElement | null;
+    expect(menu).toBeTruthy();
+    fireEvent.click(within(menu as HTMLElement).getByRole("button", { name: "Numbered list" }));
+
+    expect((editor as HTMLTextAreaElement).value).toContain("1. item");
+  });
+
   it("inserts a table from rich editor context menu", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Rich" }));

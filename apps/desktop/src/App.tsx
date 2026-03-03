@@ -680,6 +680,7 @@ const editorContextRows: Array<{ id: string; label: string; divider?: boolean }>
   { id: "divider-1b", label: "", divider: true },
   { id: "bullet", label: "Bullet list" },
   { id: "checklist", label: "Checklist" },
+  { id: "numbered", label: "Numbered list" },
   { id: "divider-2", label: "", divider: true },
   { id: "table", label: "Insert table" },
   { id: "table-row-after", label: "Add table row below" },
@@ -8422,6 +8423,8 @@ export default function App() {
         richEditorRef.current?.toggleBulletList();
       } else if (action === "checklist") {
         richEditorRef.current?.toggleTaskList();
+      } else if (action === "numbered") {
+        richEditorRef.current?.toggleOrderedList();
       } else if (action === "table") {
         richEditorRef.current?.insertTable();
       } else if (action === "table-row-after") {
@@ -8458,6 +8461,8 @@ export default function App() {
       applyMarkdownInlineFormat("", "", "item", { linePrefix: "- " });
     } else if (action === "checklist") {
       applyMarkdownInlineFormat("", "", "task", { linePrefix: "- [ ] " });
+    } else if (action === "numbered") {
+      applyMarkdownInlineFormat("", "", "item", { linePrefix: "1. " });
     } else if (action === "table") {
       applyMarkdownSlashCommand({ id: "table", label: "Table", section: "Essentials", keywords: ["table"] });
     } else if (action === "table-row-after" || action === "table-column-after" || action === "table-delete") {

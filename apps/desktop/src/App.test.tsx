@@ -2367,6 +2367,31 @@ describe("App", () => {
     expect(screen.getByText("Event is already linked in this note")).toBeInTheDocument();
   });
 
+  it("copies an event reference from calendar modal row action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open calendar" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy event reference for Weekly planning" }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledTimes(1);
+    });
+    const copied = String(writeText.mock.calls[0][0] ?? "");
+    expect(copied).toContain("[[event:");
+    expect(copied).toContain("|Weekly planning]]");
+    expect(screen.getByText("Event reference copied")).toBeInTheDocument();
+  });
+
   it("derives note title from first markdown line when no heading exists", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

@@ -7680,6 +7680,20 @@ export default function App() {
     setToastMessage(value);
   }
 
+  async function copyEventReference(event: CalendarEvent): Promise<void> {
+    const value = formatCalendarReference(event);
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        setToastMessage("Event reference copied");
+        return;
+      } catch {
+        // Fall through to showing generated reference when clipboard is unavailable.
+      }
+    }
+    setToastMessage(value);
+  }
+
   function insertAttachmentLinkFromFiles(file: AttachmentItem): void {
     const link = `${file.isEmbed ? "!" : ""}[${file.label}](${file.target})`;
     if (editorMode === "rich") {
@@ -13044,6 +13058,14 @@ export default function App() {
                               onClick={() => insertEventReferenceFromCalendar(event)}
                             >
                               Insert ref
+                            </button>
+                            <button
+                              type="button"
+                              className="task-complete"
+                              aria-label={`Copy event reference for ${event.title}`}
+                              onClick={() => void copyEventReference(event)}
+                            >
+                              Copy ref
                             </button>
                           </li>
                         );

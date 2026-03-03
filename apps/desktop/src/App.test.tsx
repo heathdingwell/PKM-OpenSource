@@ -2438,6 +2438,42 @@ describe("App", () => {
     expect(document.querySelector(".editor-context-menu")).toBeNull();
   });
 
+  it("inserts superscript from markdown editor context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.change(editor as HTMLTextAreaElement, { target: { value: "x" } });
+    (editor as HTMLTextAreaElement).focus();
+    (editor as HTMLTextAreaElement).setSelectionRange(0, 1);
+    fireEvent.contextMenu(editor as HTMLTextAreaElement);
+
+    const menu = document.querySelector(".editor-context-menu") as HTMLElement | null;
+    expect(menu).toBeTruthy();
+    fireEvent.click(within(menu as HTMLElement).getByRole("button", { name: "Superscript" }));
+
+    expect((editor as HTMLTextAreaElement).value).toContain("<sup>x</sup>");
+  });
+
+  it("inserts subscript from markdown editor context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.change(editor as HTMLTextAreaElement, { target: { value: "x" } });
+    (editor as HTMLTextAreaElement).focus();
+    (editor as HTMLTextAreaElement).setSelectionRange(0, 1);
+    fireEvent.contextMenu(editor as HTMLTextAreaElement);
+
+    const menu = document.querySelector(".editor-context-menu") as HTMLElement | null;
+    expect(menu).toBeTruthy();
+    fireEvent.click(within(menu as HTMLElement).getByRole("button", { name: "Subscript" }));
+
+    expect((editor as HTMLTextAreaElement).value).toContain("<sub>x</sub>");
+  });
+
   it("inserts numbered list from editor context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

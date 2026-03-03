@@ -676,6 +676,8 @@ const editorContextRows: Array<{ id: string; label: string; divider?: boolean }>
   { id: "italic", label: "Italic" },
   { id: "underline", label: "Underline" },
   { id: "strikethrough", label: "Strikethrough" },
+  { id: "superscript", label: "Superscript" },
+  { id: "subscript", label: "Subscript" },
   { id: "divider-1", label: "", divider: true },
   { id: "align-left", label: "Align left" },
   { id: "align-center", label: "Align center" },
@@ -8556,6 +8558,10 @@ export default function App() {
         richEditorRef.current?.toggleUnderline();
       } else if (action === "strikethrough") {
         richEditorRef.current?.toggleStrike();
+      } else if (action === "superscript") {
+        richEditorRef.current?.insertContent("<sup>sup</sup>");
+      } else if (action === "subscript") {
+        richEditorRef.current?.insertContent("<sub>sub</sub>");
       } else if (action === "align-left") {
         richEditorRef.current?.setTextAlign("left");
       } else if (action === "align-center") {
@@ -8594,6 +8600,10 @@ export default function App() {
       applyMarkdownInlineFormat("<u>", "</u>", "underlined text");
     } else if (action === "strikethrough") {
       applyMarkdownInlineFormat("~~", "~~", "struck text");
+    } else if (action === "superscript") {
+      applyMarkdownInlineFormat("<sup>", "</sup>", "sup");
+    } else if (action === "subscript") {
+      applyMarkdownInlineFormat("<sub>", "</sub>", "sub");
     } else if (action === "align-left") {
       applyMarkdownInlineFormat('<div align="left">', "</div>", "aligned text");
     } else if (action === "align-center") {

@@ -7782,23 +7782,32 @@ export default function App() {
     setToastMessage(link);
   }
 
-  async function copyNoteMarkdown(noteId: string): Promise<void> {
-    const note = notes.find((entry) => entry.id === noteId);
-    if (!note) {
+  async function copyNotesMarkdown(noteIds: string[]): Promise<void> {
+    const selected = noteIds
+      .map((noteId) => notes.find((entry) => entry.id === noteId))
+      .filter((note): note is AppNote => Boolean(note));
+    if (!selected.length) {
       return;
     }
 
-    const value = note.markdown.trim() || `# ${note.title}`;
+    const value = selected
+      .map((note) => note.markdown.trim() || `# ${note.title}`)
+      .join("\n\n---\n\n");
+    const successToast = selected.length === 1 ? "Note markdown copied" : `Markdown copied for ${selected.length} notes`;
     if (navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(value);
-        setToastMessage("Note markdown copied");
+        setToastMessage(successToast);
         return;
       } catch {
         // Fall through to showing generated markdown when clipboard is unavailable.
       }
     }
     setToastMessage(value);
+  }
+
+  async function copyNoteMarkdown(noteId: string): Promise<void> {
+    await copyNotesMarkdown([noteId]);
   }
 
   async function copyAttachmentPath(targetPath: string): Promise<void> {
@@ -7972,7 +7981,7 @@ export default function App() {
     }
 
     if (action === "copy-markdown") {
-      void copyNoteMarkdown(targetId);
+      void copyNotesMarkdown(contextMenu.noteIds);
       setContextMenu(null);
       return;
     }
@@ -10718,6 +10727,9 @@ export default function App() {
                   }
                 >
                   Copy
+                </button>
+                <button type="button" onClick={() => void copyNotesMarkdown(selectedVisibleNoteIds)}>
+                  Copy markdown
                 </button>
                 <button
                   type="button"

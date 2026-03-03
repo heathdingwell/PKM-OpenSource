@@ -2835,6 +2835,36 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Agenda copy", level: 2 })).toBeInTheDocument();
   });
 
+  it("copies markdown for multi-selected notes from note context menu", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    const todoCard = screen.getAllByText("To-do list")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    expect(todoCard).toBeTruthy();
+
+    fireEvent.click(agendaCard as HTMLButtonElement);
+    fireEvent.click(todoCard as HTMLButtonElement, { metaKey: true });
+    fireEvent.contextMenu(todoCard as HTMLButtonElement);
+    const contextMenu = document.querySelector(".context-menu");
+    expect(contextMenu).toBeTruthy();
+    fireEvent.click(within(contextMenu as HTMLElement).getByRole("button", { name: "Copy markdown" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const payload = String(writeText.mock.calls[0]?.[0] ?? "");
+    expect(payload).toContain("# Agenda");
+    expect(payload).toContain("# To-do list");
+    expect(payload.indexOf("# To-do list")).toBeLessThan(payload.indexOf("# Agenda"));
+    expect(screen.getByText("Markdown copied for 2 notes")).toBeInTheDocument();
+  });
+
   it("targets the right-clicked note first when context menu opens on multi-select", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -3329,6 +3359,31 @@ describe("App", () => {
     const notesList = screen.getByLabelText("Notes list");
     expect(within(notesList).getByText("Agenda copy 1")).toBeInTheDocument();
     expect(within(notesList).getByText("To-do list copy 2")).toBeInTheDocument();
+  });
+
+  it("copies markdown for multi-selected notes from bulk actions", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = Array.from(document.querySelectorAll<HTMLButtonElement>(".note-grid .note-card"));
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy markdown" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const payload = String(writeText.mock.calls[0]?.[0] ?? "");
+    expect(payload).toContain("# Agenda");
+    expect(payload).toContain("# To-do list");
+    expect(payload).toContain("\n\n---\n\n");
+    expect(screen.getByText("Markdown copied for 2 notes")).toBeInTheDocument();
   });
 
   it("toggles shortcuts from bulk actions", () => {

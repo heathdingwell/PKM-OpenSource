@@ -5274,7 +5274,8 @@ export default function App() {
     if (!value) {
       return;
     }
-    setRecentSearches((previous) => [value, ...previous.filter((entry) => entry !== value)].slice(0, 8));
+    const normalized = value.toLowerCase();
+    setRecentSearches((previous) => [value, ...previous.filter((entry) => entry.toLowerCase() !== normalized)].slice(0, 8));
   }
 
   function removeRecentSearch(query: string): void {

@@ -1117,6 +1117,25 @@ describe("App", () => {
     expect(screen.queryByText("journal")).not.toBeInTheDocument();
   });
 
+  it("deduplicates recent searches case-insensitively", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "AGENDA" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const recentButtons = Array.from(document.querySelectorAll<HTMLButtonElement>(".recent-search-open"));
+    const agendaEntries = recentButtons.filter((entry) => (entry.textContent ?? "").trim().toLowerCase() === "agenda");
+    expect(agendaEntries).toHaveLength(1);
+  });
+
   it("copies note link from quick search footer action", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

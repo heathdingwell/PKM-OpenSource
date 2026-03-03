@@ -559,6 +559,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "toggle-density", label: "Toggle note density", keywords: ["density", "compact", "comfortable"] },
   { id: "toggle-grouping", label: "Toggle note grouping", keywords: ["group", "sections", "date", "notebook", "tag"] },
+  { id: "toggle-collapsible-sections", label: "Toggle collapsible sections", keywords: ["collapse", "sections", "preview"] },
   { id: "toggle-focus", label: "Toggle focus mode", keywords: ["focus", "layout", "panes"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
   { id: "toggle-auto-links", label: "Toggle auto reciprocal links", keywords: ["links", "backlinks", "reciprocal"] },
@@ -6415,6 +6416,12 @@ export default function App() {
 
     if (actionId === "toggle-grouping") {
       setNoteGroupMode((previous) => nextNoteGroupMode(previous));
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-collapsible-sections") {
+      setCollapsibleSections((previous) => !previous);
       setSearchOpen(false);
       return;
     }

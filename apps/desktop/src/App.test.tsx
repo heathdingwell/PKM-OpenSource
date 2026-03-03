@@ -428,6 +428,25 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Group: Notebook" })).toBeInTheDocument();
   });
 
+  it("toggles collapsible sections from command palette action", () => {
+    render(<App />);
+    expect(document.querySelector(".preview-section")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle collapsible sections" }
+    });
+    fireEvent.click(screen.getByText("Toggle collapsible sections"));
+    expect(document.querySelector(".preview-section")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle collapsible sections" }
+    });
+    fireEvent.click(screen.getByText("Toggle collapsible sections"));
+    expect(document.querySelector(".preview-section")).toBeNull();
+  });
+
   it("opens new stack modal from command palette action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

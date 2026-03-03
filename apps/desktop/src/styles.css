@@ -2231,6 +2231,42 @@ body.is-resizing {
   font-weight: 700;
 }
 
+.preview-section {
+  margin: 16px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.preview-section > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: calc(var(--editor-font-size, 16px) * 1.25);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.preview-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.preview-section > summary::before {
+  content: "▾";
+  display: inline-block;
+  width: 14px;
+  margin-right: 8px;
+  color: var(--muted);
+}
+
+.preview-section:not([open]) > summary::before {
+  content: "▸";
+}
+
+.preview-section-body {
+  padding: 0 12px 12px;
+}
+
 .preview-document p {
   margin: 0;
   color: var(--muted);

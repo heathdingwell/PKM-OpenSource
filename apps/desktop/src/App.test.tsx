@@ -2188,6 +2188,23 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
+  it("toggles collapsible preview sections from note context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    expect(document.querySelector(".preview-section")).toBeNull();
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Enable collapsible sections" }));
+    expect(document.querySelector(".preview-section")).toBeTruthy();
+
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Disable collapsible sections" }));
+    expect(document.querySelector(".preview-section")).toBeNull();
+  });
+
   it("opens note context menu from keyboard context-menu key", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

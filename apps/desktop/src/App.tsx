@@ -220,6 +220,7 @@ interface AppPrefs {
   notebookPinnedNoteIds?: string[];
   savedSearches?: SavedSearch[];
   backlinksPaneOpen?: boolean;
+  collapsibleSections?: boolean;
   autoReciprocalLinks?: boolean;
   notebookStacks?: Record<string, string>;
   customStacks?: string[];
@@ -613,6 +614,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "add-shortcuts", label: "Add to Shortcuts" },
   { id: "pin-notebook", label: "Pin to Notebook" },
   { id: "pin-home", label: "Pin to Home" },
+  { id: "toggle-collapsible-sections", label: "Collapsible sections" },
   { id: "divider-3", label: "", divider: true },
   { id: "find", label: "Find in note", shortcut: "cmd+f" },
   { id: "note-info", label: "Note info", shortcut: "cmd+shift+i" },
@@ -1915,6 +1917,7 @@ function defaultPrefs(): AppPrefs {
     notebookPinnedNoteIds: [],
     savedSearches: [],
     backlinksPaneOpen: true,
+    collapsibleSections: false,
     autoReciprocalLinks: false,
     notebookStacks: {},
     customStacks: [],
@@ -2030,6 +2033,7 @@ function loadPrefs(): AppPrefs {
           })
         : [],
       backlinksPaneOpen: typeof parsed.backlinksPaneOpen === "boolean" ? parsed.backlinksPaneOpen : true,
+      collapsibleSections: typeof parsed.collapsibleSections === "boolean" ? parsed.collapsibleSections : false,
       autoReciprocalLinks: typeof parsed.autoReciprocalLinks === "boolean" ? parsed.autoReciprocalLinks : false,
       notebookStacks:
         parsed.notebookStacks && typeof parsed.notebookStacks === "object"
@@ -2408,6 +2412,7 @@ export default function App() {
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(initialPrefs.savedSearches ?? []);
   const [savedSearchDialog, setSavedSearchDialog] = useState<SavedSearchDialogState | null>(null);
   const [backlinksPaneOpen, setBacklinksPaneOpen] = useState<boolean>(initialPrefs.backlinksPaneOpen ?? true);
+  const [collapsibleSections, setCollapsibleSections] = useState<boolean>(initialPrefs.collapsibleSections ?? false);
   const [autoReciprocalLinks, setAutoReciprocalLinks] = useState<boolean>(initialPrefs.autoReciprocalLinks ?? false);
   const [notebookStacks, setNotebookStacks] = useState<Record<string, string>>(initialPrefs.notebookStacks ?? {});
   const [customStacks, setCustomStacks] = useState<string[]>(initialPrefs.customStacks ?? []);
@@ -3793,6 +3798,7 @@ export default function App() {
       notebookPinnedNoteIds,
       savedSearches,
       backlinksPaneOpen,
+      collapsibleSections,
       autoReciprocalLinks,
       notebookStacks,
       customStacks,
@@ -3825,6 +3831,7 @@ export default function App() {
     notebookPinnedNoteIds,
     savedSearches,
     backlinksPaneOpen,
+    collapsibleSections,
     autoReciprocalLinks,
     notebookStacks,
     customStacks,
@@ -7676,6 +7683,13 @@ export default function App() {
       return;
     }
 
+    if (action === "toggle-collapsible-sections") {
+      setCollapsibleSections((previous) => !previous);
+      setToastMessage(collapsibleSections ? "Collapsible sections disabled" : "Collapsible sections enabled");
+      setContextMenu(null);
+      return;
+    }
+
     if (action === "export") {
       exportNote(targetId);
       setContextMenu(null);
@@ -7732,6 +7746,9 @@ export default function App() {
     }
     if (action === "move-trash") {
       return allTrashed ? "Delete permanently" : "Move to Trash";
+    }
+    if (action === "toggle-collapsible-sections") {
+      return collapsibleSections ? "Disable collapsible sections" : "Enable collapsible sections";
     }
 
     return defaultLabel;
@@ -8026,6 +8043,83 @@ export default function App() {
         </button>
       );
     });
+  }
+
+  function renderPreviewLine(line: string, key: string): ReactNode {
+    if (!line.trim()) {
+      return <div key={key} className="line-space" />;
+    }
+
+    if (line.startsWith("## ")) {
+      return <h4 key={key}>{line.slice(3)}</h4>;
+    }
+
+    if (line.startsWith("- [ ] ")) {
+      return (
+        <p key={key} className="task-line">
+          <span>[ ]</span>
+          {renderInlineWithLinks(line.slice(6))}
+        </p>
+      );
+    }
+
+    if (line.startsWith("- ")) {
+      return (
+        <p key={key} className="bullet-line">
+          <span>-</span>
+          {renderInlineWithLinks(line.slice(2))}
+        </p>
+      );
+    }
+
+    return <p key={key}>{renderInlineWithLinks(line)}</p>;
+  }
+
+  function renderPreviewBody(lines: string[]): ReactNode[] {
+    if (!collapsibleSections) {
+      return lines.map((line, index) => renderPreviewLine(line, `line-${index}`));
+    }
+
+    type PreviewSection = { heading: string; lines: string[] };
+    const sections: PreviewSection[] = [];
+    const prelude: string[] = [];
+    let currentSection: PreviewSection | null = null;
+
+    lines.forEach((line) => {
+      if (line.startsWith("## ")) {
+        currentSection = { heading: line.slice(3), lines: [] };
+        sections.push(currentSection);
+        return;
+      }
+
+      if (currentSection) {
+        currentSection.lines.push(line);
+      } else {
+        prelude.push(line);
+      }
+    });
+
+    if (!sections.length) {
+      return lines.map((line, index) => renderPreviewLine(line, `line-${index}`));
+    }
+
+    const nodes: ReactNode[] = [];
+    prelude.forEach((line, index) => {
+      nodes.push(renderPreviewLine(line, `prelude-${index}`));
+    });
+
+    sections.forEach((section, sectionIndex) => {
+      nodes.push(
+        <details key={`section-${sectionIndex}-${section.heading}`} className="preview-section" open>
+          <summary>{section.heading}</summary>
+          <div className="preview-section-body">
+            {section.lines.map((line, lineIndex) => renderPreviewLine(line, `section-${sectionIndex}-line-${lineIndex}`))}
+          </div>
+        </details>
+      );
+    });
+
+    return nodes;
   }
 
   function renderNotebookRow(notebook: string, nested = false): ReactNode {
@@ -10924,37 +11018,7 @@ export default function App() {
                     <h3>Preview</h3>
                     <div className="preview-document">
                     <h2>{draftPreview.title}</h2>
-                    {draftPreview.body.map((line, index) => {
-                      const key = `${line}-${index}`;
-
-                      if (!line.trim()) {
-                        return <div key={key} className="line-space" />;
-                      }
-
-                      if (line.startsWith("## ")) {
-                        return <h4 key={key}>{line.slice(3)}</h4>;
-                      }
-
-                      if (line.startsWith("- [ ] ")) {
-                        return (
-                          <p key={key} className="task-line">
-                            <span>[ ]</span>
-                            {renderInlineWithLinks(line.slice(6))}
-                          </p>
-                        );
-                      }
-
-                      if (line.startsWith("- ")) {
-                        return (
-                          <p key={key} className="bullet-line">
-                            <span>-</span>
-                            {renderInlineWithLinks(line.slice(2))}
-                          </p>
-                        );
-                      }
-
-                      return <p key={key}>{renderInlineWithLinks(line)}</p>;
-                    })}
+                    {renderPreviewBody(draftPreview.body)}
 
                       <div className="link-sections">
                         <section>

@@ -14196,6 +14196,36 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.altKey && event.key === "1" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "export-note-markdown");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && event.key === "2" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "export-note-html");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && event.key === "3" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "export-note-text");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && event.key === "4" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "export-note-pdf");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && lowerKey === "p" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "print-note");
+                  return;
+                }
+
                 if (hasMeta && event.altKey && lowerKey === "d" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "duplicate-note");
@@ -14878,7 +14908,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Export as Markdown
+                    Export as Markdown <kbd>⌥⌘1</kbd>
                   </button>
                   <button
                     type="button"
@@ -14889,7 +14919,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Export as HTML
+                    Export as HTML <kbd>⌥⌘2</kbd>
                   </button>
                   <button
                     type="button"
@@ -14900,7 +14930,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Export as Text
+                    Export as Text <kbd>⌥⌘3</kbd>
                   </button>
                   <button
                     type="button"
@@ -14911,7 +14941,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Export as PDF
+                    Export as PDF <kbd>⌥⌘4</kbd>
                   </button>
                   <button
                     type="button"
@@ -14922,7 +14952,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Print
+                    Print <kbd>⌥⌘P</kbd>
                   </button>
                   <button
                     type="button"

@@ -1801,6 +1801,91 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
+  it("exports selected search result markdown with alt+cmd+1 in search modal", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "1", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
+  it("exports selected search result HTML with alt+cmd+2 in search modal", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-html");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "2", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Exported HTML "Agenda"')).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
+  it("exports selected search result text with alt+cmd+3 in search modal", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-text");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "3", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Exported text "Agenda"')).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
+  it("exports selected search result PDF with alt+cmd+4 in search modal", async () => {
+    const exportNotePdf = vi.fn().mockResolvedValue({ ok: true, path: "/tmp/Agenda.pdf" });
+    (window as unknown as { pkmShell?: { exportNotePdf: typeof exportNotePdf } }).pkmShell = { exportNotePdf };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "4", metaKey: true, altKey: true });
+
+    await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
+    expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
+    expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+  });
+
+  it("prints selected search result with alt+cmd+p in search modal", () => {
+    const printSpy = vi.spyOn(window, "print").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "p", metaKey: true, altKey: true });
+
+    expect(printSpy).toHaveBeenCalledTimes(1);
+    printSpy.mockRestore();
+  });
+
   it("duplicates selected search result with alt+cmd+d in search modal", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -2623,7 +2708,7 @@ describe("App", () => {
 
     const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: "Print" }));
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Print/i }));
 
     expect(printSpy).toHaveBeenCalledTimes(1);
     printSpy.mockRestore();

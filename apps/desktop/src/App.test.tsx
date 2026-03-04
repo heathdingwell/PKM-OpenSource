@@ -960,6 +960,22 @@ describe("App", () => {
     clickSpy.mockRestore();
   });
 
+  it("opens ENEX picker from command palette", () => {
+    render(<App />);
+    const input = document.getElementById("enex-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    const clickSpy = vi.spyOn(input, "click").mockImplementation(() => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">import enex" }
+    });
+    fireEvent.click(screen.getByText("Import ENEX archive"));
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    clickSpy.mockRestore();
+  });
+
   it("imports notes from a vault snapshot file", async () => {
     render(<App />);
     const input = document.getElementById("vault-snapshot-input") as HTMLInputElement;
@@ -995,6 +1011,21 @@ describe("App", () => {
       expect(screen.getByRole("heading", { name: "Imported Note", level: 2 })).toBeInTheDocument()
     );
     expect(screen.getByText("Imported snapshot (1 notes)")).toBeInTheDocument();
+  });
+
+  it("imports notes from ENEX file", async () => {
+    render(<App />);
+    const input = document.getElementById("enex-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    const enex = `<en-export><note><title>Imported ENEX Note</title><created>20260301T102030Z</created><updated>20260302T112233Z</updated><tag>imported</tag><content><![CDATA[<en-note><div>Hello from ENEX</div><div><en-todo checked="true"/> Done task</div></en-note>]]></content></note></en-export>`;
+    const file = new File([enex], "notes.enex", { type: "application/xml" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Imported ENEX Note", level: 2 })).toBeInTheDocument()
+    );
+    expect(screen.getByText("Imported ENEX (1 notes)")).toBeInTheDocument();
   });
 
   it("copies selected search result link with cmd+l in search modal", async () => {

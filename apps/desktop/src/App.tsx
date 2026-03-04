@@ -590,6 +590,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "git-backup-now", label: "Run Git backup now", keywords: ["git", "backup", "commit"] },
   { id: "export-snapshot", label: "Export vault snapshot", keywords: ["backup", "snapshot", "export", "vault"] },
   { id: "import-snapshot", label: "Import vault snapshot", keywords: ["backup", "snapshot", "import", "restore", "vault"] },
+  { id: "import-enex", label: "Import ENEX archive", keywords: ["evernote", "enex", "import", "archive"] },
   { id: "reload-vault", label: "Reload vault from disk", keywords: ["reload", "refresh", "vault", "disk"] },
   { id: "undo-last-action", label: "Undo last action", keywords: ["undo", "restore", "revert"] },
   { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
@@ -1012,6 +1013,88 @@ function normalizePastedMarkdown(content: string): string {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function parseEnexTimestamp(raw: string | null | undefined, fallbackIso: string): string {
+  const value = (raw ?? "").trim();
+  const match = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+  if (!match) {
+    return fallbackIso;
+  }
+
+  const year = Number.parseInt(match[1], 10);
+  const month = Number.parseInt(match[2], 10) - 1;
+  const day = Number.parseInt(match[3], 10);
+  const hour = Number.parseInt(match[4], 10);
+  const minute = Number.parseInt(match[5], 10);
+  const second = Number.parseInt(match[6], 10);
+  const parsed = new Date(Date.UTC(year, month, day, hour, minute, second));
+  return Number.isNaN(parsed.getTime()) ? fallbackIso : parsed.toISOString();
+}
+
+function normalizeEnmlForMarkdown(enml: string): string {
+  return enml
+    .replace(/<\?xml[\s\S]*?\?>/gi, "")
+    .replace(/<!DOCTYPE[\s\S]*?>/gi, "")
+    .replace(/<en-note(?:\s[^>]*)?>/gi, "<div>")
+    .replace(/<\/en-note>/gi, "</div>")
+    .replace(/<en-todo([^>]*)\/?>/gi, (_match, attrs) => {
+      const checked = /\bchecked\s*=\s*["']?true["']?/i.test(attrs ?? "");
+      return `<input type="checkbox"${checked ? " checked" : ""}>`;
+    })
+    .replace(/<en-media([^>]*)\/?>/gi, (_match, attrs) => {
+      const source = typeof attrs === "string" ? attrs : "";
+      const alt = source.match(/\balt\s*=\s*(['"])(.*?)\1/i)?.[2]?.trim();
+      const mime = source.match(/\btype\s*=\s*(['"])(.*?)\1/i)?.[2]?.trim();
+      const label = alt || mime || "attachment";
+      return `<p>Attachment: ${escapeHtml(label)}</p>`;
+    });
+}
+
+function convertEnmlToMarkdown(enml: string): string {
+  const normalizedEnml = normalizeEnmlForMarkdown(enml);
+  const sanitized = sanitizeClipboardHtml(normalizedEnml);
+  const turndown = createClipboardTurndownService();
+  return normalizePastedMarkdown(turndown.turndown(sanitized));
+}
+
+function parseEnexNotes(raw: string): Array<{
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  tags: string[];
+  markdown: string;
+}> {
+  if (typeof DOMParser === "undefined") {
+    return [];
+  }
+
+  const parsed = new DOMParser().parseFromString(raw, "application/xml");
+  if (parsed.querySelector("parsererror")) {
+    return [];
+  }
+
+  const nowIso = new Date().toISOString();
+  return Array.from(parsed.getElementsByTagName("note")).map((entry) => {
+    const title = entry.getElementsByTagName("title")[0]?.textContent?.trim() || "Untitled";
+    const createdAt = parseEnexTimestamp(entry.getElementsByTagName("created")[0]?.textContent, nowIso);
+    const updatedAt = parseEnexTimestamp(entry.getElementsByTagName("updated")[0]?.textContent, createdAt);
+    const tags = Array.from(entry.getElementsByTagName("tag"))
+      .map((tag) => tag.textContent?.trim() || "")
+      .filter(Boolean)
+      .slice(0, 32);
+    const content = entry.getElementsByTagName("content")[0]?.textContent?.trim() || "";
+    const body = content ? convertEnmlToMarkdown(content) : "";
+    const markdown = body.startsWith("# ") ? body : normalizePastedMarkdown(`# ${title}\n\n${body || ""}`);
+
+    return {
+      title,
+      createdAt,
+      updatedAt,
+      tags: Array.from(new Set(tags)),
+      markdown
+    };
+  });
 }
 
 function escapeRegExp(value: string): string {
@@ -2614,6 +2697,7 @@ export default function App() {
   const activeResizeRef = useRef<ResizeState | null>(null);
   const findInNoteInputRef = useRef<HTMLInputElement | null>(null);
   const draggingNoteIdsRef = useRef<string[] | null>(null);
+  const enexImportInputRef = useRef<HTMLInputElement | null>(null);
   const vaultSnapshotInputRef = useRef<HTMLInputElement | null>(null);
 
   const notebooks = useMemo(() => {
@@ -5488,6 +5572,10 @@ export default function App() {
     vaultSnapshotInputRef.current?.click();
   }
 
+  function triggerEnexImport(): void {
+    enexImportInputRef.current?.click();
+  }
+
   async function reloadVaultFromDisk(): Promise<void> {
     if (!window.pkmShell?.loadVaultState) {
       setToastMessage("Vault reload is unavailable in this build");
@@ -5572,6 +5660,50 @@ export default function App() {
     setDraftMarkdown(importedNotes[0]?.markdown ?? "");
     setSearchOpen(false);
     setToastMessage(`Imported snapshot (${importedNotes.length} notes)`);
+  }
+
+  async function importEnexFromFile(file: File): Promise<void> {
+    if (!file) {
+      return;
+    }
+
+    const parsedNotes = parseEnexNotes(await readFileAsText(file));
+    if (!parsedNotes.length) {
+      setToastMessage("No valid notes found in ENEX file");
+      return;
+    }
+
+    const targetNotebook = selectedNotebook !== "All Notes" ? selectedNotebook : resolveDefaultNotebook();
+    const allocatePath = createPathAllocator(notes);
+    const imported = parsedNotes.map((parsed) => {
+      const id = crypto.randomUUID();
+      const path = allocatePath(targetNotebook, parsed.title);
+      const seed: AppNote = {
+        id,
+        path,
+        title: parsed.title,
+        snippet: "",
+        tags: parsed.tags,
+        linksOut: [],
+        createdAt: parsed.createdAt,
+        updatedAt: parsed.updatedAt,
+        notebook: targetNotebook,
+        markdown: parsed.markdown
+      };
+      return noteFromMarkdown(seed, parsed.markdown, parsed.updatedAt, { pathOverride: path });
+    });
+
+    const nextActive = imported[0]?.id ?? "";
+    setNotes((previous) => [...imported, ...previous]);
+    setSidebarView("notes");
+    setBrowseMode("all");
+    setSelectedNotebook(targetNotebook);
+    setActiveId(nextActive);
+    setSelectedIds(nextActive ? new Set([nextActive]) : new Set());
+    setLastSelectedId(nextActive || null);
+    setDraftMarkdown(imported[0]?.markdown ?? "");
+    setSearchOpen(false);
+    setToastMessage(`Imported ENEX (${imported.length} notes)`);
   }
 
   function saveCurrentSearch(): void {
@@ -6921,6 +7053,12 @@ export default function App() {
     if (actionId === "import-snapshot") {
       setSearchOpen(false);
       triggerVaultSnapshotImport();
+      return;
+    }
+
+    if (actionId === "import-enex") {
+      setSearchOpen(false);
+      triggerEnexImport();
       return;
     }
 
@@ -12397,6 +12535,22 @@ export default function App() {
           <p className="empty-editor">Select a note.</p>
         )}
       </main>
+
+      <input
+        id="enex-import-input"
+        ref={enexImportInputRef}
+        type="file"
+        accept=".enex,.xml,text/xml,application/xml"
+        aria-label="Import ENEX file"
+        className="visually-hidden-input"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.currentTarget.value = "";
+          if (file) {
+            void importEnexFromFile(file);
+          }
+        }}
+      />
 
       <input
         id="vault-snapshot-input"

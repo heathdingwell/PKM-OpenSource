@@ -6513,7 +6513,7 @@ export default function App() {
 
   function openSearchResult(
     note: AppNote,
-    mode: "open" | "copy-link" | "copy-markdown" | "copy-text" | "open-window" = "open"
+    mode: "open" | "copy-link" | "copy-markdown" | "copy-html" | "copy-text" | "open-window" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
@@ -6524,6 +6524,11 @@ export default function App() {
 
     if (mode === "copy-markdown") {
       void copyNoteMarkdown(note.id);
+      return;
+    }
+
+    if (mode === "copy-html") {
+      void copyNoteHtml(note.id);
       return;
     }
 
@@ -13566,6 +13571,12 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.shiftKey && lowerKey === "h" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "copy-html");
+                  return;
+                }
+
                 if (hasMeta && event.shiftKey && lowerKey === "t" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "copy-text");
@@ -13938,6 +13949,17 @@ a{color:#1d4ed8}
                     }}
                   >
                     Copy markdown <kbd>⇧⌘M</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "copy-html");
+                      }
+                    }}
+                  >
+                    Copy HTML <kbd>⇧⌘H</kbd>
                   </button>
                   <button
                     type="button"

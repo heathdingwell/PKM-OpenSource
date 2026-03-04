@@ -58,6 +58,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Export note as HTML`
   - `Export note as PDF`
 - Active-note copy actions via command palette:
+  - `Copy note path`
   - `Copy note markdown`
   - `Copy note HTML`
   - `Copy note text`
@@ -75,6 +76,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Move note` for selected result (button or `⌥⌘M`)
   - `Duplicate note` for selected result (button or `⌥⌘D`)
   - `Move to Trash` for selected result (button or `⌥⌘⌫`)
+  - `Copy path` for selected result (button or `⌥⌘L`)
 - Vault refresh action:
   - Reload from disk via command palette: `Reload vault from disk`
 - Explicit AI provider actions via command palette:

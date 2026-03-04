@@ -552,6 +552,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-note-full-edit", label: "Open note in full editor", keywords: ["full", "editor", "note", "exit", "lite"] },
   { id: "share-note", label: "Share note link", keywords: ["share", "link", "note"] },
   { id: "copy-note-link", label: "Copy note link", keywords: ["link", "copy", "share", "note"] },
+  { id: "copy-note-path", label: "Copy note path", keywords: ["path", "copy", "note"] },
   { id: "copy-note-markdown", label: "Copy note markdown", keywords: ["markdown", "copy", "note"] },
   { id: "copy-note-html", label: "Copy note HTML", keywords: ["html", "copy", "note"] },
   { id: "copy-note-text", label: "Copy note text", keywords: ["text", "copy", "plain", "note"] },
@@ -679,6 +680,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "open-local-graph", label: "Open local graph" },
   { id: "share", label: "Share", shortcut: "cmd+alt+s" },
   { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
+  { id: "copy-path", label: "Copy path" },
   { id: "copy-markdown", label: "Copy markdown" },
   { id: "copy-html", label: "Copy HTML" },
   { id: "copy-text", label: "Copy text" },
@@ -6731,12 +6733,18 @@ export default function App() {
       | "open-note-tags"
       | "move-note"
       | "duplicate-note"
-      | "trash-note" = "open"
+      | "trash-note"
+      | "copy-path" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
     if (mode === "copy-link") {
       void copyNoteLink(note.id);
+      return;
+    }
+
+    if (mode === "copy-path") {
+      void copyNotePath(note.id);
       return;
     }
 
@@ -7321,6 +7329,16 @@ export default function App() {
         void copyNoteLink(activeNote.id);
       } else {
         setToastMessage("Open a note before copying a link");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "copy-note-path") {
+      if (activeNote) {
+        void copyNotePath(activeNote.id);
+      } else {
+        setToastMessage("Open a note before copying a path");
       }
       setSearchOpen(false);
       return;
@@ -9009,6 +9027,30 @@ export default function App() {
     setToastMessage(link);
   }
 
+  async function copyNotePath(noteId: string): Promise<void> {
+    const note = notes.find((entry) => entry.id === noteId);
+    if (!note) {
+      return;
+    }
+
+    const value = note.path.trim();
+    if (!value) {
+      return;
+    }
+
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        setToastMessage("Note path copied");
+        return;
+      } catch {
+        // Fall through to showing generated path when clipboard is unavailable.
+      }
+    }
+
+    setToastMessage(value);
+  }
+
   async function copyNotesMarkdown(noteIds: string[]): Promise<void> {
     const selected = noteIds
       .map((noteId) => notes.find((entry) => entry.id === noteId))
@@ -9338,6 +9380,12 @@ a{color:#1d4ed8}
 
     if (action === "copy-link") {
       void copyNoteLink(targetId);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "copy-path") {
+      void copyNotePath(targetId);
       setContextMenu(null);
       return;
     }
@@ -13948,6 +13996,11 @@ a{color:#1d4ed8}
                 }
 
                 if (hasMeta && lowerKey === "l" && selectedNote) {
+                  if (event.altKey) {
+                    event.preventDefault();
+                    openSearchResult(selectedNote, "copy-path");
+                    return;
+                  }
                   event.preventDefault();
                   openSearchResult(selectedNote, "copy-link");
                   return;
@@ -14392,6 +14445,17 @@ a{color:#1d4ed8}
                     }}
                   >
                     Copy link <kbd>⌘L</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "copy-path");
+                      }
+                    }}
+                  >
+                    Copy path <kbd>⌥⌘L</kbd>
                   </button>
                   <button
                     type="button"

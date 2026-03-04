@@ -357,6 +357,25 @@ describe("App", () => {
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
 
+  it("copies note path from command palette", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">copy note path" }
+    });
+    fireEvent.click(screen.getByText("Copy note path"));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
+    expect(screen.getByText("Note path copied")).toBeInTheDocument();
+  });
+
   it("shares note link with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -1581,6 +1600,24 @@ describe("App", () => {
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
 
+  it("copies selected search result path with alt+cmd+l in search modal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "l", metaKey: true, altKey: true });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
+    expect(screen.getByText("Note path copied")).toBeInTheDocument();
+  });
+
   it("opens selected search result in new window with cmd+o in search modal", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     render(<App />);
@@ -2064,6 +2101,24 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /Copy link/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
+  });
+
+  it("copies note path from quick search footer action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy path/i }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
+    expect(screen.getByText("Note path copied")).toBeInTheDocument();
   });
 
   it("shares note link from quick search footer action", async () => {
@@ -3927,6 +3982,26 @@ describe("App", () => {
     expect(payload).toContain("# To-do list");
     expect(payload.indexOf("# To-do list")).toBeLessThan(payload.indexOf("# Agenda"));
     expect(screen.getByText("Markdown copied for 2 notes")).toBeInTheDocument();
+  });
+
+  it("copies note path from note context menu", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Copy path" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
+    expect(screen.getByText("Note path copied")).toBeInTheDocument();
   });
 
   it("copies note html from note context menu", async () => {

@@ -1738,6 +1738,36 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
+  it("opens selected search result copy dialog with alt+cmd+y in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "y", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens selected search result rename with alt+cmd+r in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "r", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens selected search result find-in-note with shift+cmd+f in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "f", metaKey: true, shiftKey: true });
+
+    expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
+  });
+
   it("opens selected search result tasks with alt+cmd+j in search modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -2437,7 +2467,9 @@ describe("App", () => {
 
     const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Set as template/i }));
+    fireEvent.click(
+      within(searchActions as HTMLElement).getByRole("button", { name: /^(Set as template|Remove from Templates)/i })
+    );
     await waitFor(() => {
       const templatesBadgeAfter = screen.getByRole("button", { name: "Templates" }).querySelector(".sidebar-link-badge")
         ?.textContent;
@@ -2456,7 +2488,9 @@ describe("App", () => {
 
     const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Add to shortcuts/i }));
+    fireEvent.click(
+      within(searchActions as HTMLElement).getByRole("button", { name: /^(Add to shortcuts|Remove from shortcuts)/i })
+    );
     await waitFor(() => {
       const shortcutsBadgeAfter = screen.getByRole("button", { name: "Shortcuts" }).querySelector(".sidebar-link-badge")
         ?.textContent;
@@ -2474,7 +2508,7 @@ describe("App", () => {
 
     const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Pin to Home/i }));
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^(Pin to Home|Unpin from Home)/i }));
     await waitFor(() => {
       expect(Boolean(screen.queryByLabelText("Unpin from home Agenda"))).toBe(!wasPinned);
     });
@@ -2490,7 +2524,9 @@ describe("App", () => {
 
     const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Pin to notebook/i }));
+    fireEvent.click(
+      within(searchActions as HTMLElement).getByRole("button", { name: /^(Pin to notebook|Unpin from notebook)/i })
+    );
     await waitFor(() => {
       expect(Boolean(screen.queryByLabelText("Unpin from notebook Agenda"))).toBe(!wasPinned);
     });

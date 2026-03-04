@@ -14166,6 +14166,18 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.altKey && lowerKey === "y" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "copy-note");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && lowerKey === "r" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "rename-note");
+                  return;
+                }
+
                 if (hasMeta && event.altKey && lowerKey === "j" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-tasks");
@@ -14199,6 +14211,12 @@ a{color:#1d4ed8}
                 if (hasMeta && event.shiftKey && lowerKey === "i" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-info");
+                  return;
+                }
+
+                if (hasMeta && event.shiftKey && lowerKey === "f" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "find-note");
                   return;
                 }
 
@@ -14735,7 +14753,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Rename note
+                    Rename note <kbd>⌥⌘R</kbd>
                   </button>
                   <button
                     type="button"
@@ -14746,7 +14764,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Find in note
+                    Find in note <kbd>⇧⌘F</kbd>
                   </button>
                   <button
                     type="button"
@@ -14768,7 +14786,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Copy to...
+                    Copy to... <kbd>⌥⌘Y</kbd>
                   </button>
                   <button
                     type="button"
@@ -14812,7 +14830,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Set as template
+                    {selectedSearchResult?.isTemplate ? "Remove from Templates" : "Set as template"}
                   </button>
                   <button
                     type="button"
@@ -14823,7 +14841,9 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Add to shortcuts
+                    {selectedSearchResult && shortcutSet.has(selectedSearchResult.id)
+                      ? "Remove from shortcuts"
+                      : "Add to shortcuts"}
                   </button>
                   <button
                     type="button"
@@ -14834,7 +14854,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Pin to Home
+                    {selectedSearchResult && homePinnedSet.has(selectedSearchResult.id) ? "Unpin from Home" : "Pin to Home"}
                   </button>
                   <button
                     type="button"
@@ -14845,7 +14865,9 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Pin to notebook
+                    {selectedSearchResult && notebookPinnedSet.has(selectedSearchResult.id)
+                      ? "Unpin from notebook"
+                      : "Pin to notebook"}
                   </button>
                   <button
                     type="button"

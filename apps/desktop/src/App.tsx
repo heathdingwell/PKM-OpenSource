@@ -7749,8 +7749,20 @@ export default function App() {
     }
 
     if (actionId === "export-note-html") {
-      if (activeNote) {
-        exportNoteHtml(activeNote.id);
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        if (targetNoteIds.length > 1) {
+          const exported = targetNoteIds.filter((noteId) => exportNoteHtml(noteId, false)).length;
+          if (exported > 0) {
+            setToastMessage(`Exported HTML for ${exported} notes`);
+          }
+        } else {
+          exportNoteHtml(targetNoteIds[0]);
+        }
       } else {
         setToastMessage("Open a note before exporting");
       }
@@ -7759,8 +7771,20 @@ export default function App() {
     }
 
     if (actionId === "export-note-text") {
-      if (activeNote) {
-        exportNoteText(activeNote.id);
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        if (targetNoteIds.length > 1) {
+          const exported = targetNoteIds.filter((noteId) => exportNoteText(noteId, false)).length;
+          if (exported > 0) {
+            setToastMessage(`Exported text for ${exported} notes`);
+          }
+        } else {
+          exportNoteText(targetNoteIds[0]);
+        }
       } else {
         setToastMessage("Open a note before exporting");
       }
@@ -7769,8 +7793,20 @@ export default function App() {
     }
 
     if (actionId === "export-note-markdown") {
-      if (activeNote) {
-        exportNote(activeNote.id);
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        if (targetNoteIds.length > 1) {
+          const exported = targetNoteIds.filter((noteId) => exportNote(noteId, false)).length;
+          if (exported > 0) {
+            setToastMessage(`Exported Markdown for ${exported} notes`);
+          }
+        } else {
+          exportNote(targetNoteIds[0]);
+        }
       } else {
         setToastMessage("Open a note before exporting");
       }
@@ -9745,10 +9781,10 @@ export default function App() {
     window.open(url.toString(), "_blank", "noopener,noreferrer");
   }
 
-  function exportNote(noteId: string): void {
+  function exportNote(noteId: string, showToast = true): boolean {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note || typeof document === "undefined") {
-      return;
+      return false;
     }
 
     const blob = new Blob([note.markdown], { type: "text/markdown;charset=utf-8" });
@@ -9758,13 +9794,16 @@ export default function App() {
     link.download = toFileName(note.title);
     link.click();
     URL.revokeObjectURL(url);
-    setToastMessage(`Exported "${note.title}"`);
+    if (showToast) {
+      setToastMessage(`Exported "${note.title}"`);
+    }
+    return true;
   }
 
-  function exportNoteHtml(noteId: string): void {
+  function exportNoteHtml(noteId: string, showToast = true): boolean {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note || typeof document === "undefined") {
-      return;
+      return false;
     }
 
     const rendered = pdfMarkdownParser.render(note.markdown || "");
@@ -9796,13 +9835,16 @@ a{color:#1d4ed8}
     link.download = `${toFileName(note.title).replace(/\.md$/i, "")}.html`;
     link.click();
     URL.revokeObjectURL(url);
-    setToastMessage(`Exported HTML "${note.title}"`);
+    if (showToast) {
+      setToastMessage(`Exported HTML "${note.title}"`);
+    }
+    return true;
   }
 
-  function exportNoteText(noteId: string): void {
+  function exportNoteText(noteId: string, showToast = true): boolean {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note || typeof document === "undefined") {
-      return;
+      return false;
     }
 
     const content = markdownToPlainText(note.markdown) || note.title || "Untitled";
@@ -9813,7 +9855,10 @@ a{color:#1d4ed8}
     link.download = `${toFileName(note.title).replace(/\.md$/i, "")}.txt`;
     link.click();
     URL.revokeObjectURL(url);
-    setToastMessage(`Exported text "${note.title}"`);
+    if (showToast) {
+      setToastMessage(`Exported text "${note.title}"`);
+    }
+    return true;
   }
 
   async function exportNotePdf(noteId: string): Promise<void> {

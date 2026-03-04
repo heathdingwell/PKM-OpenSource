@@ -887,6 +887,25 @@ describe("App", () => {
     expect(screen.getByText("Note markdown copied")).toBeInTheDocument();
   });
 
+  it("copies note text from command palette", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">copy text" }
+    });
+    fireEvent.click(screen.getByText("Copy note text"));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("Priority 1");
+    expect(screen.getByText("Note text copied")).toBeInTheDocument();
+  });
+
   it("shares note link from command palette", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -3368,6 +3387,26 @@ describe("App", () => {
     expect(payload).toContain("# To-do list");
     expect(payload.indexOf("# To-do list")).toBeLessThan(payload.indexOf("# Agenda"));
     expect(screen.getByText("Markdown copied for 2 notes")).toBeInTheDocument();
+  });
+
+  it("copies note text from note context menu", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Copy text" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("Priority 1");
+    expect(screen.getByText("Note text copied")).toBeInTheDocument();
   });
 
   it("targets the right-clicked note first when context menu opens on multi-select", () => {

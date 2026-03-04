@@ -48,6 +48,9 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Export note as Text`
   - `Export note as HTML`
   - `Export note as PDF`
+- Active-note copy actions via command palette:
+  - `Copy note markdown`
+  - `Copy note text`
 - Focused/full editor actions via command palette:
   - `Open note in Lite edit mode`
   - `Open note in full editor`

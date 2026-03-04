@@ -563,6 +563,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "duplicate-note", label: "Duplicate note", keywords: ["duplicate", "copy", "note"] },
   { id: "trash-note", label: "Move note to trash", keywords: ["trash", "delete", "note"] },
   { id: "restore-note", label: "Restore note from Trash", keywords: ["trash", "restore", "note"] },
+  { id: "delete-note-permanently", label: "Delete note permanently", keywords: ["trash", "delete", "permanent", "note"] },
   { id: "rename-note", label: "Rename note", keywords: ["rename", "title", "note"] },
   { id: "move-note", label: "Move note", keywords: ["move", "notebook", "note"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
@@ -7654,6 +7655,21 @@ export default function App() {
         const restored = restoreNotesFromTrash([activeNote.id]);
         if (restored > 0) {
           setToastMessage(`"${activeNote.title}" restored from Trash`);
+        }
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "delete-note-permanently") {
+      if (!activeNote) {
+        setToastMessage("Open a note before deleting");
+      } else if (!activeNote.trashedAt) {
+        setToastMessage("Move note to Trash before deleting permanently");
+      } else {
+        const removed = deleteNotesPermanently([activeNote.id]);
+        if (removed > 0) {
+          setToastMessage(`"${activeNote.title}" deleted permanently`);
         }
       }
       setSearchOpen(false);

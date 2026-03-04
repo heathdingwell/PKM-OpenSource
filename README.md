@@ -31,6 +31,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Toggle active note pin to notebook`
 - Trash mode with restore/permanent delete and empty trash actions.
 - Command palette action: `Restore note from Trash`.
+- Command palette action: `Delete note permanently`.
 - Backlinks dock in notes view.
 - Configurable Git vault backups (desktop):
   - Auto-commit backups are enabled by default.

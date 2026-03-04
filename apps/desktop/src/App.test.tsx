@@ -2201,6 +2201,35 @@ describe("App", () => {
     expect(screen.getByText("Open a trashed note before restoring")).toBeInTheDocument();
   });
 
+  it("deletes the active trashed note permanently from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">trash note" }
+    });
+    fireEvent.click(screen.getByText("Move note to trash"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">delete note permanently" }
+    });
+    fireEvent.click(screen.getByText("Delete note permanently"));
+
+    expect(screen.getByText('"Agenda" deleted permanently')).toBeInTheDocument();
+  });
+
+  it("requires an active trashed note for permanent delete from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">delete note permanently" }
+    });
+    fireEvent.click(screen.getByText("Delete note permanently"));
+
+    expect(screen.getByText("Move note to Trash before deleting permanently")).toBeInTheDocument();
+  });
+
   it("opens or creates today's note from command palette without duplicates", async () => {
     render(<App />);
     const now = new Date();

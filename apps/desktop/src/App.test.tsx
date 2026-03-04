@@ -1741,6 +1741,24 @@ describe("App", () => {
     expect(screen.getByText("Note markdown copied")).toBeInTheDocument();
   });
 
+  it("copies note text from quick search footer action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy text/i }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("Priority 1");
+    expect(screen.getByText("Note text copied")).toBeInTheDocument();
+  });
+
   it("copies selected search result markdown with shift+cmd+m in search modal", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -1756,6 +1774,23 @@ describe("App", () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(writeText.mock.calls[0]?.[0]).toContain("# Agenda");
+  });
+
+  it("copies selected search result text with shift+cmd+t in search modal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "t", metaKey: true, shiftKey: true });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("Priority 1");
   });
 
   it("opens selected quick search result in new window from footer action", () => {

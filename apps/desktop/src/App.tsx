@@ -629,6 +629,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-editor-size-medium", label: "Set editor size: Medium", keywords: ["font", "size", "medium", "editor"] },
   { id: "set-editor-size-large", label: "Set editor size: Large", keywords: ["font", "size", "large", "editor"] },
   { id: "toggle-collapsible-sections", label: "Toggle collapsible sections", keywords: ["collapse", "sections", "preview"] },
+  { id: "toggle-backlinks-pane", label: "Toggle backlinks pane", keywords: ["backlinks", "links", "pane", "dock"] },
   { id: "toggle-focus", label: "Toggle focus mode", keywords: ["focus", "layout", "panes"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
   { id: "toggle-auto-links", label: "Toggle auto reciprocal links", keywords: ["links", "backlinks", "reciprocal"] },
@@ -4518,6 +4519,12 @@ export default function App() {
           return;
         }
         openNoteInfo();
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "b") {
+        event.preventDefault();
+        setBacklinksPaneOpen((previous) => !previous);
         return;
       }
 
@@ -8462,6 +8469,12 @@ export default function App() {
 
     if (actionId === "toggle-collapsible-sections") {
       setCollapsibleSections((previous) => !previous);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-backlinks-pane") {
+      setBacklinksPaneOpen((previous) => !previous);
       setSearchOpen(false);
       return;
     }

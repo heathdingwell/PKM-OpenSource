@@ -283,6 +283,17 @@ describe("App", () => {
     expect(shell).not.toHaveClass("focus-mode");
   });
 
+  it("toggles backlinks pane with keyboard shortcut", () => {
+    render(<App />);
+    expect(screen.getByLabelText("Backlinks dock")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "b", metaKey: true, shiftKey: true });
+    expect(screen.queryByLabelText("Backlinks dock")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "b", metaKey: true, shiftKey: true });
+    expect(screen.getByLabelText("Backlinks dock")).toBeInTheDocument();
+  });
+
   it("exits focus mode with escape", () => {
     render(<App />);
     const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });
@@ -1225,6 +1236,25 @@ describe("App", () => {
     });
     fireEvent.click(screen.getByText("Toggle collapsible sections"));
     expect(document.querySelector(".preview-section")).toBeNull();
+  });
+
+  it("toggles backlinks pane from command palette action", () => {
+    render(<App />);
+    expect(screen.getByLabelText("Backlinks dock")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle backlinks pane" }
+    });
+    fireEvent.click(screen.getByText("Toggle backlinks pane"));
+    expect(screen.queryByLabelText("Backlinks dock")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle backlinks pane" }
+    });
+    fireEvent.click(screen.getByText("Toggle backlinks pane"));
+    expect(screen.getByLabelText("Backlinks dock")).toBeInTheDocument();
   });
 
   it("sets explicit theme from command palette action", () => {

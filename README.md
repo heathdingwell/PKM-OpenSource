@@ -47,6 +47,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Note card multi-select supports both toggle selection (`⌘`/`Ctrl` click) and shift-click range selection.
 - Notebook tree keyboard navigation supports arrow keys for previous/next row traversal, stack collapse/expand, and nested notebook focus.
 - Backlinks dock in notes view.
+- Backlinks dock can be toggled with command palette (`Toggle backlinks pane`) and keyboard shortcut (`⇧⌘B`).
 - Configurable Git vault backups (desktop):
   - Auto-commit backups are enabled by default.
   - Toggle in `AI Copilot -> Settings -> Git backup`.

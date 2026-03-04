@@ -46,3 +46,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Set theme: Cobalt`
   - `Set theme: Sky`
   - `Set theme: Slate`
+- Explicit note sort actions via command palette:
+  - `Set sort: Updated (newest first|oldest first)`
+  - `Set sort: Created (newest first|oldest first)`
+  - `Set sort: Title (A-Z|Z-A)`

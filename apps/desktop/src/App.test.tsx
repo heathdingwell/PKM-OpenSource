@@ -1314,6 +1314,32 @@ describe("App", () => {
     expect(editor?.value).toContain("- Spec.pdf");
   });
 
+  it("imports notes from multiple ENEX files", async () => {
+    window.localStorage.setItem(
+      "pkm-os.desktop.prefs.v1",
+      JSON.stringify({
+        selectedNotebook: "All Notes",
+        activeId: ""
+      })
+    );
+    render(<App />);
+    const input = document.getElementById("enex-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    const firstEnex =
+      "<en-export><note><title>Alpha ENEX</title><created>20260301T102030Z</created><updated>20260302T112233Z</updated><content><![CDATA[<en-note><div>Alpha body</div></en-note>]]></content></note></en-export>";
+    const secondEnex =
+      "<en-export><note><title>Beta ENEX</title><created>20260303T102030Z</created><updated>20260304T112233Z</updated><content><![CDATA[<en-note><div>Beta body</div></en-note>]]></content></note></en-export>";
+
+    const firstFile = new File([firstEnex], "First-Notebook.enex", { type: "application/xml" });
+    const secondFile = new File([secondEnex], "Second-Notebook.enex", { type: "application/xml" });
+    fireEvent.change(input, { target: { files: [firstFile, secondFile] } });
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Alpha ENEX", level: 2 })).toBeInTheDocument());
+    expect(screen.getByText("Imported ENEX files (2 notes from 2 files)")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "All Notes", level: 1 })).toBeInTheDocument();
+  });
+
   it("imports markdown files from picker", async () => {
     window.localStorage.setItem(
       "pkm-os.desktop.prefs.v1",

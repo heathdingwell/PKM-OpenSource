@@ -5902,6 +5902,92 @@ export default function App() {
     setToastMessage(`Imported ENEX (${imported.length} notes) into ${targetNotebook}`);
   }
 
+  async function importEnexFiles(files: FileList | File[]): Promise<void> {
+    const source = Array.from(files ?? []).filter((file) => {
+      if (!file) {
+        return false;
+      }
+      const lowerName = file.name.toLowerCase();
+      return lowerName.endsWith(".enex") || lowerName.endsWith(".xml") || file.type.toLowerCase().includes("xml");
+    });
+    if (!source.length) {
+      setToastMessage("No ENEX files selected");
+      return;
+    }
+
+    const allocatePath = createPathAllocator(notes);
+    const imported: AppNote[] = [];
+    const destinationNotebooks = new Set<string>();
+    let validFileCount = 0;
+
+    for (const file of source) {
+      let rawEnex = "";
+      try {
+        rawEnex = await readFileAsText(file);
+      } catch {
+        continue;
+      }
+
+      const parsedNotes = parseEnexNotes(rawEnex);
+      if (!parsedNotes.length) {
+        continue;
+      }
+
+      validFileCount += 1;
+      const targetNotebook =
+        selectedNotebook !== "All Notes"
+          ? selectedNotebook
+          : notebookFromImportFileName(file.name) || resolveDefaultNotebook();
+      destinationNotebooks.add(targetNotebook);
+
+      parsedNotes.forEach((parsed) => {
+        const id = crypto.randomUUID();
+        const path = allocatePath(targetNotebook, parsed.title);
+        const seed: AppNote = {
+          id,
+          path,
+          title: parsed.title,
+          snippet: "",
+          tags: parsed.tags,
+          linksOut: [],
+          createdAt: parsed.createdAt,
+          updatedAt: parsed.updatedAt,
+          notebook: targetNotebook,
+          markdown: parsed.markdown
+        };
+        imported.push(noteFromMarkdown(seed, parsed.markdown, parsed.updatedAt, { pathOverride: path }));
+      });
+    }
+
+    if (!imported.length || !validFileCount) {
+      setToastMessage("No valid notes found in ENEX files");
+      return;
+    }
+
+    const nextActive = imported[0]?.id ?? "";
+    const nextNotebook =
+      selectedNotebook !== "All Notes"
+        ? selectedNotebook
+        : destinationNotebooks.size > 1
+          ? "All Notes"
+          : (Array.from(destinationNotebooks)[0] ?? "All Notes");
+
+    setNotes((previous) => [...imported, ...previous]);
+    setSidebarView("notes");
+    setBrowseMode("all");
+    setSelectedNotebook(nextNotebook);
+    setActiveId(nextActive);
+    setSelectedIds(nextActive ? new Set([nextActive]) : new Set());
+    setLastSelectedId(nextActive || null);
+    setDraftMarkdown(imported[0]?.markdown ?? "");
+    setSearchOpen(false);
+    setToastMessage(
+      `Imported ENEX files (${imported.length} ${imported.length === 1 ? "note" : "notes"} from ${validFileCount} ${
+        validFileCount === 1 ? "file" : "files"
+      })`
+    );
+  }
+
   async function importMarkdownFiles(files: FileList | File[]): Promise<void> {
     const source = Array.from(files ?? []).filter((file) => {
       if (!file) {
@@ -13472,12 +13558,19 @@ a{color:#1d4ed8}
         accept=".enex,.xml,text/xml,application/xml"
         aria-label="Import ENEX file"
         className="visually-hidden-input"
+        multiple
         onChange={(event) => {
-          const file = event.target.files?.[0];
+          const files = event.target.files;
           event.currentTarget.value = "";
-          if (file) {
-            void importEnexFromFile(file);
+          if (!files || files.length === 0) {
+            return;
           }
+          if (files.length === 1) {
+            const file = files[0];
+            void importEnexFromFile(file);
+            return;
+          }
+          void importEnexFiles(files);
         }}
       />
 

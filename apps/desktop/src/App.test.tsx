@@ -320,6 +320,21 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
+  it("opens move dialog for selected notes with keyboard shortcut", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "m", metaKey: true, shiftKey: true });
+    const moveModal = screen.getByRole("heading", { name: "Move", level: 3 }).closest("section");
+    expect(moveModal).toBeTruthy();
+    expect(within(moveModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
+  });
+
   it("copies note html with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -333,6 +348,26 @@ describe("App", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("<h1>Agenda</h1>");
     expect(screen.getByText("Note HTML copied")).toBeInTheDocument();
+  });
+
+  it("copies selected note html with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "h", metaKey: true, shiftKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("<!-- --- -->");
+    expect(screen.getByText("HTML copied for 2 notes")).toBeInTheDocument();
   });
 
   it("copies note text with keyboard shortcut", async () => {
@@ -350,6 +385,26 @@ describe("App", () => {
     expect(screen.getByText("Note text copied")).toBeInTheDocument();
   });
 
+  it("copies selected note text with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "t", metaKey: true, shiftKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("\n\n---\n\n");
+    expect(screen.getByText("Text copied for 2 notes")).toBeInTheDocument();
+  });
+
   it("copies note link with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -362,6 +417,26 @@ describe("App", () => {
     fireEvent.keyDown(window, { key: "l", metaKey: true });
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
+  });
+
+  it("copies selected note links with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "l", metaKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("\n");
+    expect(screen.getByText("Links copied for 2 notes")).toBeInTheDocument();
   });
 
   it("copies note path with keyboard shortcut", async () => {
@@ -377,6 +452,26 @@ describe("App", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
     expect(screen.getByText("Note path copied")).toBeInTheDocument();
+  });
+
+  it("copies selected note paths with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "l", metaKey: true, altKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("\n");
+    expect(screen.getByText("Paths copied for 2 notes")).toBeInTheDocument();
   });
 
   it("copies note path using KeyL code with keyboard shortcut", async () => {
@@ -450,6 +545,26 @@ describe("App", () => {
     fireEvent.keyDown(window, { key: "s", metaKey: true, altKey: true });
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Share link copied")).toBeInTheDocument();
+  });
+
+  it("shares selected note links with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "s", metaKey: true, altKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("\n");
+    expect(screen.getByText("Share links copied for 2 notes")).toBeInTheDocument();
   });
 
   it("opens note in new window with keyboard shortcut", () => {
@@ -5910,6 +6025,23 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Trash" }));
     expect(screen.getByRole("heading", { name: "Trash", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
+  });
+
+  it("moves selected notes to trash with cmd+backspace", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "Backspace", metaKey: true });
+    expect(screen.getByText("2 notes moved to Trash")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    const trashedCards = document.querySelectorAll(".note-grid .note-card");
+    expect(trashedCards.length).toBeGreaterThanOrEqual(2);
   });
 
   it("restores a trashed note with cmd+z undo", () => {

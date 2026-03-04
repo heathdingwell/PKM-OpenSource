@@ -38,6 +38,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Command palette `Copy note markdown`, `Copy note HTML`, and `Copy note text` now apply to selected notes when multiple cards are selected.
 - Command palette template/shortcut/home-pin/notebook-pin toggles now apply to selected notes when multiple cards are selected.
 - Command palette `Copy note link`, `Copy note path`, and `Share note link` now apply to selected notes when multiple cards are selected.
+- Keyboard shortcuts for move-to-trash (`⌘⌫`), move note (`⇧⌘M`), copy/share link/path (`⌘L`, `⌥⌘L`, `⌥⌘S`), and copy HTML/text (`⇧⌘H`, `⇧⌘T`) now apply to selected notes when multiple cards are selected.
 - Backlinks dock in notes view.
 - Configurable Git vault backups (desktop):
   - Auto-commit backups are enabled by default.

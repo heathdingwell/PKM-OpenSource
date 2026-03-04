@@ -4341,6 +4341,8 @@ export default function App() {
 
       if (!searchOpen && activeNote && (event.metaKey || event.ctrlKey)) {
         const key = event.key.toLowerCase();
+        const selectedKeyboardNoteIds = selectedVisibleNoteIds.length ? selectedVisibleNoteIds : [activeNote.id];
+        const selectedKeyboardNotes = notes.filter((note) => selectedKeyboardNoteIds.includes(note.id));
         const matchesMetaLetter = (letter: string): boolean =>
           !event.altKey &&
           !event.shiftKey &&
@@ -4355,15 +4357,19 @@ export default function App() {
           (key === letter.toLowerCase() || event.code === `Key${letter.toUpperCase()}`);
         if (key === "backspace" && !isTextEntryTarget) {
           event.preventDefault();
-          if (activeNote.trashedAt) {
-            const removed = deleteNotesPermanently([activeNote.id]);
+          if (selectedKeyboardNotes.every((note) => Boolean(note.trashedAt))) {
+            const removed = deleteNotesPermanently(selectedKeyboardNoteIds);
             if (removed > 0) {
-              setToastMessage(`"${activeNote.title}" deleted permanently`);
+              setToastMessage(
+                removed === 1 ? `"${selectedKeyboardNotes[0]?.title ?? "Note"}" deleted permanently` : `${removed} notes deleted permanently`
+              );
             }
           } else {
-            const moved = moveNotesToTrash([activeNote.id]);
+            const moved = moveNotesToTrash(selectedKeyboardNoteIds);
             if (moved > 0) {
-              setToastMessage(`"${activeNote.title}" moved to Trash`);
+              setToastMessage(
+                moved === 1 ? `"${selectedKeyboardNotes[0]?.title ?? "Note"}" moved to Trash` : `${moved} notes moved to Trash`
+              );
             }
           }
           return;
@@ -4383,19 +4389,27 @@ export default function App() {
 
         if (matchesMetaShiftLetter("m")) {
           event.preventDefault();
-          openMoveDialogForNotes([activeNote.id], "move");
+          openMoveDialogForNotes(selectedKeyboardNoteIds, "move");
           return;
         }
 
         if (matchesMetaShiftLetter("h")) {
           event.preventDefault();
-          void copyNoteHtml(activeNote.id);
+          if (selectedKeyboardNoteIds.length > 1) {
+            void copyNotesHtml(selectedKeyboardNoteIds);
+          } else {
+            void copyNoteHtml(activeNote.id);
+          }
           return;
         }
 
         if (matchesMetaShiftLetter("t")) {
           event.preventDefault();
-          void copyNoteText(activeNote.id);
+          if (selectedKeyboardNoteIds.length > 1) {
+            void copyNotesText(selectedKeyboardNoteIds);
+          } else {
+            void copyNoteText(activeNote.id);
+          }
           return;
         }
 
@@ -4413,19 +4427,31 @@ export default function App() {
 
         if (matchesMetaLetter("l")) {
           event.preventDefault();
-          void copyNoteLink(activeNote.id);
+          if (selectedKeyboardNoteIds.length > 1) {
+            void copyNotesLinks(selectedKeyboardNoteIds);
+          } else {
+            void copyNoteLink(activeNote.id);
+          }
           return;
         }
 
         if (matchesMetaAltLetter("l")) {
           event.preventDefault();
-          void copyNotePath(activeNote.id);
+          if (selectedKeyboardNoteIds.length > 1) {
+            void copyNotesPaths(selectedKeyboardNoteIds);
+          } else {
+            void copyNotePath(activeNote.id);
+          }
           return;
         }
 
         if (matchesMetaAltLetter("s")) {
           event.preventDefault();
-          void copyNoteLink(activeNote.id, "Share link copied");
+          if (selectedKeyboardNoteIds.length > 1) {
+            void copyNotesLinks(selectedKeyboardNoteIds, `Share links copied for ${selectedKeyboardNoteIds.length} notes`);
+          } else {
+            void copyNoteLink(activeNote.id, "Share link copied");
+          }
           return;
         }
 

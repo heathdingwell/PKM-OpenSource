@@ -7088,6 +7088,15 @@ export default function App() {
       setToastMessage("Open a note before editing tags");
       return;
     }
+    const targetNote = notes.find((entry) => entry.id === targetId);
+    if (!targetNote) {
+      return;
+    }
+    if (targetNote.trashedAt) {
+      setToastMessage("Restore notes from Trash to edit tags");
+      setSearchOpen(false);
+      return;
+    }
 
     const openEditor = () => {
       setTagEditorOpen(true);

@@ -1087,6 +1087,24 @@ describe("App", () => {
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
+  it("blocks note tags editor from command palette for trashed notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">trash note" }
+    });
+    fireEvent.click(screen.getByText("Move note to trash"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">edit note tags" }
+    });
+    fireEvent.click(screen.getByText("Edit note tags"));
+
+    expect(screen.getByText("Restore notes from Trash to edit tags")).toBeInTheDocument();
+  });
+
   it("opens bulk tags editor for selected notes from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

@@ -587,6 +587,10 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-sort-created-asc", label: "Set sort: Created (oldest first)", keywords: ["sort", "created", "oldest"] },
   { id: "set-sort-title-asc", label: "Set sort: Title (A-Z)", keywords: ["sort", "title", "a-z"] },
   { id: "set-sort-title-desc", label: "Set sort: Title (Z-A)", keywords: ["sort", "title", "z-a"] },
+  { id: "set-editor-font-palatino", label: "Set editor font: Palatino", keywords: ["font", "editor", "palatino", "serif"] },
+  { id: "set-editor-font-georgia", label: "Set editor font: Georgia", keywords: ["font", "editor", "georgia", "serif"] },
+  { id: "set-editor-font-sans", label: "Set editor font: Sans Serif", keywords: ["font", "editor", "sans"] },
+  { id: "set-editor-font-mono", label: "Set editor font: Monospace", keywords: ["font", "editor", "mono"] },
   { id: "toggle-collapsible-sections", label: "Toggle collapsible sections", keywords: ["collapse", "sections", "preview"] },
   { id: "toggle-focus", label: "Toggle focus mode", keywords: ["focus", "layout", "panes"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
@@ -4722,6 +4726,12 @@ export default function App() {
     setToastMessage(`Sort set to ${label}`);
   }
 
+  function applyEditorFontFamily(mode: EditorFontFamilyId): void {
+    setEditorFontFamily(mode);
+    const label = editorFontFamilies.find((entry) => entry.id === mode)?.label ?? mode;
+    setToastMessage(`Editor font set to ${label}`);
+  }
+
   function toggleAiPanel(): void {
     setAiPanelOpen((previous) => {
       const next = !previous;
@@ -7097,6 +7107,30 @@ export default function App() {
 
     if (actionId === "set-sort-title-desc") {
       applySortMode("title-desc");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-editor-font-palatino") {
+      applyEditorFontFamily("palatino");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-editor-font-georgia") {
+      applyEditorFontFamily("georgia");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-editor-font-sans") {
+      applyEditorFontFamily("sans");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-editor-font-mono") {
+      applyEditorFontFamily("mono");
       setSearchOpen(false);
       return;
     }

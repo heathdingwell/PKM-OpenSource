@@ -661,6 +661,18 @@ describe("App", () => {
     expect(screen.getByText("Theme switched to sky")).toBeInTheDocument();
   });
 
+  it("sets editor font from command palette action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set editor font georgia" }
+    });
+    fireEvent.click(screen.getByText("Set editor font: Georgia"));
+
+    expect(screen.getByLabelText("Editor font family")).toHaveValue("georgia");
+    expect(screen.getByText("Editor font set to Georgia")).toBeInTheDocument();
+  });
+
   it("opens new stack modal from command palette action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

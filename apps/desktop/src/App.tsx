@@ -628,6 +628,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "import-snapshot", label: "Import vault snapshot", keywords: ["backup", "snapshot", "import", "restore", "vault"] },
   { id: "import-enex", label: "Import ENEX archive", keywords: ["evernote", "enex", "import", "archive"] },
   { id: "import-markdown-files", label: "Import Markdown files", keywords: ["import", "markdown", "md", "files"] },
+  { id: "import-text-files", label: "Import Text files", keywords: ["import", "text", "txt", "files"] },
   { id: "reload-vault", label: "Reload vault from disk", keywords: ["reload", "refresh", "vault", "disk"] },
   { id: "undo-last-action", label: "Undo last action", keywords: ["undo", "restore", "revert"] },
   { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
@@ -2783,6 +2784,7 @@ export default function App() {
   const findInNoteInputRef = useRef<HTMLInputElement | null>(null);
   const draggingNoteIdsRef = useRef<string[] | null>(null);
   const markdownImportInputRef = useRef<HTMLInputElement | null>(null);
+  const textImportInputRef = useRef<HTMLInputElement | null>(null);
   const enexImportInputRef = useRef<HTMLInputElement | null>(null);
   const vaultSnapshotInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -5724,6 +5726,10 @@ export default function App() {
     markdownImportInputRef.current?.click();
   }
 
+  function triggerTextImport(): void {
+    textImportInputRef.current?.click();
+  }
+
   async function reloadVaultFromDisk(): Promise<void> {
     if (!window.pkmShell?.loadVaultState) {
       setToastMessage("Vault reload is unavailable in this build");
@@ -5926,6 +5932,69 @@ export default function App() {
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
     setToastMessage(`Imported Markdown files (${imported.length}) into ${targetNotebook}`);
+  }
+
+  async function importTextFiles(files: FileList | File[]): Promise<void> {
+    const source = Array.from(files ?? []).filter((file) => {
+      if (!file) {
+        return false;
+      }
+      const lowerName = file.name.toLowerCase();
+      return lowerName.endsWith(".txt") || lowerName.endsWith(".text") || file.type.toLowerCase().includes("text/plain");
+    });
+    if (!source.length) {
+      setToastMessage("No text files selected");
+      return;
+    }
+
+    const targetNotebook = selectedNotebook !== "All Notes" ? selectedNotebook : "Imported";
+    const allocatePath = createPathAllocator(notes);
+    const imported: AppNote[] = [];
+
+    for (const file of source) {
+      let raw = "";
+      try {
+        raw = await readFileAsText(file);
+      } catch {
+        continue;
+      }
+
+      const fallbackTitle = noteTitleFromFileName(file.name);
+      const normalizedText = raw.replace(/\r\n/g, "\n").trim();
+      const markdown = normalizedText ? `# ${fallbackTitle}\n\n${normalizedText}\n` : `# ${fallbackTitle}\n\n`;
+      const timestamp = file.lastModified ? new Date(file.lastModified).toISOString() : new Date().toISOString();
+      const path = allocatePath(targetNotebook, fallbackTitle);
+      const seed: AppNote = {
+        id: crypto.randomUUID(),
+        path,
+        title: fallbackTitle,
+        snippet: "",
+        tags: [],
+        linksOut: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        notebook: targetNotebook,
+        markdown
+      };
+      imported.push(noteFromMarkdown(seed, markdown, timestamp, { pathOverride: path }));
+    }
+
+    if (!imported.length) {
+      setToastMessage("No readable text files found");
+      return;
+    }
+
+    const nextActive = imported[0]?.id ?? "";
+    setNotes((previous) => [...imported, ...previous]);
+    setSidebarView("notes");
+    setBrowseMode("all");
+    setSelectedNotebook(targetNotebook);
+    setActiveId(nextActive);
+    setSelectedIds(nextActive ? new Set([nextActive]) : new Set());
+    setLastSelectedId(nextActive || null);
+    setDraftMarkdown(imported[0]?.markdown ?? "");
+    setSearchOpen(false);
+    setToastMessage(`Imported text files (${imported.length}) into ${targetNotebook}`);
   }
 
   function saveCurrentSearch(): void {
@@ -7518,6 +7587,12 @@ export default function App() {
     if (actionId === "import-markdown-files") {
       setSearchOpen(false);
       triggerMarkdownImport();
+      return;
+    }
+
+    if (actionId === "import-text-files") {
+      setSearchOpen(false);
+      triggerTextImport();
       return;
     }
 
@@ -13070,7 +13145,7 @@ a{color:#1d4ed8}
         id="markdown-import-input"
         ref={markdownImportInputRef}
         type="file"
-        accept=".md,.markdown,text/markdown,text/plain"
+        accept=".md,.markdown,text/markdown"
         aria-label="Import Markdown files"
         className="visually-hidden-input"
         multiple
@@ -13079,6 +13154,23 @@ a{color:#1d4ed8}
           event.currentTarget.value = "";
           if (files && files.length > 0) {
             void importMarkdownFiles(files);
+          }
+        }}
+      />
+
+      <input
+        id="text-import-input"
+        ref={textImportInputRef}
+        type="file"
+        accept=".txt,.text,text/plain"
+        aria-label="Import text files"
+        className="visually-hidden-input"
+        multiple
+        onChange={(event) => {
+          const files = event.target.files;
+          event.currentTarget.value = "";
+          if (files && files.length > 0) {
+            void importTextFiles(files);
           }
         }}
       />

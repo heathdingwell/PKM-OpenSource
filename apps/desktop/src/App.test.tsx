@@ -1118,6 +1118,22 @@ describe("App", () => {
     clickSpy.mockRestore();
   });
 
+  it("opens text import picker from command palette", () => {
+    render(<App />);
+    const input = document.getElementById("text-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    const clickSpy = vi.spyOn(input, "click").mockImplementation(() => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">import text files" }
+    });
+    fireEvent.click(screen.getByText("Import Text files"));
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    clickSpy.mockRestore();
+  });
+
   it("imports notes from a vault snapshot file", async () => {
     render(<App />);
     const input = document.getElementById("vault-snapshot-input") as HTMLInputElement;
@@ -1200,6 +1216,28 @@ describe("App", () => {
       expect(screen.getByRole("heading", { name: "Imported Alpha", level: 2 })).toBeInTheDocument()
     );
     expect(screen.getByText("Imported Markdown files (2) into Imported")).toBeInTheDocument();
+  });
+
+  it("imports text files from picker", async () => {
+    window.localStorage.setItem(
+      "pkm-os.desktop.prefs.v1",
+      JSON.stringify({
+        selectedNotebook: "All Notes",
+        activeId: ""
+      })
+    );
+    render(<App />);
+    const input = document.getElementById("text-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    const first = new File(["First paragraph\nSecond paragraph"], "Imported-Notes.txt", { type: "text/plain" });
+    const second = new File(["A quick reminder"], "Quick.text", { type: "text/plain" });
+    fireEvent.change(input, { target: { files: [first, second] } });
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Imported Notes", level: 2 })).toBeInTheDocument()
+    );
+    expect(screen.getByText("Imported text files (2) into Imported")).toBeInTheDocument();
   });
 
   it("sets AI provider from command palette", async () => {

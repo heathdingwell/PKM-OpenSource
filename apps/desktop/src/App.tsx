@@ -1079,13 +1079,38 @@ function parseEnexNotes(raw: string): Array<{
     const title = entry.getElementsByTagName("title")[0]?.textContent?.trim() || "Untitled";
     const createdAt = parseEnexTimestamp(entry.getElementsByTagName("created")[0]?.textContent, nowIso);
     const updatedAt = parseEnexTimestamp(entry.getElementsByTagName("updated")[0]?.textContent, createdAt);
+    const sourceUrl =
+      entry
+        .getElementsByTagName("note-attributes")[0]
+        ?.getElementsByTagName("source-url")[0]
+        ?.textContent?.trim() || "";
     const tags = Array.from(entry.getElementsByTagName("tag"))
       .map((tag) => tag.textContent?.trim() || "")
       .filter(Boolean)
       .slice(0, 32);
+    const resources = Array.from(entry.getElementsByTagName("resource"))
+      .map((resource) => {
+        const resourceAttributes = resource.getElementsByTagName("resource-attributes")[0];
+        const fileName = resourceAttributes?.getElementsByTagName("file-name")[0]?.textContent?.trim() || "";
+        const mime = resource.getElementsByTagName("mime")[0]?.textContent?.trim() || "";
+        const value = fileName || mime;
+        return value.replace(/\s+/g, " ").trim();
+      })
+      .filter(Boolean)
+      .slice(0, 64);
     const content = entry.getElementsByTagName("content")[0]?.textContent?.trim() || "";
     const body = content ? convertEnmlToMarkdown(content) : "";
-    const markdown = body.startsWith("# ") ? body : normalizePastedMarkdown(`# ${title}\n\n${body || ""}`);
+    const parts = [`# ${title}`];
+    if (sourceUrl) {
+      parts.push(`Source: ${sourceUrl}`);
+    }
+    if (body) {
+      parts.push(body);
+    }
+    if (resources.length) {
+      parts.push(`## Imported resources\n${resources.map((resource) => `- ${resource}`).join("\n")}`);
+    }
+    const markdown = normalizePastedMarkdown(parts.join("\n\n"));
 
     return {
       title,

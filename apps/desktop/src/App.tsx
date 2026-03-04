@@ -577,6 +577,8 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "empty-trash", label: "Empty trash", keywords: ["trash", "delete"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
   { id: "open-ai-settings", label: "Open AI settings", keywords: ["ai", "copilot", "settings", "provider"] },
+  { id: "test-ai-connection", label: "Test AI connection", keywords: ["ai", "connection", "test", "provider"] },
+  { id: "fetch-ai-models", label: "Fetch AI models", keywords: ["ai", "models", "fetch", "provider"] },
   { id: "set-ai-provider-openai", label: "Set AI provider: OpenAI", keywords: ["ai", "provider", "openai"] },
   { id: "set-ai-provider-anthropic", label: "Set AI provider: Claude", keywords: ["ai", "provider", "claude", "anthropic"] },
   { id: "set-ai-provider-gemini", label: "Set AI provider: Gemini", keywords: ["ai", "provider", "gemini", "google"] },
@@ -7174,6 +7176,24 @@ export default function App() {
       setAiShowSettings(true);
       setMetadataOpen(false);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "test-ai-connection") {
+      setAiPanelOpen(true);
+      setAiShowSettings(true);
+      setMetadataOpen(false);
+      setSearchOpen(false);
+      void testAiConnection();
+      return;
+    }
+
+    if (actionId === "fetch-ai-models") {
+      setAiPanelOpen(true);
+      setAiShowSettings(true);
+      setMetadataOpen(false);
+      setSearchOpen(false);
+      void fetchAiModels();
       return;
     }
 

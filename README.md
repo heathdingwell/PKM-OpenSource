@@ -49,6 +49,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Explicit AI provider actions via command palette:
   - `Set AI provider: OpenAI|Claude|Gemini|Perplexity|OpenAI-compatible|Ollama`
   - `Open AI settings`
+  - `Test AI connection`
+  - `Fetch AI models`
 - Explicit theme actions via command palette:
   - `Set theme: Cobalt`
   - `Set theme: Sky`

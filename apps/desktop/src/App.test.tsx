@@ -1210,6 +1210,44 @@ describe("App", () => {
     expect(screen.getByText("Provider")).toBeInTheDocument();
   });
 
+  it("tests AI connection from command palette action", async () => {
+    const testLlmConnection = vi.fn().mockResolvedValue({
+      ok: true,
+      detail: "Connected to provider"
+    });
+    (window as unknown as { pkmShell?: { testLlmConnection: typeof testLlmConnection } }).pkmShell = {
+      testLlmConnection
+    };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">test ai connection" }
+    });
+    fireEvent.click(screen.getByText("Test AI connection"));
+
+    await waitFor(() => expect(screen.getByText("Connected to provider")).toBeInTheDocument());
+  });
+
+  it("fetches AI models from command palette action", async () => {
+    const listLlmModels = vi.fn().mockResolvedValue({
+      models: ["model-alpha", "model-beta"]
+    });
+    (window as unknown as { pkmShell?: { listLlmModels: typeof listLlmModels } }).pkmShell = {
+      listLlmModels
+    };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">fetch ai models" }
+    });
+    fireEvent.click(screen.getByText("Fetch AI models"));
+
+    await waitFor(() => expect(screen.getByText("Loaded 2 models")).toBeInTheDocument());
+    expect(screen.getByDisplayValue("model-alpha")).toBeInTheDocument();
+  });
+
   it("shows validation message for invalid ENEX file", async () => {
     render(<App />);
     const input = document.getElementById("enex-import-input") as HTMLInputElement;

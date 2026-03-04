@@ -1172,6 +1172,22 @@ describe("App", () => {
     clickSpy.mockRestore();
   });
 
+  it("opens html import picker from command palette", () => {
+    render(<App />);
+    const input = document.getElementById("html-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    const clickSpy = vi.spyOn(input, "click").mockImplementation(() => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">import html files" }
+    });
+    fireEvent.click(screen.getByText("Import HTML files"));
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    clickSpy.mockRestore();
+  });
+
   it("imports notes from a vault snapshot file", async () => {
     render(<App />);
     const input = document.getElementById("vault-snapshot-input") as HTMLInputElement;
@@ -1276,6 +1292,32 @@ describe("App", () => {
       expect(screen.getByRole("heading", { name: "Imported Notes", level: 2 })).toBeInTheDocument()
     );
     expect(screen.getByText("Imported text files (2) into Imported")).toBeInTheDocument();
+  });
+
+  it("imports html files from picker", async () => {
+    window.localStorage.setItem(
+      "pkm-os.desktop.prefs.v1",
+      JSON.stringify({
+        selectedNotebook: "All Notes",
+        activeId: ""
+      })
+    );
+    render(<App />);
+    const input = document.getElementById("html-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    const first = new File(["<html><body><h1>Imported HTML</h1><p>Converted content.</p></body></html>"], "Imported.html", {
+      type: "text/html"
+    });
+    const second = new File(["<html><body><p>Second note body</p></body></html>"], "Second.htm", {
+      type: "text/html"
+    });
+    fireEvent.change(input, { target: { files: [first, second] } });
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Imported HTML", level: 2 })).toBeInTheDocument()
+    );
+    expect(screen.getByText("Imported HTML files (2) into Imported")).toBeInTheDocument();
   });
 
   it("sets AI provider from command palette", async () => {

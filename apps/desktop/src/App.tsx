@@ -631,6 +631,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "import-enex", label: "Import ENEX archive", keywords: ["evernote", "enex", "import", "archive"] },
   { id: "import-markdown-files", label: "Import Markdown files", keywords: ["import", "markdown", "md", "files"] },
   { id: "import-text-files", label: "Import Text files", keywords: ["import", "text", "txt", "files"] },
+  { id: "import-html-files", label: "Import HTML files", keywords: ["import", "html", "htm", "files"] },
   { id: "reload-vault", label: "Reload vault from disk", keywords: ["reload", "refresh", "vault", "disk"] },
   { id: "undo-last-action", label: "Undo last action", keywords: ["undo", "restore", "revert"] },
   { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
@@ -2799,6 +2800,7 @@ export default function App() {
   const draggingNoteIdsRef = useRef<string[] | null>(null);
   const markdownImportInputRef = useRef<HTMLInputElement | null>(null);
   const textImportInputRef = useRef<HTMLInputElement | null>(null);
+  const htmlImportInputRef = useRef<HTMLInputElement | null>(null);
   const enexImportInputRef = useRef<HTMLInputElement | null>(null);
   const vaultSnapshotInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -5744,6 +5746,10 @@ export default function App() {
     textImportInputRef.current?.click();
   }
 
+  function triggerHtmlImport(): void {
+    htmlImportInputRef.current?.click();
+  }
+
   async function reloadVaultFromDisk(): Promise<void> {
     if (!window.pkmShell?.loadVaultState) {
       setToastMessage("Vault reload is unavailable in this build");
@@ -6009,6 +6015,76 @@ export default function App() {
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
     setToastMessage(`Imported text files (${imported.length}) into ${targetNotebook}`);
+  }
+
+  async function importHtmlFiles(files: FileList | File[]): Promise<void> {
+    const source = Array.from(files ?? []).filter((file) => {
+      if (!file) {
+        return false;
+      }
+      const lowerName = file.name.toLowerCase();
+      return (
+        lowerName.endsWith(".html") ||
+        lowerName.endsWith(".htm") ||
+        file.type.toLowerCase().includes("text/html") ||
+        file.type.toLowerCase().includes("application/xhtml+xml")
+      );
+    });
+    if (!source.length) {
+      setToastMessage("No HTML files selected");
+      return;
+    }
+
+    const targetNotebook = selectedNotebook !== "All Notes" ? selectedNotebook : "Imported";
+    const allocatePath = createPathAllocator(notes);
+    const imported: AppNote[] = [];
+
+    for (const file of source) {
+      let raw = "";
+      try {
+        raw = await readFileAsText(file);
+      } catch {
+        continue;
+      }
+
+      const fallbackTitle = noteTitleFromFileName(file.name);
+      const markdown = normalizePastedMarkdown(createClipboardTurndownService().turndown(sanitizeClipboardHtml(raw)));
+      const normalized = markdown ? (markdown.startsWith("# ") ? markdown : `# ${fallbackTitle}\n\n${markdown}`) : `# ${fallbackTitle}\n\n`;
+      const parsed = parseForPreview(normalized);
+      const title = parsed.title || fallbackTitle;
+      const timestamp = file.lastModified ? new Date(file.lastModified).toISOString() : new Date().toISOString();
+      const path = allocatePath(targetNotebook, title);
+      const seed: AppNote = {
+        id: crypto.randomUUID(),
+        path,
+        title,
+        snippet: "",
+        tags: [],
+        linksOut: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        notebook: targetNotebook,
+        markdown: normalized
+      };
+      imported.push(noteFromMarkdown(seed, normalized, timestamp, { pathOverride: path }));
+    }
+
+    if (!imported.length) {
+      setToastMessage("No readable HTML files found");
+      return;
+    }
+
+    const nextActive = imported[0]?.id ?? "";
+    setNotes((previous) => [...imported, ...previous]);
+    setSidebarView("notes");
+    setBrowseMode("all");
+    setSelectedNotebook(targetNotebook);
+    setActiveId(nextActive);
+    setSelectedIds(nextActive ? new Set([nextActive]) : new Set());
+    setLastSelectedId(nextActive || null);
+    setDraftMarkdown(imported[0]?.markdown ?? "");
+    setSearchOpen(false);
+    setToastMessage(`Imported HTML files (${imported.length}) into ${targetNotebook}`);
   }
 
   function saveCurrentSearch(): void {
@@ -7640,6 +7716,12 @@ export default function App() {
     if (actionId === "import-text-files") {
       setSearchOpen(false);
       triggerTextImport();
+      return;
+    }
+
+    if (actionId === "import-html-files") {
+      setSearchOpen(false);
+      triggerHtmlImport();
       return;
     }
 
@@ -13288,6 +13370,23 @@ a{color:#1d4ed8}
           event.currentTarget.value = "";
           if (files && files.length > 0) {
             void importTextFiles(files);
+          }
+        }}
+      />
+
+      <input
+        id="html-import-input"
+        ref={htmlImportInputRef}
+        type="file"
+        accept=".html,.htm,text/html,application/xhtml+xml"
+        aria-label="Import HTML files"
+        className="visually-hidden-input"
+        multiple
+        onChange={(event) => {
+          const files = event.target.files;
+          event.currentTarget.value = "";
+          if (files && files.length > 0) {
+            void importHtmlFiles(files);
           }
         }}
       />

@@ -43,6 +43,9 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Text file import:
   - Import one or many `.txt`/`.text` files via command palette: `Import Text files`
   - Imports into current notebook, or `Imported` when browsing `All Notes`
+- HTML file import:
+  - Import one or many `.html`/`.htm` files via command palette: `Import HTML files`
+  - Converts HTML to Markdown and imports into current notebook, or `Imported` when browsing `All Notes`
 - Active-note export actions via command palette:
   - `Export note as Markdown`
   - `Export note as Text`

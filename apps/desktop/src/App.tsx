@@ -8034,12 +8034,17 @@ export default function App() {
     }
 
     if (actionId === "toggle-active-note-template") {
-      if (!activeNote) {
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (!targetNoteIds.length) {
         setToastMessage("Open a note first");
         setSearchOpen(false);
         return;
       }
-      const { marked, unmarked } = toggleTemplateNotes([activeNote.id]);
+      const { marked, unmarked } = toggleTemplateNotes(targetNoteIds);
       if (marked && unmarked) {
         setToastMessage(`Templates updated (+${marked}/-${unmarked})`);
       } else if (marked) {
@@ -8054,12 +8059,17 @@ export default function App() {
     }
 
     if (actionId === "toggle-active-note-shortcut") {
-      if (!activeNote) {
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (!targetNoteIds.length) {
         setToastMessage("Open a note first");
         setSearchOpen(false);
         return;
       }
-      const { added, removed } = toggleShortcutNotes([activeNote.id]);
+      const { added, removed } = toggleShortcutNotes(targetNoteIds);
       if (added && removed) {
         setToastMessage(`Shortcuts updated (+${added}/-${removed})`);
       } else if (added) {
@@ -8074,12 +8084,17 @@ export default function App() {
     }
 
     if (actionId === "toggle-active-note-pin-home") {
-      if (!activeNote) {
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (!targetNoteIds.length) {
         setToastMessage("Open a note first");
         setSearchOpen(false);
         return;
       }
-      const { pinned, unpinned } = togglePinnedNotes([activeNote.id], "home");
+      const { pinned, unpinned } = togglePinnedNotes(targetNoteIds, "home");
       if (pinned && unpinned) {
         setToastMessage(`Home pins updated (+${pinned}/-${unpinned})`);
       } else if (pinned) {
@@ -8094,12 +8109,17 @@ export default function App() {
     }
 
     if (actionId === "toggle-active-note-pin-notebook") {
-      if (!activeNote) {
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (!targetNoteIds.length) {
         setToastMessage("Open a note first");
         setSearchOpen(false);
         return;
       }
-      const { pinned, unpinned } = togglePinnedNotes([activeNote.id], "notebook");
+      const { pinned, unpinned } = togglePinnedNotes(targetNoteIds, "notebook");
       if (pinned && unpinned) {
         setToastMessage(`Notebook pins updated (+${pinned}/-${unpinned})`);
       } else if (pinned) {

@@ -671,6 +671,82 @@ describe("App", () => {
     expect(screen.getByText("1 unpinned from notebook")).toBeInTheDocument();
   });
 
+  it("toggles selected note templates from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note template" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note template"));
+
+    expect(screen.getByText("2 marked as template")).toBeInTheDocument();
+  });
+
+  it("toggles selected note shortcuts from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note shortcut" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note shortcut"));
+
+    expect(screen.getByText("2 added to shortcuts")).toBeInTheDocument();
+  });
+
+  it("toggles selected note home pins from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note pin to home" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note pin to home"));
+
+    expect(screen.getByText("2 pinned to Home")).toBeInTheDocument();
+  });
+
+  it("toggles selected note notebook pins from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note pin to notebook" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note pin to notebook"));
+
+    expect(screen.getByText("2 pinned to notebook")).toBeInTheDocument();
+  });
+
   it("opens tasks modal scoped to current note from command palette", () => {
     render(<App />);
 

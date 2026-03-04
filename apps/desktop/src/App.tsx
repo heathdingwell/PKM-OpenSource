@@ -1097,6 +1097,18 @@ function parseEnexNotes(raw: string): Array<{
   });
 }
 
+function notebookFromImportFileName(fileName: string): string {
+  const stem = fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!stem) {
+    return "Imported";
+  }
+  return stem.slice(0, 120);
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -5681,7 +5693,8 @@ export default function App() {
       return;
     }
 
-    const targetNotebook = selectedNotebook !== "All Notes" ? selectedNotebook : resolveDefaultNotebook();
+    const targetNotebook =
+      selectedNotebook !== "All Notes" ? selectedNotebook : notebookFromImportFileName(file.name) || resolveDefaultNotebook();
     const allocatePath = createPathAllocator(notes);
     const imported = parsedNotes.map((parsed) => {
       const id = crypto.randomUUID();
@@ -5711,7 +5724,7 @@ export default function App() {
     setLastSelectedId(nextActive || null);
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
-    setToastMessage(`Imported ENEX (${imported.length} notes)`);
+    setToastMessage(`Imported ENEX (${imported.length} notes) into ${targetNotebook}`);
   }
 
   function saveCurrentSearch(): void {

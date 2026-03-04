@@ -1014,18 +1014,25 @@ describe("App", () => {
   });
 
   it("imports notes from ENEX file", async () => {
+    window.localStorage.setItem(
+      "pkm-os.desktop.prefs.v1",
+      JSON.stringify({
+        selectedNotebook: "All Notes",
+        activeId: ""
+      })
+    );
     render(<App />);
     const input = document.getElementById("enex-import-input") as HTMLInputElement;
     expect(input).toBeTruthy();
 
     const enex = `<en-export><note><title>Imported ENEX Note</title><created>20260301T102030Z</created><updated>20260302T112233Z</updated><tag>imported</tag><content><![CDATA[<en-note><div>Hello from ENEX</div><div><en-todo checked="true"/> Done task</div></en-note>]]></content></note></en-export>`;
-    const file = new File([enex], "notes.enex", { type: "application/xml" });
+    const file = new File([enex], "Research-Archive.enex", { type: "application/xml" });
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Imported ENEX Note", level: 2 })).toBeInTheDocument()
     );
-    expect(screen.getByText("Imported ENEX (1 notes)")).toBeInTheDocument();
+    expect(screen.getByText("Imported ENEX (1 notes) into Research Archive")).toBeInTheDocument();
   });
 
   it("shows validation message for invalid ENEX file", async () => {

@@ -1197,6 +1197,19 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByDisplayValue("Ollama (Local)")).toBeInTheDocument());
   });
 
+  it("opens AI settings from command palette", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open ai settings" }
+    });
+    fireEvent.click(screen.getByText("Open AI settings"));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Hide settings" })).toBeInTheDocument());
+    expect(screen.getByText("Provider")).toBeInTheDocument();
+  });
+
   it("shows validation message for invalid ENEX file", async () => {
     render(<App />);
     const input = document.getElementById("enex-import-input") as HTMLInputElement;

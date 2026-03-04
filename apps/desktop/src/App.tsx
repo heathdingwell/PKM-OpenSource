@@ -576,6 +576,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "clear-recent-searches", label: "Clear recent searches", keywords: ["search", "recent", "clear"] },
   { id: "empty-trash", label: "Empty trash", keywords: ["trash", "delete"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
+  { id: "open-ai-settings", label: "Open AI settings", keywords: ["ai", "copilot", "settings", "provider"] },
   { id: "set-ai-provider-openai", label: "Set AI provider: OpenAI", keywords: ["ai", "provider", "openai"] },
   { id: "set-ai-provider-anthropic", label: "Set AI provider: Claude", keywords: ["ai", "provider", "claude", "anthropic"] },
   { id: "set-ai-provider-gemini", label: "Set AI provider: Gemini", keywords: ["ai", "provider", "gemini", "google"] },
@@ -7163,6 +7164,14 @@ export default function App() {
 
     if (actionId === "open-ai") {
       setAiPanelOpen(true);
+      setMetadataOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-ai-settings") {
+      setAiPanelOpen(true);
+      setAiShowSettings(true);
       setMetadataOpen(false);
       setSearchOpen(false);
       return;

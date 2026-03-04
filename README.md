@@ -48,6 +48,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - Reload from disk via command palette: `Reload vault from disk`
 - Explicit AI provider actions via command palette:
   - `Set AI provider: OpenAI|Claude|Gemini|Perplexity|OpenAI-compatible|Ollama`
+  - `Open AI settings`
 - Explicit theme actions via command palette:
   - `Set theme: Cobalt`
   - `Set theme: Sky`

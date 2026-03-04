@@ -4004,6 +4004,31 @@ describe("App", () => {
     expect(screen.getByText("Markdown copied for 2 notes")).toBeInTheDocument();
   });
 
+  it("copies html for multi-selected notes from bulk actions", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = Array.from(document.querySelectorAll<HTMLButtonElement>(".note-grid .note-card"));
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy HTML" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const payload = String(writeText.mock.calls[0]?.[0] ?? "");
+    expect(payload).toContain("<h1>Agenda</h1>");
+    expect(payload).toContain("<h1>To-do list</h1>");
+    expect(payload).toContain("<!-- --- -->");
+    expect(screen.getByText("HTML copied for 2 notes")).toBeInTheDocument();
+  });
+
   it("copies text for multi-selected notes from bulk actions", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

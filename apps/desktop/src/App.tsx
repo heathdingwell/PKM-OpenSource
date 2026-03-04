@@ -11742,6 +11742,9 @@ a{color:#1d4ed8}
                 <button type="button" onClick={() => void copyNotesMarkdown(selectedVisibleNoteIds)}>
                   Copy markdown
                 </button>
+                <button type="button" onClick={() => void copyNotesHtml(selectedVisibleNoteIds)}>
+                  Copy HTML
+                </button>
                 <button type="button" onClick={() => void copyNotesText(selectedVisibleNoteIds)}>
                   Copy text
                 </button>

@@ -313,6 +313,36 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
+  it("copies note html with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "h", metaKey: true, shiftKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("<h1>Agenda</h1>");
+    expect(screen.getByText("Note HTML copied")).toBeInTheDocument();
+  });
+
+  it("copies note text with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "t", metaKey: true, shiftKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("Priority 1");
+    expect(screen.getByText("Note text copied")).toBeInTheDocument();
+  });
+
   it("copies note link with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

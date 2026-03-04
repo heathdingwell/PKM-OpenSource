@@ -4350,6 +4350,18 @@ export default function App() {
           return;
         }
 
+        if (key === "h" && event.shiftKey && !event.altKey) {
+          event.preventDefault();
+          void copyNoteHtml(activeNote.id);
+          return;
+        }
+
+        if (key === "t" && event.shiftKey && !event.altKey) {
+          event.preventDefault();
+          void copyNoteText(activeNote.id);
+          return;
+        }
+
         if (key === "o" && !event.shiftKey && event.altKey) {
           event.preventDefault();
           openNoteInLiteEdit();

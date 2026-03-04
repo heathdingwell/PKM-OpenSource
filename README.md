@@ -33,6 +33,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Command palette action: `Restore note from Trash`.
 - Command palette action: `Delete note permanently`.
 - Command palette trash/restore/delete actions now apply to selected notes when multiple cards are selected.
+- Command palette duplicate action now applies to selected notes when multiple cards are selected.
 - Backlinks dock in notes view.
 - Configurable Git vault backups (desktop):
   - Auto-commit backups are enabled by default.

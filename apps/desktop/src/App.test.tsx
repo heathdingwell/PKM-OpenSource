@@ -2159,6 +2159,26 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Agenda copy", level: 2 })).toBeInTheDocument();
   });
 
+  it("duplicates selected notes from command palette", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">duplicate note" }
+    });
+    fireEvent.click(screen.getByText("Duplicate note"));
+
+    await waitFor(() => {
+      expect(screen.getByText("2 duplicated")).toBeInTheDocument();
+    });
+  });
+
   it("moves the active note to trash from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

@@ -7617,12 +7617,23 @@ export default function App() {
     }
 
     if (actionId === "duplicate-note") {
-      if (!activeNote) {
+      const targetNotes = selectedVisibleNoteIds.length
+        ? notes.filter((note) => selectedVisibleNoteIds.includes(note.id))
+        : activeNote
+          ? [activeNote]
+          : [];
+      if (!targetNotes.length) {
         setToastMessage("Open a note before duplicating");
-      } else if (activeNote.trashedAt) {
+      } else if (targetNotes.every((note) => Boolean(note.trashedAt))) {
         setToastMessage("Restore note from Trash before duplicating");
       } else {
-        void duplicateNotes([activeNote.id]);
+        const duplicateIds = targetNotes.filter((note) => !note.trashedAt).map((note) => note.id);
+        if (!duplicateIds.length) {
+          setToastMessage("Restore note from Trash before duplicating");
+          setSearchOpen(false);
+          return;
+        }
+        void duplicateNotes(duplicateIds);
       }
       setSearchOpen(false);
       return;

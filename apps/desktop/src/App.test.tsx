@@ -1665,6 +1665,17 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
   });
 
+  it("opens selected search result tag editor with alt+cmd+t in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "t", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
+  });
+
   it("opens note in lite edit mode from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -2217,6 +2228,19 @@ describe("App", () => {
     expect(searchActions).toBeTruthy();
     fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Note history/i }));
     expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens selected quick search result tag editor from footer action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Edit tags/i }));
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
   it("clears recent searches from command palette action", () => {

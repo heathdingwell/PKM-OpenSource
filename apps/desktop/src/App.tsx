@@ -6727,7 +6727,8 @@ export default function App() {
       | "open-local-graph"
       | "share-link"
       | "open-note-info"
-      | "open-note-history" = "open"
+      | "open-note-history"
+      | "open-note-tags" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
@@ -6748,6 +6749,11 @@ export default function App() {
 
     if (mode === "open-note-history") {
       openNoteHistory(note.id);
+      return;
+    }
+
+    if (mode === "open-note-tags") {
+      openTagEditor(note.id);
       return;
     }
 
@@ -13942,6 +13948,12 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.altKey && lowerKey === "t" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "open-note-tags");
+                  return;
+                }
+
                 if (hasMeta && event.shiftKey && lowerKey === "i" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-info");
@@ -14449,6 +14461,17 @@ a{color:#1d4ed8}
                     }}
                   >
                     Note history <kbd>⌥⌘H</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open-note-tags");
+                      }
+                    }}
+                  >
+                    Edit tags <kbd>⌥⌘T</kbd>
                   </button>
                 </>
               )}

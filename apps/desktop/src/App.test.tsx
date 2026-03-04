@@ -6159,6 +6159,19 @@ describe("App", () => {
     expect(trashedCards.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("supports shift-click range selection for note cards", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(3);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[2] as HTMLButtonElement, { shiftKey: true });
+
+    expect(screen.getByRole("toolbar", { name: "Bulk note actions" })).toBeInTheDocument();
+    expect(screen.getByText("3 selected")).toBeInTheDocument();
+  });
+
   it("copies multi-selected notes from bulk actions", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

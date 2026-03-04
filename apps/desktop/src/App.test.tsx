@@ -1587,6 +1587,70 @@ describe("App", () => {
     expect(screen.getByDisplayValue("model-alpha")).toBeInTheDocument();
   });
 
+  it("toggles git backups from command palette action", async () => {
+    const setGitBackupEnabled = vi.fn().mockResolvedValue({
+      enabled: false,
+      commitPrefix: "Vault backup",
+      autosaveDelayMs: 4000,
+      autoPush: false,
+      pushRemote: "origin",
+      pushBranch: "main",
+      available: true,
+      repoReady: true,
+      dirty: false,
+      busy: false,
+      lastRunAt: null,
+      lastCommitAt: null,
+      lastCommitHash: "",
+      lastError: ""
+    });
+    (window as unknown as { pkmShell?: { setGitBackupEnabled: typeof setGitBackupEnabled } }).pkmShell = {
+      setGitBackupEnabled
+    };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle git backups" }
+    });
+    fireEvent.click(screen.getByText("Toggle Git backups"));
+
+    await waitFor(() => expect(setGitBackupEnabled).toHaveBeenCalledWith(false));
+    expect(screen.getByText("Git backups disabled")).toBeInTheDocument();
+  });
+
+  it("runs git backup now from command palette action", async () => {
+    const backupVaultToGit = vi.fn().mockResolvedValue({
+      enabled: true,
+      commitPrefix: "Vault backup",
+      autosaveDelayMs: 4000,
+      autoPush: false,
+      pushRemote: "origin",
+      pushBranch: "main",
+      available: true,
+      repoReady: true,
+      dirty: false,
+      busy: false,
+      lastRunAt: "2026-03-04T16:00:00.000Z",
+      lastCommitAt: "2026-03-04T16:00:00.000Z",
+      lastCommitHash: "abc1234",
+      lastError: ""
+    });
+    (window as unknown as { pkmShell?: { backupVaultToGit: typeof backupVaultToGit } }).pkmShell = {
+      backupVaultToGit
+    };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">run git backup now" }
+    });
+    fireEvent.click(screen.getByText("Run Git backup now"));
+
+    await waitFor(() => expect(backupVaultToGit).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Git backup saved (abc1234)")).toBeInTheDocument();
+  });
+
   it("shows validation message for invalid ENEX file", async () => {
     render(<App />);
     const input = document.getElementById("enex-import-input") as HTMLInputElement;

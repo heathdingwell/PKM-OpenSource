@@ -2390,6 +2390,88 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
+  it("opens selected quick search result copy dialog from footer action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Copy to/i }));
+    expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
+  });
+
+  it("toggles selected quick search result template from footer action", async () => {
+    render(<App />);
+    const templatesButton = screen.getByRole("button", { name: "Templates" });
+    const templatesBadgeBefore = templatesButton.querySelector(".sidebar-link-badge")?.textContent ?? "";
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Set as template/i }));
+    await waitFor(() => {
+      const templatesBadgeAfter = screen.getByRole("button", { name: "Templates" }).querySelector(".sidebar-link-badge")
+        ?.textContent;
+      expect(templatesBadgeAfter).not.toBe(templatesBadgeBefore);
+    });
+  });
+
+  it("toggles selected quick search result shortcut from footer action", async () => {
+    render(<App />);
+    const shortcutsButton = screen.getByRole("button", { name: "Shortcuts" });
+    const shortcutsBadgeBefore = shortcutsButton.querySelector(".sidebar-link-badge")?.textContent ?? "";
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Add to shortcuts/i }));
+    await waitFor(() => {
+      const shortcutsBadgeAfter = screen.getByRole("button", { name: "Shortcuts" }).querySelector(".sidebar-link-badge")
+        ?.textContent;
+      expect(shortcutsBadgeAfter).not.toBe(shortcutsBadgeBefore);
+    });
+  });
+
+  it("toggles selected quick search result home pin from footer action", async () => {
+    render(<App />);
+    const wasPinned = Boolean(screen.queryByLabelText("Unpin from home Agenda"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Pin to Home/i }));
+    await waitFor(() => {
+      expect(Boolean(screen.queryByLabelText("Unpin from home Agenda"))).toBe(!wasPinned);
+    });
+  });
+
+  it("toggles selected quick search result notebook pin from footer action", async () => {
+    render(<App />);
+    const wasPinned = Boolean(screen.queryByLabelText("Unpin from notebook Agenda"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Pin to notebook/i }));
+    await waitFor(() => {
+      expect(Boolean(screen.queryByLabelText("Unpin from notebook Agenda"))).toBe(!wasPinned);
+    });
+  });
+
   it("opens selected quick search result tasks from footer action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

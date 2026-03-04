@@ -6738,12 +6738,17 @@ export default function App() {
       | "open-note-history"
       | "open-note-tags"
       | "move-note"
+      | "copy-note"
       | "duplicate-note"
       | "trash-note"
       | "copy-path"
       | "open-note-tasks"
       | "open-note-files"
-      | "open-note-calendar" = "open"
+      | "open-note-calendar"
+      | "toggle-note-template"
+      | "toggle-note-shortcut"
+      | "toggle-note-pin-home"
+      | "toggle-note-pin-notebook" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
@@ -6782,6 +6787,11 @@ export default function App() {
       return;
     }
 
+    if (mode === "copy-note") {
+      openMoveDialogForNotes([note.id], "copy");
+      return;
+    }
+
     if (mode === "open-note-tasks") {
       focusNote(note.id);
       openTasksPanel("current-note");
@@ -6797,6 +6807,50 @@ export default function App() {
     if (mode === "open-note-calendar") {
       focusNote(note.id);
       openCalendarPanel("current-note");
+      return;
+    }
+
+    if (mode === "toggle-note-template") {
+      const { marked, unmarked } = toggleTemplateNotes([note.id]);
+      if (marked > 0) {
+        setToastMessage(`${marked} marked as template`);
+      } else if (unmarked > 0) {
+        setToastMessage(`${unmarked} removed from templates`);
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (mode === "toggle-note-shortcut") {
+      const { added, removed } = toggleShortcutNotes([note.id]);
+      if (added > 0) {
+        setToastMessage(`${added} added to shortcuts`);
+      } else if (removed > 0) {
+        setToastMessage(`${removed} removed from shortcuts`);
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (mode === "toggle-note-pin-home") {
+      const { pinned, unpinned } = togglePinnedNotes([note.id], "home");
+      if (pinned > 0) {
+        setToastMessage(`${pinned} pinned to Home`);
+      } else if (unpinned > 0) {
+        setToastMessage(`${unpinned} unpinned from Home`);
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (mode === "toggle-note-pin-notebook") {
+      const { pinned, unpinned } = togglePinnedNotes([note.id], "notebook");
+      if (pinned > 0) {
+        setToastMessage(`${pinned} pinned to notebook`);
+      } else if (unpinned > 0) {
+        setToastMessage(`${unpinned} unpinned from notebook`);
+      }
+      setSearchOpen(false);
       return;
     }
 
@@ -14639,6 +14693,17 @@ a{color:#1d4ed8}
                     disabled={!selectedSearchResult}
                     onClick={() => {
                       if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "copy-note");
+                      }
+                    }}
+                  >
+                    Copy to...
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
                         openSearchResult(selectedSearchResult, "open-note-tasks");
                       }
                     }}
@@ -14666,6 +14731,50 @@ a{color:#1d4ed8}
                     }}
                   >
                     Open calendar <kbd>⌥⌘C</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "toggle-note-template");
+                      }
+                    }}
+                  >
+                    Set as template
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "toggle-note-shortcut");
+                      }
+                    }}
+                  >
+                    Add to shortcuts
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "toggle-note-pin-home");
+                      }
+                    }}
+                  >
+                    Pin to Home
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "toggle-note-pin-notebook");
+                      }
+                    }}
+                  >
+                    Pin to notebook
                   </button>
                   <button
                     type="button"

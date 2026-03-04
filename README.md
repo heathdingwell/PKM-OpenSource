@@ -69,6 +69,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Open in full editor` (button or `⇧⌘O`)
   - `Open local graph` (button or `⇧⌘G`)
   - `Share` selected result link (button or `⌥⌘S`)
+  - `Note info` for selected result (button or `⇧⌘I`)
+  - `Note history` for selected result (button or `⌥⌘H`)
 - Vault refresh action:
   - Reload from disk via command palette: `Reload vault from disk`
 - Explicit AI provider actions via command palette:

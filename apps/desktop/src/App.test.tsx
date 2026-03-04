@@ -1645,6 +1645,26 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
   });
 
+  it("opens selected search result note info with shift+cmd+i in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "i", metaKey: true, shiftKey: true });
+
+    expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
+  });
+
+  it("opens selected search result note history with alt+cmd+h in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "h", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
+  });
+
   it("opens note in lite edit mode from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -2173,6 +2193,30 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /Open local graph/i }));
     expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+  });
+
+  it("opens selected quick search result note info from footer action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Note info/i }));
+    expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
+  });
+
+  it("opens selected quick search result note history from footer action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Note history/i }));
+    expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
   });
 
   it("clears recent searches from command palette action", () => {

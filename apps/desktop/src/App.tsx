@@ -6725,7 +6725,9 @@ export default function App() {
       | "open-lite-edit"
       | "open-full-edit"
       | "open-local-graph"
-      | "share-link" = "open"
+      | "share-link"
+      | "open-note-info"
+      | "open-note-history" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
@@ -6736,6 +6738,16 @@ export default function App() {
 
     if (mode === "share-link") {
       void copyNoteLink(note.id, "Share link copied");
+      return;
+    }
+
+    if (mode === "open-note-info") {
+      openNoteInfo(note.id);
+      return;
+    }
+
+    if (mode === "open-note-history") {
+      openNoteHistory(note.id);
       return;
     }
 
@@ -13924,6 +13936,18 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.altKey && lowerKey === "h" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "open-note-history");
+                  return;
+                }
+
+                if (hasMeta && event.shiftKey && lowerKey === "i" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "open-note-info");
+                  return;
+                }
+
                 if (hasMeta && event.shiftKey && lowerKey === "o" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-full-edit");
@@ -14403,6 +14427,28 @@ a{color:#1d4ed8}
                     }}
                   >
                     Open local graph <kbd>⇧⌘G</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open-note-info");
+                      }
+                    }}
+                  >
+                    Note info <kbd>⇧⌘I</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open-note-history");
+                      }
+                    }}
+                  >
+                    Note history <kbd>⌥⌘H</kbd>
                   </button>
                 </>
               )}

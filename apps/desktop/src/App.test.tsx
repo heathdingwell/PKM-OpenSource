@@ -1676,6 +1676,16 @@ describe("App", () => {
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
+  it("opens selected search result move dialog with alt+cmd+m in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "m", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
+  });
+
   it("opens note in lite edit mode from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -2241,6 +2251,18 @@ describe("App", () => {
     fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Edit tags/i }));
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
+  });
+
+  it("opens selected quick search result move dialog from footer action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move note/i }));
+    expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
   it("clears recent searches from command palette action", () => {

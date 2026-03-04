@@ -6728,7 +6728,8 @@ export default function App() {
       | "share-link"
       | "open-note-info"
       | "open-note-history"
-      | "open-note-tags" = "open"
+      | "open-note-tags"
+      | "move-note" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
@@ -6754,6 +6755,11 @@ export default function App() {
 
     if (mode === "open-note-tags") {
       openTagEditor(note.id);
+      return;
+    }
+
+    if (mode === "move-note") {
+      openMoveDialogForNotes([note.id], "move");
       return;
     }
 
@@ -13954,6 +13960,12 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.altKey && lowerKey === "m" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "move-note");
+                  return;
+                }
+
                 if (hasMeta && event.shiftKey && lowerKey === "i" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-info");
@@ -14472,6 +14484,17 @@ a{color:#1d4ed8}
                     }}
                   >
                     Edit tags <kbd>⌥⌘T</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "move-note");
+                      }
+                    }}
+                  >
+                    Move note <kbd>⌥⌘M</kbd>
                   </button>
                 </>
               )}

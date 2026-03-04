@@ -553,6 +553,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "copy-note-link", label: "Copy note link", keywords: ["link", "copy", "share", "note"] },
   { id: "copy-note-markdown", label: "Copy note markdown", keywords: ["markdown", "copy", "note"] },
   { id: "export-note-markdown", label: "Export note as Markdown", keywords: ["export", "markdown", "note", "file"] },
+  { id: "export-note-html", label: "Export note as HTML", keywords: ["export", "html", "note", "file"] },
   { id: "export-note-pdf", label: "Export note as PDF", keywords: ["export", "pdf", "note"] },
   { id: "duplicate-note", label: "Duplicate note", keywords: ["duplicate", "copy", "note"] },
   { id: "trash-note", label: "Move note to trash", keywords: ["trash", "delete", "note"] },
@@ -674,6 +675,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
   { id: "divider-4", label: "", divider: true },
   { id: "export", label: "Export" },
+  { id: "export-html", label: "Export as HTML" },
   { id: "export-pdf", label: "Export as PDF" },
   { id: "print", label: "Print", shortcut: "cmd+p" },
   { id: "divider-5", label: "", divider: true },
@@ -6921,6 +6923,16 @@ export default function App() {
       return;
     }
 
+    if (actionId === "export-note-html") {
+      if (activeNote) {
+        exportNoteHtml(activeNote.id);
+      } else {
+        setToastMessage("Open a note before exporting");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
     if (actionId === "export-note-markdown") {
       if (activeNote) {
         exportNote(activeNote.id);
@@ -8537,6 +8549,44 @@ export default function App() {
     setToastMessage(`Exported "${note.title}"`);
   }
 
+  function exportNoteHtml(noteId: string): void {
+    const note = notes.find((entry) => entry.id === noteId);
+    if (!note || typeof document === "undefined") {
+      return;
+    }
+
+    const rendered = pdfMarkdownParser.render(note.markdown || "");
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${escapeHtml(note.title)}</title>
+<style>
+body{margin:0;padding:40px;font-family:Georgia,"Times New Roman",serif;color:#1f2937;background:#ffffff;line-height:1.55}
+main{max-width:760px;margin:0 auto}
+pre{padding:12px;border-radius:8px;background:#f3f4f6;overflow:auto}
+code{font-family:"JetBrains Mono","Fira Code",Menlo,Consolas,monospace}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid #d1d5db;padding:6px 8px;text-align:left}
+a{color:#1d4ed8}
+</style>
+</head>
+<body>
+<main>${rendered}</main>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${toFileName(note.title).replace(/\.md$/i, "")}.html`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setToastMessage(`Exported HTML "${note.title}"`);
+  }
+
   async function exportNotePdf(noteId: string): Promise<void> {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note) {
@@ -8790,6 +8840,12 @@ export default function App() {
 
     if (action === "export") {
       exportNote(targetId);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "export-html") {
+      exportNoteHtml(targetId);
       setContextMenu(null);
       return;
     }

@@ -42,6 +42,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - Imports into current notebook, or `Imported` when browsing `All Notes`
 - Active-note export actions via command palette:
   - `Export note as Markdown`
+  - `Export note as HTML`
   - `Export note as PDF`
 - Vault refresh action:
   - Reload from disk via command palette: `Reload vault from disk`

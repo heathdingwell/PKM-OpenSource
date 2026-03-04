@@ -1182,6 +1182,21 @@ describe("App", () => {
     expect(screen.getByText("Imported Markdown files (2) into Imported")).toBeInTheDocument();
   });
 
+  it("sets AI provider from command palette", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set ai provider ollama" }
+    });
+    fireEvent.click(screen.getByText("Set AI provider: Ollama"));
+    expect(screen.getByText("AI provider set to Ollama (Local)")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    await waitFor(() => expect(screen.getByDisplayValue("Ollama (Local)")).toBeInTheDocument());
+  });
+
   it("shows validation message for invalid ENEX file", async () => {
     render(<App />);
     const input = document.getElementById("enex-import-input") as HTMLInputElement;

@@ -46,6 +46,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Export note as PDF`
 - Vault refresh action:
   - Reload from disk via command palette: `Reload vault from disk`
+- Explicit AI provider actions via command palette:
+  - `Set AI provider: OpenAI|Claude|Gemini|Perplexity|OpenAI-compatible|Ollama`
 - Explicit theme actions via command palette:
   - `Set theme: Cobalt`
   - `Set theme: Sky`

@@ -576,6 +576,12 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "clear-recent-searches", label: "Clear recent searches", keywords: ["search", "recent", "clear"] },
   { id: "empty-trash", label: "Empty trash", keywords: ["trash", "delete"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
+  { id: "set-ai-provider-openai", label: "Set AI provider: OpenAI", keywords: ["ai", "provider", "openai"] },
+  { id: "set-ai-provider-anthropic", label: "Set AI provider: Claude", keywords: ["ai", "provider", "claude", "anthropic"] },
+  { id: "set-ai-provider-gemini", label: "Set AI provider: Gemini", keywords: ["ai", "provider", "gemini", "google"] },
+  { id: "set-ai-provider-perplexity", label: "Set AI provider: Perplexity", keywords: ["ai", "provider", "perplexity"] },
+  { id: "set-ai-provider-openai-compatible", label: "Set AI provider: OpenAI-compatible", keywords: ["ai", "provider", "openai-compatible", "lm studio"] },
+  { id: "set-ai-provider-ollama", label: "Set AI provider: Ollama", keywords: ["ai", "provider", "ollama", "local"] },
   { id: "insert-last-ai-reply", label: "Insert last AI reply into note", keywords: ["ai", "copilot", "insert"] },
   { id: "insert-ai-transcript", label: "Insert AI chat transcript into note", keywords: ["ai", "copilot", "chat", "transcript", "insert"] },
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
@@ -4808,6 +4814,11 @@ export default function App() {
     setAiConnectionState(null);
   }
 
+  function applyAiProviderFromCommand(provider: AiProvider): void {
+    applyAiProvider(provider);
+    setToastMessage(`AI provider set to ${aiProviderLabel(provider)}`);
+  }
+
   function clearAiChat(): void {
     setAiMessages([]);
     setAiError(null);
@@ -7153,6 +7164,42 @@ export default function App() {
     if (actionId === "open-ai") {
       setAiPanelOpen(true);
       setMetadataOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-ai-provider-openai") {
+      applyAiProviderFromCommand("openai");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-ai-provider-anthropic") {
+      applyAiProviderFromCommand("anthropic");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-ai-provider-gemini") {
+      applyAiProviderFromCommand("gemini");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-ai-provider-perplexity") {
+      applyAiProviderFromCommand("perplexity");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-ai-provider-openai-compatible") {
+      applyAiProviderFromCommand("openai-compatible");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-ai-provider-ollama") {
+      applyAiProviderFromCommand("ollama");
       setSearchOpen(false);
       return;
     }

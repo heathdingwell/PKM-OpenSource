@@ -2193,6 +2193,66 @@ describe("App", () => {
     expect(trashedCards.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("restores selected trashed notes from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">trash note" }
+    });
+    fireEvent.click(screen.getByText("Move note to trash"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    const trashedCards = document.querySelectorAll(".note-grid .note-card");
+    expect(trashedCards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(trashedCards[0] as HTMLButtonElement);
+    fireEvent.click(trashedCards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">restore note" }
+    });
+    fireEvent.click(screen.getByText("Restore note from Trash"));
+
+    expect(screen.getByText("2 notes restored from Trash")).toBeInTheDocument();
+  });
+
+  it("deletes selected trashed notes permanently from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">trash note" }
+    });
+    fireEvent.click(screen.getByText("Move note to trash"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    const trashedCards = document.querySelectorAll(".note-grid .note-card");
+    expect(trashedCards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(trashedCards[0] as HTMLButtonElement);
+    fireEvent.click(trashedCards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">delete note permanently" }
+    });
+    fireEvent.click(screen.getByText("Delete note permanently"));
+
+    expect(screen.getByText("2 notes deleted permanently")).toBeInTheDocument();
+  });
+
   it("restores the active trashed note from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

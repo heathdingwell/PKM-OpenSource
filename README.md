@@ -45,6 +45,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Keyboard tag editor shortcut (`⌥⌘T`) opens bulk tag editing when multiple notes are selected.
 - Command palette export actions for Markdown/HTML/Text now apply to selected notes when multiple cards are selected.
 - Note card multi-select supports both toggle selection (`⌘`/`Ctrl` click) and shift-click range selection.
+- Notebook tree keyboard navigation supports arrow keys for previous/next row traversal, stack collapse/expand, and nested notebook focus.
 - Backlinks dock in notes view.
 - Configurable Git vault backups (desktop):
   - Auto-commit backups are enabled by default.

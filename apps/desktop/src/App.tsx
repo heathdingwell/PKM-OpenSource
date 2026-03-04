@@ -10574,6 +10574,34 @@ a{color:#1d4ed8}
     return nodes;
   }
 
+  function sidebarTreeItems(): HTMLButtonElement[] {
+    return Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-sidebar-tree-item="true"]')).filter(
+      (button) => !button.disabled
+    );
+  }
+
+  function focusSidebarTreeRelative(current: HTMLButtonElement, delta: number): void {
+    const items = sidebarTreeItems();
+    const index = items.indexOf(current);
+    if (index < 0) {
+      return;
+    }
+    const targetIndex = Math.max(0, Math.min(items.length - 1, index + delta));
+    const target = items[targetIndex];
+    if (target && target !== current) {
+      target.focus();
+    }
+  }
+
+  function focusNotebookParentStackHeader(button: HTMLButtonElement): void {
+    const stackGroup = button.closest(".stack-group");
+    if (!stackGroup) {
+      return;
+    }
+    const stackHeader = stackGroup.querySelector<HTMLButtonElement>("button.stack-header");
+    stackHeader?.focus();
+  }
+
   function renderNotebookRow(notebook: string, nested = false): ReactNode {
     const count = activeNotes.filter((note) => note.notebook === notebook).length;
     const isDropTarget = dropNotebook === notebook;
@@ -10582,6 +10610,7 @@ a{color:#1d4ed8}
         <button
           type="button"
           draggable
+          data-sidebar-tree-item="true"
           className={selectedNotebook === notebook ? "notebook-item active" : "notebook-item"}
           onClick={() => {
             flushActiveDraft();
@@ -10607,6 +10636,21 @@ a{color:#1d4ed8}
             openNotebookContextMenu(notebook, event.clientX, event.clientY);
           }}
           onKeyDown={(event) => {
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              focusSidebarTreeRelative(event.currentTarget, 1);
+              return;
+            }
+            if (event.key === "ArrowUp") {
+              event.preventDefault();
+              focusSidebarTreeRelative(event.currentTarget, -1);
+              return;
+            }
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              focusNotebookParentStackHeader(event.currentTarget);
+              return;
+            }
             if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
               event.preventDefault();
               const rect = event.currentTarget.getBoundingClientRect();
@@ -12126,6 +12170,7 @@ a{color:#1d4ed8}
                 <li key={group.stack} className="stack-group">
                   <button
                     type="button"
+                    data-sidebar-tree-item="true"
                     className={isStackDrop ? "stack-header drop-active" : "stack-header"}
                     onClick={() => toggleStackCollapsed(group.stack)}
                     title={isCollapsed ? "Expand stack" : "Collapse stack"}
@@ -12134,6 +12179,35 @@ a{color:#1d4ed8}
                       openStackContextMenu(group.stack, event.clientX, event.clientY);
                     }}
                     onKeyDown={(event) => {
+                      if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        focusSidebarTreeRelative(event.currentTarget, 1);
+                        return;
+                      }
+                      if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        focusSidebarTreeRelative(event.currentTarget, -1);
+                        return;
+                      }
+                      if (event.key === "ArrowLeft") {
+                        if (!isCollapsed) {
+                          event.preventDefault();
+                          toggleStackCollapsed(group.stack);
+                        }
+                        return;
+                      }
+                      if (event.key === "ArrowRight") {
+                        event.preventDefault();
+                        if (isCollapsed) {
+                          toggleStackCollapsed(group.stack);
+                          return;
+                        }
+                        const firstNotebook = event.currentTarget
+                          .closest(".stack-group")
+                          ?.querySelector<HTMLButtonElement>("button.notebook-item");
+                        firstNotebook?.focus();
+                        return;
+                      }
                       if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
                         event.preventDefault();
                         const rect = event.currentTarget.getBoundingClientRect();

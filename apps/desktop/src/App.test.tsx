@@ -5761,6 +5761,53 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Rename stack" })).toBeInTheDocument();
   });
 
+  it("navigates notebook tree rows with arrow keys", () => {
+    render(<App />);
+
+    const notebookRows = Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    expect(notebookRows.length).toBeGreaterThan(1);
+
+    notebookRows[0]?.focus();
+    fireEvent.keyDown(notebookRows[0] as HTMLButtonElement, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(notebookRows[1]);
+
+    fireEvent.keyDown(notebookRows[1] as HTMLButtonElement, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(notebookRows[0]);
+  });
+
+  it("navigates stack header and nested notebook rows with arrow keys", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+    const stackedDailyNotebook = () =>
+      (Array.from(document.querySelectorAll(".stack-group .notebook-item")) as HTMLButtonElement[]).find((entry) =>
+        entry.textContent?.includes("Daily Notes")
+      );
+
+    expect(dailyNotebook()).toBeTruthy();
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Move to stack..." }));
+    fireEvent.change(screen.getByPlaceholderText("New stack name"), { target: { value: "Ops" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const stackHeader = screen.getByRole("button", { name: /Ops/i });
+    stackHeader.focus();
+
+    fireEvent.keyDown(stackHeader, { key: "ArrowLeft" });
+    expect(stackedDailyNotebook()).toBeUndefined();
+
+    fireEvent.keyDown(stackHeader, { key: "ArrowRight" });
+    expect(stackedDailyNotebook()).toBeTruthy();
+
+    fireEvent.keyDown(stackHeader, { key: "ArrowRight" });
+    const nested = stackedDailyNotebook();
+    expect(nested).toBeTruthy();
+    expect(document.activeElement).toBe(nested);
+
+    fireEvent.keyDown(nested as HTMLButtonElement, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(stackHeader);
+  });
+
   it("adds notebook shortcuts from notebook context menu", () => {
     render(<App />);
     const notebookItems = document.querySelectorAll(".notebook-item");

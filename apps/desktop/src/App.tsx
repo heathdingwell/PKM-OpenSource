@@ -4505,6 +4505,10 @@ export default function App() {
 
       if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "i") {
         event.preventDefault();
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note to view info");
+          return;
+        }
         openNoteInfo();
         return;
       }
@@ -4517,6 +4521,10 @@ export default function App() {
 
       if ((event.metaKey || event.ctrlKey) && event.altKey && event.key.toLowerCase() === "h") {
         event.preventDefault();
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note to view history");
+          return;
+        }
         openNoteHistory();
         return;
       }
@@ -7513,7 +7521,16 @@ export default function App() {
     }
 
     if (actionId === "open-note-info") {
-      openNoteInfo();
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note to view info");
+        setSearchOpen(false);
+        return;
+      }
+      if (selectedVisibleNoteIds.length === 1) {
+        openNoteInfo(selectedVisibleNoteIds[0]);
+      } else {
+        openNoteInfo();
+      }
       return;
     }
 
@@ -7855,7 +7872,16 @@ export default function App() {
     }
 
     if (actionId === "open-note-history") {
-      openNoteHistory();
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note to view history");
+        setSearchOpen(false);
+        return;
+      }
+      if (selectedVisibleNoteIds.length === 1) {
+        openNoteHistory(selectedVisibleNoteIds[0]);
+      } else {
+        openNoteHistory();
+      }
       return;
     }
 

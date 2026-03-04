@@ -284,11 +284,37 @@ describe("App", () => {
     expect(screen.getByText("No history yet")).toBeInTheDocument();
   });
 
+  it("blocks note history keyboard shortcut for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "h", metaKey: true, altKey: true });
+    expect(screen.getByText("Select one note to view history")).toBeInTheDocument();
+  });
+
   it("opens note metadata with keyboard shortcut", () => {
     render(<App />);
 
     fireEvent.keyDown(window, { key: "i", metaKey: true, shiftKey: true });
     expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
+  });
+
+  it("blocks note metadata keyboard shortcut for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "i", metaKey: true, shiftKey: true });
+    expect(screen.getByText("Select one note to view info")).toBeInTheDocument();
   });
 
   it("opens note tags editor with keyboard shortcut", () => {
@@ -1192,6 +1218,24 @@ describe("App", () => {
     expect(screen.getByText("No history yet")).toBeInTheDocument();
   });
 
+  it("blocks note history from command palette for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">history" }
+    });
+    fireEvent.click(screen.getByText("Open note history"));
+
+    expect(screen.getByText("Select one note to view history")).toBeInTheDocument();
+  });
+
   it("opens note metadata from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -1201,6 +1245,24 @@ describe("App", () => {
     fireEvent.click(screen.getByText("Open note info"));
 
     expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
+  });
+
+  it("blocks note metadata from command palette for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">info" }
+    });
+    fireEvent.click(screen.getByText("Open note info"));
+
+    expect(screen.getByText("Select one note to view info")).toBeInTheDocument();
   });
 
   it("opens note tags editor from command palette", () => {

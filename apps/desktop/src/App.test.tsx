@@ -3031,6 +3031,27 @@ describe("App", () => {
     expect(screen.getByText('"Agenda" deleted permanently')).toBeInTheDocument();
   });
 
+  it("searches trashed notes from quick actions while in trash mode", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    let searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move to Trash/i }));
+    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchModal = searchInput.closest("section");
+    expect(searchModal).toBeTruthy();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
+  });
+
   it("clears recent searches from command palette action", () => {
     render(<App />);
 

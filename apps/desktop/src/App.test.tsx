@@ -630,6 +630,29 @@ describe("App", () => {
     expect(screen.getByText("Sort set to Title (Z-A)")).toBeInTheDocument();
   });
 
+  it("sets note view and density from command palette actions", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set view list" }
+    });
+    fireEvent.click(screen.getByText("Set view: List"));
+
+    const listGrid = document.querySelector(".note-grid");
+    expect(listGrid).toHaveClass("list-mode");
+    expect(screen.getByText("View set to List")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set density compact" }
+    });
+    fireEvent.click(screen.getByText("Set density: Compact"));
+
+    expect(document.querySelector(".note-grid")).toHaveClass("compact");
+    expect(screen.getByText("Density set to Compact")).toBeInTheDocument();
+  });
+
   it("toggles collapsible sections from command palette action", () => {
     render(<App />);
     expect(document.querySelector(".preview-section")).toBeNull();

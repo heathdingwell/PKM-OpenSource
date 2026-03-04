@@ -50,6 +50,9 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Set sort: Updated (newest first|oldest first)`
   - `Set sort: Created (newest first|oldest first)`
   - `Set sort: Title (A-Z|Z-A)`
+- Explicit view and density actions via command palette:
+  - `Set view: Cards|List`
+  - `Set density: Comfortable|Compact`
 - Explicit editor font actions via command palette:
   - `Set editor font: Palatino|Georgia|Sans Serif|Monospace`
 - Explicit editor font size actions via command palette:

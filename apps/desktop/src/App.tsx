@@ -586,6 +586,9 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
   { id: "toggle-auto-links", label: "Toggle auto reciprocal links", keywords: ["links", "backlinks", "reciprocal"] },
   { id: "cycle-theme", label: "Cycle theme", keywords: ["theme", "color", "palette"] },
+  { id: "set-theme-cobalt", label: "Set theme: Cobalt", keywords: ["theme", "cobalt", "blue"] },
+  { id: "set-theme-sky", label: "Set theme: Sky", keywords: ["theme", "sky", "light"] },
+  { id: "set-theme-slate", label: "Set theme: Slate", keywords: ["theme", "slate", "gray"] },
   { id: "toggle-git-backup", label: "Toggle Git backups", keywords: ["git", "backup", "versioning"] },
   { id: "git-backup-now", label: "Run Git backup now", keywords: ["git", "backup", "commit"] },
   { id: "export-snapshot", label: "Export vault snapshot", keywords: ["backup", "snapshot", "export", "vault"] },
@@ -4702,6 +4705,11 @@ export default function App() {
     });
   }
 
+  function setTheme(theme: ThemeId): void {
+    setThemeId(theme);
+    setToastMessage(`Theme switched to ${theme}`);
+  }
+
   function toggleAiPanel(): void {
     setAiPanelOpen((previous) => {
       const next = !previous;
@@ -7074,6 +7082,24 @@ export default function App() {
 
     if (actionId === "cycle-theme") {
       cycleTheme();
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-theme-cobalt") {
+      setTheme("cobalt");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-theme-sky") {
+      setTheme("sky");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-theme-slate") {
+      setTheme("slate");
       setSearchOpen(false);
       return;
     }

@@ -635,6 +635,18 @@ describe("App", () => {
     expect(document.querySelector(".preview-section")).toBeNull();
   });
 
+  it("sets explicit theme from command palette action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set theme sky" }
+    });
+    fireEvent.click(screen.getByText("Set theme: Sky"));
+
+    expect(document.documentElement.dataset.theme).toBe("sky");
+    expect(screen.getByText("Theme switched to sky")).toBeInTheDocument();
+  });
+
   it("opens new stack modal from command palette action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

@@ -1028,6 +1028,17 @@ describe("App", () => {
     expect(screen.getByText("Imported ENEX (1 notes)")).toBeInTheDocument();
   });
 
+  it("shows validation message for invalid ENEX file", async () => {
+    render(<App />);
+    const input = document.getElementById("enex-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    const file = new File(["<en-export><broken></en-export>"], "invalid.enex", { type: "application/xml" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(screen.getByText("No valid notes found in ENEX file")).toBeInTheDocument());
+  });
+
   it("copies selected search result link with cmd+l in search modal", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

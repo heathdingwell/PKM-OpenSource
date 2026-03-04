@@ -5667,7 +5667,15 @@ export default function App() {
       return;
     }
 
-    const parsedNotes = parseEnexNotes(await readFileAsText(file));
+    let rawEnex = "";
+    try {
+      rawEnex = await readFileAsText(file);
+    } catch {
+      setToastMessage("Failed to read ENEX file");
+      return;
+    }
+
+    const parsedNotes = parseEnexNotes(rawEnex);
     if (!parsedNotes.length) {
       setToastMessage("No valid notes found in ENEX file");
       return;

@@ -566,6 +566,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "delete-note-permanently", label: "Delete note permanently", keywords: ["trash", "delete", "permanent", "note"] },
   { id: "rename-note", label: "Rename note", keywords: ["rename", "title", "note"] },
   { id: "move-note", label: "Move note", keywords: ["move", "notebook", "note"] },
+  { id: "copy-note", label: "Copy note to notebook", keywords: ["copy", "note", "notebook"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
   { id: "open-reminders", label: "Open reminders", keywords: ["reminders", "dates", "follow-up"] },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
@@ -7478,7 +7479,21 @@ export default function App() {
     }
 
     if (actionId === "open-note-tags") {
-      openTagEditor();
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (!targetNoteIds.length) {
+        setToastMessage("Open a note to edit tags");
+        setSearchOpen(false);
+        return;
+      }
+      if (targetNoteIds.length > 1) {
+        openBulkTagDialog(targetNoteIds);
+      } else {
+        openTagEditor(targetNoteIds[0]);
+      }
       return;
     }
 
@@ -7508,10 +7523,31 @@ export default function App() {
     }
 
     if (actionId === "move-note") {
-      if (activeNote) {
-        openMoveDialogForNotes([activeNote.id], "move");
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        openMoveDialogForNotes(targetNoteIds, "move");
       } else {
         setToastMessage("Open a note before moving");
+        setSearchOpen(false);
+      }
+      return;
+    }
+
+    if (actionId === "copy-note") {
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        openMoveDialogForNotes(targetNoteIds, "copy");
+      } else {
+        setToastMessage("Open a note before copying");
+        setSearchOpen(false);
       }
       return;
     }

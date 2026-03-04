@@ -986,6 +986,26 @@ describe("App", () => {
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
+  it("opens bulk tags editor for selected notes from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">edit note tags" }
+    });
+    fireEvent.click(screen.getByText("Edit note tags"));
+
+    const bulkTagModal = document.querySelector(".bulk-tag-modal") as HTMLElement | null;
+    expect(bulkTagModal).toBeTruthy();
+    expect(within(bulkTagModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
+  });
+
   it("opens rename note dialog from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -1006,6 +1026,46 @@ describe("App", () => {
     fireEvent.click(screen.getByText("Move note"));
 
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens move dialog for selected notes from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">move note" }
+    });
+    fireEvent.click(screen.getByText("Move note"));
+
+    const moveModal = screen.getByRole("heading", { name: "Move", level: 3 }).closest("section");
+    expect(moveModal).toBeTruthy();
+    expect(within(moveModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
+  });
+
+  it("opens copy dialog for selected notes from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">copy note to notebook" }
+    });
+    fireEvent.click(screen.getByText("Copy note to notebook"));
+
+    const copyModal = screen.getByRole("heading", { name: "Copy to", level: 3 }).closest("section");
+    expect(copyModal).toBeTruthy();
+    expect(within(copyModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
   });
 
   it("confirms move dialog with enter key", () => {

@@ -1062,6 +1062,22 @@ describe("App", () => {
     clickSpy.mockRestore();
   });
 
+  it("opens markdown import picker from command palette", () => {
+    render(<App />);
+    const input = document.getElementById("markdown-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    const clickSpy = vi.spyOn(input, "click").mockImplementation(() => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">import markdown files" }
+    });
+    fireEvent.click(screen.getByText("Import Markdown files"));
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    clickSpy.mockRestore();
+  });
+
   it("imports notes from a vault snapshot file", async () => {
     render(<App />);
     const input = document.getElementById("vault-snapshot-input") as HTMLInputElement;
@@ -1122,6 +1138,28 @@ describe("App", () => {
     const editor = document.querySelector("textarea.markdown-editor") as HTMLTextAreaElement | null;
     expect(editor?.value).toContain("Source: https://example.com/source");
     expect(editor?.value).toContain("- Spec.pdf");
+  });
+
+  it("imports markdown files from picker", async () => {
+    window.localStorage.setItem(
+      "pkm-os.desktop.prefs.v1",
+      JSON.stringify({
+        selectedNotebook: "All Notes",
+        activeId: ""
+      })
+    );
+    render(<App />);
+    const input = document.getElementById("markdown-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    const first = new File(["# Imported Alpha\n\nOne"], "Imported-Alpha.md", { type: "text/markdown" });
+    const second = new File(["No heading content"], "Imported-Beta.md", { type: "text/markdown" });
+    fireEvent.change(input, { target: { files: [first, second] } });
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Imported Alpha", level: 2 })).toBeInTheDocument()
+    );
+    expect(screen.getByText("Imported Markdown files (2) into Imported")).toBeInTheDocument();
   });
 
   it("shows validation message for invalid ENEX file", async () => {

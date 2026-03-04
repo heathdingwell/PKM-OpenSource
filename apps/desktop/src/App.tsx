@@ -7553,8 +7553,17 @@ export default function App() {
     }
 
     if (actionId === "copy-note-link") {
-      if (activeNote) {
-        void copyNoteLink(activeNote.id);
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        if (targetNoteIds.length > 1) {
+          void copyNotesLinks(targetNoteIds);
+        } else {
+          void copyNoteLink(targetNoteIds[0]);
+        }
       } else {
         setToastMessage("Open a note before copying a link");
       }
@@ -7563,8 +7572,17 @@ export default function App() {
     }
 
     if (actionId === "copy-note-path") {
-      if (activeNote) {
-        void copyNotePath(activeNote.id);
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        if (targetNoteIds.length > 1) {
+          void copyNotesPaths(targetNoteIds);
+        } else {
+          void copyNotePath(targetNoteIds[0]);
+        }
       } else {
         setToastMessage("Open a note before copying a path");
       }
@@ -7670,8 +7688,17 @@ export default function App() {
     }
 
     if (actionId === "share-note") {
-      if (activeNote) {
-        void copyNoteLink(activeNote.id, "Share link copied");
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        if (targetNoteIds.length > 1) {
+          void copyNotesLinks(targetNoteIds, `Share links copied for ${targetNoteIds.length} notes`);
+        } else {
+          void copyNoteLink(targetNoteIds[0], "Share link copied");
+        }
       } else {
         setToastMessage("Open a note before sharing");
       }
@@ -9350,50 +9377,65 @@ export default function App() {
     setToastMessage(`Renamed to "${trimmedTitle}"`);
   }
 
-  async function copyNoteLink(noteId: string, successToastMessage = "Note link copied"): Promise<void> {
-    const note = notes.find((entry) => entry.id === noteId);
-    if (!note) {
+  async function copyNotesLinks(noteIds: string[], successToastMessage?: string): Promise<void> {
+    const selected = noteIds
+      .map((noteId) => notes.find((entry) => entry.id === noteId))
+      .filter((note): note is AppNote => Boolean(note));
+    if (!selected.length) {
       return;
     }
 
-    const encoded = encodeURIComponent(note.path);
-    const link = `pkm-os://note/${encoded}`;
-
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(link);
-        setToastMessage(successToastMessage);
-        return;
-      } catch {
-        // Fall through to showing the generated link when clipboard is unavailable.
-      }
-    }
-
-    setToastMessage(link);
-  }
-
-  async function copyNotePath(noteId: string): Promise<void> {
-    const note = notes.find((entry) => entry.id === noteId);
-    if (!note) {
-      return;
-    }
-
-    const value = note.path.trim();
-    if (!value) {
-      return;
-    }
+    const links = selected.map((note) => `pkm-os://note/${encodeURIComponent(note.path)}`);
+    const value = links.join("\n");
+    const successToast =
+      successToastMessage ?? (selected.length === 1 ? "Note link copied" : `Links copied for ${selected.length} notes`);
 
     if (navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(value);
-        setToastMessage("Note path copied");
+        setToastMessage(successToast);
         return;
       } catch {
-        // Fall through to showing generated path when clipboard is unavailable.
+        // Fall through to showing generated links when clipboard is unavailable.
       }
     }
 
     setToastMessage(value);
+  }
+
+  async function copyNoteLink(noteId: string, successToastMessage = "Note link copied"): Promise<void> {
+    await copyNotesLinks([noteId], successToastMessage);
+  }
+
+  async function copyNotesPaths(noteIds: string[]): Promise<void> {
+    const selected = noteIds
+      .map((noteId) => notes.find((entry) => entry.id === noteId))
+      .filter((note): note is AppNote => Boolean(note));
+    if (!selected.length) {
+      return;
+    }
+
+    const value = selected.map((note) => note.path.trim()).filter(Boolean).join("\n");
+    if (!value) {
+      return;
+    }
+
+    const successToast = selected.length === 1 ? "Note path copied" : `Paths copied for ${selected.length} notes`;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        setToastMessage(successToast);
+        return;
+      } catch {
+        // Fall through to showing generated paths when clipboard is unavailable.
+      }
+    }
+
+    setToastMessage(value);
+  }
+
+  async function copyNotePath(noteId: string): Promise<void> {
+    await copyNotesPaths([noteId]);
   }
 
   async function copyNotesMarkdown(noteIds: string[]): Promise<void> {

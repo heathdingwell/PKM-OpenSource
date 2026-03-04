@@ -4325,6 +4325,18 @@ export default function App() {
 
       if (!searchOpen && activeNote && (event.metaKey || event.ctrlKey)) {
         const key = event.key.toLowerCase();
+        const matchesMetaLetter = (letter: string): boolean =>
+          !event.altKey &&
+          !event.shiftKey &&
+          (key === letter.toLowerCase() || event.code === `Key${letter.toUpperCase()}`);
+        const matchesMetaAltLetter = (letter: string): boolean =>
+          event.altKey &&
+          !event.shiftKey &&
+          (key === letter.toLowerCase() || event.code === `Key${letter.toUpperCase()}`);
+        const matchesMetaShiftLetter = (letter: string): boolean =>
+          event.shiftKey &&
+          !event.altKey &&
+          (key === letter.toLowerCase() || event.code === `Key${letter.toUpperCase()}`);
         if (key === "backspace" && !isTextEntryTarget) {
           event.preventDefault();
           if (activeNote.trashedAt) {
@@ -4341,67 +4353,67 @@ export default function App() {
           return;
         }
 
-        if (key === "z" && !event.shiftKey && !isTextEntryTarget) {
+        if (matchesMetaLetter("z") && !isTextEntryTarget) {
           event.preventDefault();
           undoLastAction();
           return;
         }
 
-        if (key === "r" && event.shiftKey && !event.altKey) {
+        if (matchesMetaShiftLetter("r")) {
           event.preventDefault();
           openNoteRename();
           return;
         }
 
-        if (key === "m" && event.shiftKey && !event.altKey) {
+        if (matchesMetaShiftLetter("m")) {
           event.preventDefault();
           openMoveDialogForNotes([activeNote.id], "move");
           return;
         }
 
-        if (key === "h" && event.shiftKey && !event.altKey) {
+        if (matchesMetaShiftLetter("h")) {
           event.preventDefault();
           void copyNoteHtml(activeNote.id);
           return;
         }
 
-        if (key === "t" && event.shiftKey && !event.altKey) {
+        if (matchesMetaShiftLetter("t")) {
           event.preventDefault();
           void copyNoteText(activeNote.id);
           return;
         }
 
-        if (key === "o" && !event.shiftKey && event.altKey) {
+        if (matchesMetaAltLetter("o")) {
           event.preventDefault();
           openNoteInLiteEdit();
           return;
         }
 
-        if (key === "o" && !event.shiftKey && !event.altKey) {
+        if (matchesMetaLetter("o")) {
           event.preventDefault();
           openNoteInNewWindow(activeNote.id);
           return;
         }
 
-        if (key === "l" && !event.shiftKey && !event.altKey) {
+        if (matchesMetaLetter("l")) {
           event.preventDefault();
           void copyNoteLink(activeNote.id);
           return;
         }
 
-        if (key === "l" && !event.shiftKey && event.altKey) {
+        if (matchesMetaAltLetter("l")) {
           event.preventDefault();
           void copyNotePath(activeNote.id);
           return;
         }
 
-        if (key === "s" && !event.shiftKey && event.altKey) {
+        if (matchesMetaAltLetter("s")) {
           event.preventDefault();
           void copyNoteLink(activeNote.id, "Share link copied");
           return;
         }
 
-        if (key === "b" && !event.shiftKey && !event.altKey) {
+        if (matchesMetaLetter("b")) {
           event.preventDefault();
           if (editorMode === "rich") {
             richEditorRef.current?.toggleBold();
@@ -4411,7 +4423,7 @@ export default function App() {
           return;
         }
 
-        if (key === "i" && !event.shiftKey && !event.altKey) {
+        if (matchesMetaLetter("i")) {
           event.preventDefault();
           if (editorMode === "rich") {
             richEditorRef.current?.toggleItalic();
@@ -4421,7 +4433,7 @@ export default function App() {
           return;
         }
 
-        if (key === "u" && !event.shiftKey && !event.altKey) {
+        if (matchesMetaLetter("u")) {
           event.preventDefault();
           if (editorMode === "rich") {
             richEditorRef.current?.toggleUnderline();

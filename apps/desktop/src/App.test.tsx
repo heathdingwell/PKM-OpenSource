@@ -306,6 +306,13 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
   });
 
+  it("opens rename note dialog using KeyR code with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "®", code: "KeyR", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
+  });
+
   it("opens move note dialog with keyboard shortcut", () => {
     render(<App />);
 
@@ -367,6 +374,21 @@ describe("App", () => {
     render(<App />);
 
     fireEvent.keyDown(window, { key: "l", metaKey: true, altKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
+    expect(screen.getByText("Note path copied")).toBeInTheDocument();
+  });
+
+  it("copies note path using KeyL code with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "¬", code: "KeyL", metaKey: true, altKey: true });
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
     expect(screen.getByText("Note path copied")).toBeInTheDocument();

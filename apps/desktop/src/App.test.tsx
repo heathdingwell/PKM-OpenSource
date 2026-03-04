@@ -673,6 +673,18 @@ describe("App", () => {
     expect(screen.getByText("Editor font set to Georgia")).toBeInTheDocument();
   });
 
+  it("sets editor font size from command palette action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set editor size large" }
+    });
+    fireEvent.click(screen.getByText("Set editor size: Large"));
+
+    expect(screen.getByLabelText("Editor font size")).toHaveValue("18");
+    expect(screen.getByText("Editor font size set to 18")).toBeInTheDocument();
+  });
+
   it("opens new stack modal from command palette action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

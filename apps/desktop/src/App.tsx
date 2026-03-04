@@ -591,6 +591,9 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-editor-font-georgia", label: "Set editor font: Georgia", keywords: ["font", "editor", "georgia", "serif"] },
   { id: "set-editor-font-sans", label: "Set editor font: Sans Serif", keywords: ["font", "editor", "sans"] },
   { id: "set-editor-font-mono", label: "Set editor font: Monospace", keywords: ["font", "editor", "mono"] },
+  { id: "set-editor-size-small", label: "Set editor size: Small", keywords: ["font", "size", "small", "editor"] },
+  { id: "set-editor-size-medium", label: "Set editor size: Medium", keywords: ["font", "size", "medium", "editor"] },
+  { id: "set-editor-size-large", label: "Set editor size: Large", keywords: ["font", "size", "large", "editor"] },
   { id: "toggle-collapsible-sections", label: "Toggle collapsible sections", keywords: ["collapse", "sections", "preview"] },
   { id: "toggle-focus", label: "Toggle focus mode", keywords: ["focus", "layout", "panes"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
@@ -4732,6 +4735,12 @@ export default function App() {
     setToastMessage(`Editor font set to ${label}`);
   }
 
+  function applyEditorFontSize(size: number): void {
+    const normalized = editorFontSizes.includes(size) ? size : 16;
+    setEditorFontSize(normalized);
+    setToastMessage(`Editor font size set to ${normalized}`);
+  }
+
   function toggleAiPanel(): void {
     setAiPanelOpen((previous) => {
       const next = !previous;
@@ -7131,6 +7140,24 @@ export default function App() {
 
     if (actionId === "set-editor-font-mono") {
       applyEditorFontFamily("mono");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-editor-size-small") {
+      applyEditorFontSize(14);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-editor-size-medium") {
+      applyEditorFontSize(16);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-editor-size-large") {
+      applyEditorFontSize(18);
       setSearchOpen(false);
       return;
     }

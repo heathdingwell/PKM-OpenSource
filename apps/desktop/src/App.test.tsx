@@ -1865,6 +1865,74 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
+  it("toggles selected search result template with alt+cmd+5 in search modal", async () => {
+    render(<App />);
+    const hadTemplateBanner = Boolean(screen.queryByText('You are editing your "Agenda" template'));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "5", metaKey: true, altKey: true });
+
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+    if (hadTemplateBanner) {
+      await waitFor(() => {
+        expect(screen.queryByText('You are editing your "Agenda" template')).not.toBeInTheDocument();
+      });
+      return;
+    }
+    expect(await screen.findByText('You are editing your "Agenda" template')).toBeInTheDocument();
+  });
+
+  it("toggles selected search result shortcut with alt+cmd+6 in search modal", async () => {
+    render(<App />);
+    const hadShortcut = Boolean(screen.queryByRole("button", { name: "Remove shortcut Agenda" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "6", metaKey: true, altKey: true });
+
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+    await waitFor(() => {
+      if (hadShortcut) {
+        expect(screen.queryByRole("button", { name: "Remove shortcut Agenda" })).not.toBeInTheDocument();
+      } else {
+        expect(screen.getByRole("button", { name: "Remove shortcut Agenda" })).toBeInTheDocument();
+      }
+    });
+  });
+
+  it("toggles selected search result home pin with alt+cmd+7 in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "7", metaKey: true, altKey: true });
+
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+    expect(screen.getByText(/(pinned to Home|unpinned from Home)/i)).toBeInTheDocument();
+  });
+
+  it("toggles selected search result notebook pin with alt+cmd+8 in search modal", async () => {
+    render(<App />);
+    const hadNotebookPin = Boolean(screen.queryByRole("button", { name: "Unpin from notebook Agenda" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "8", metaKey: true, altKey: true });
+
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+    await waitFor(() => {
+      if (hadNotebookPin) {
+        expect(screen.queryByRole("button", { name: "Unpin from notebook Agenda" })).not.toBeInTheDocument();
+      } else {
+        expect(screen.getByRole("button", { name: "Unpin from notebook Agenda" })).toBeInTheDocument();
+      }
+    });
+  });
+
   it("exports selected search result markdown with alt+cmd+1 in search modal", () => {
     const createObjectURL = vi.fn(() => "blob:pkm-note");
     const revokeObjectURL = vi.fn();

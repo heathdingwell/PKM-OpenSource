@@ -14196,6 +14196,30 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.altKey && event.key === "5" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "toggle-note-template");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && event.key === "6" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "toggle-note-shortcut");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && event.key === "7" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "toggle-note-pin-home");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && event.key === "8" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "toggle-note-pin-notebook");
+                  return;
+                }
+
                 if (hasMeta && event.altKey && event.key === "1" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "export-note-markdown");
@@ -14860,7 +14884,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    {selectedSearchResult?.isTemplate ? "Remove from Templates" : "Set as template"}
+                    {selectedSearchResult?.isTemplate ? "Remove from Templates" : "Set as template"} <kbd>⌥⌘5</kbd>
                   </button>
                   <button
                     type="button"
@@ -14873,7 +14897,8 @@ a{color:#1d4ed8}
                   >
                     {selectedSearchResult && shortcutSet.has(selectedSearchResult.id)
                       ? "Remove from shortcuts"
-                      : "Add to shortcuts"}
+                      : "Add to shortcuts"}{" "}
+                    <kbd>⌥⌘6</kbd>
                   </button>
                   <button
                     type="button"
@@ -14884,7 +14909,8 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    {selectedSearchResult && homePinnedSet.has(selectedSearchResult.id) ? "Unpin from Home" : "Pin to Home"}
+                    {selectedSearchResult && homePinnedSet.has(selectedSearchResult.id) ? "Unpin from Home" : "Pin to Home"}{" "}
+                    <kbd>⌥⌘7</kbd>
                   </button>
                   <button
                     type="button"
@@ -14897,7 +14923,8 @@ a{color:#1d4ed8}
                   >
                     {selectedSearchResult && notebookPinnedSet.has(selectedSearchResult.id)
                       ? "Unpin from notebook"
-                      : "Pin to notebook"}
+                      : "Pin to notebook"}{" "}
+                    <kbd>⌥⌘8</kbd>
                   </button>
                   <button
                     type="button"

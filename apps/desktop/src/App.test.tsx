@@ -231,6 +231,23 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
   });
 
+  it("blocks local graph command palette action for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open active note local graph" }
+    });
+    fireEvent.click(screen.getByText("Open active note local graph"));
+
+    expect(screen.getByText("Select one note to open local graph")).toBeInTheDocument();
+  });
+
   it("persists graph scope preference", () => {
     const first = render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));
@@ -323,6 +340,21 @@ describe("App", () => {
     fireEvent.keyDown(window, { key: "t", metaKey: true, altKey: true });
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
+  });
+
+  it("opens bulk tags editor with keyboard shortcut for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "t", metaKey: true, altKey: true });
+    const bulkTagModal = document.querySelector(".bulk-tag-modal") as HTMLElement | null;
+    expect(bulkTagModal).toBeTruthy();
+    expect(within(bulkTagModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
   });
 
   it("opens rename note dialog with keyboard shortcut", () => {
@@ -615,12 +647,39 @@ describe("App", () => {
     openSpy.mockRestore();
   });
 
+  it("blocks opening note in new window with keyboard shortcut for multi-selected notes", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true });
+    expect(screen.getByText("Select one note to open in a new window")).toBeInTheDocument();
+    expect(openSpy).not.toHaveBeenCalled();
+    openSpy.mockRestore();
+  });
+
   it("opens note in lite edit mode with keyboard shortcut", () => {
     render(<App />);
 
     fireEvent.keyDown(window, { key: "o", metaKey: true, altKey: true });
     expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
+  });
+
+  it("blocks opening note in lite edit with keyboard shortcut for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true, altKey: true });
+    expect(screen.getByText("Select one note to open in Lite edit mode")).toBeInTheDocument();
   });
 
   it("opens notes from graph node clicks", () => {
@@ -955,6 +1014,24 @@ describe("App", () => {
     expect(within(tasksModal as HTMLElement).getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
+  it("blocks current-note tasks action from command palette for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open tasks for current note" }
+    });
+    fireEvent.click(screen.getByText("Open tasks for current note"));
+
+    expect(screen.getByText("Select one note first")).toBeInTheDocument();
+  });
+
   it("opens files modal scoped to current note from command palette", () => {
     render(<App />);
 
@@ -981,6 +1058,24 @@ describe("App", () => {
     expect(screen.getByText("Photo shot")).toBeInTheDocument();
     expect(screen.queryByText("Doc PDF")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("blocks current-note files action from command palette for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open files for current note" }
+    });
+    fireEvent.click(screen.getByText("Open files for current note"));
+
+    expect(screen.getByText("Select one note first")).toBeInTheDocument();
   });
 
   it("opens calendar modal scoped to current note from command palette", () => {
@@ -1014,6 +1109,24 @@ describe("App", () => {
     expect(within(scopedCalendarModal as HTMLElement).getByRole("button", { name: /^Current note \(/ })).toHaveClass(
       "active"
     );
+  });
+
+  it("blocks current-note calendar action from command palette for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open calendar for current note" }
+    });
+    fireEvent.click(screen.getByText("Open calendar for current note"));
+
+    expect(screen.getByText("Select one note first")).toBeInTheDocument();
   });
 
   it("sets graph scope to local from command palette", () => {
@@ -1639,6 +1752,26 @@ describe("App", () => {
     fireEvent.click(screen.getByText("Open note in new window"));
 
     expect(openSpy).toHaveBeenCalledTimes(1);
+    openSpy.mockRestore();
+  });
+
+  it("blocks opening note in new window from command palette for multi-selected notes", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open note in new window" }
+    });
+    fireEvent.click(screen.getByText("Open note in new window"));
+
+    expect(screen.getByText("Select one note to open in a new window")).toBeInTheDocument();
+    expect(openSpy).not.toHaveBeenCalled();
     openSpy.mockRestore();
   });
 
@@ -2642,6 +2775,23 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
+  it("blocks lite edit mode from command palette for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open note in lite edit mode" }
+    });
+    fireEvent.click(screen.getByText("Open note in Lite edit mode"));
+
+    expect(screen.getByText("Select one note to open in Lite edit mode")).toBeInTheDocument();
+  });
+
   it("opens note in full editor from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -2658,6 +2808,23 @@ describe("App", () => {
     fireEvent.click(screen.getByText("Open note in full editor"));
 
     expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
+  });
+
+  it("blocks full editor action from command palette for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open note in full editor" }
+    });
+    fireEvent.click(screen.getByText("Open note in full editor"));
+
+    expect(screen.getByText("Select one note to open in full editor")).toBeInTheDocument();
   });
 
   it("duplicates the active note from command palette", async () => {

@@ -41,6 +41,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Keyboard shortcuts for move-to-trash (`⌘⌫`), move note (`⇧⌘M`), copy/share link/path (`⌘L`, `⌥⌘L`, `⌥⌘S`), and copy HTML/text (`⇧⌘H`, `⇧⌘T`) now apply to selected notes when multiple cards are selected.
 - Rename actions (`⇧⌘R` and command palette) now require a single selected note and show a guard message for multi-selection.
 - Note info/history actions (`⇧⌘I`, `⌥⌘H`, and command palette) now require a single selected note and show a guard message for multi-selection.
+- Open actions for a single note (`⌘O`, `⌥⌘O`, local graph, and current-note tasks/files/calendar commands) now show clear guard messages when multiple notes are selected.
+- Keyboard tag editor shortcut (`⌥⌘T`) opens bulk tag editing when multiple notes are selected.
 - Backlinks dock in notes view.
 - Configurable Git vault backups (desktop):
   - Auto-commit backups are enabled by default.

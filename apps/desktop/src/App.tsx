@@ -4419,13 +4419,21 @@ export default function App() {
 
         if (matchesMetaAltLetter("o")) {
           event.preventDefault();
-          openNoteInLiteEdit();
+          if (selectedKeyboardNoteIds.length > 1) {
+            setToastMessage("Select one note to open in Lite edit mode");
+          } else {
+            openNoteInLiteEdit();
+          }
           return;
         }
 
         if (matchesMetaLetter("o")) {
           event.preventDefault();
-          openNoteInNewWindow(activeNote.id);
+          if (selectedKeyboardNoteIds.length > 1) {
+            setToastMessage("Select one note to open in a new window");
+          } else {
+            openNoteInNewWindow(activeNote.id);
+          }
           return;
         }
 
@@ -4531,7 +4539,11 @@ export default function App() {
 
       if ((event.metaKey || event.ctrlKey) && event.altKey && event.key.toLowerCase() === "t") {
         event.preventDefault();
-        openTagEditor();
+        if (selectedVisibleNoteIds.length > 1) {
+          openBulkTagDialog(selectedVisibleNoteIds);
+        } else {
+          openTagEditor();
+        }
         return;
       }
 
@@ -7554,7 +7566,11 @@ export default function App() {
     }
 
     if (actionId === "open-note-window") {
-      if (activeNote) {
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note to open in a new window");
+      } else if (selectedVisibleNoteIds.length === 1) {
+        openNoteInNewWindow(selectedVisibleNoteIds[0]);
+      } else if (activeNote) {
         openNoteInNewWindow(activeNote.id);
       } else {
         setToastMessage("Open a note first");
@@ -7564,11 +7580,21 @@ export default function App() {
     }
 
     if (actionId === "open-note-lite-edit") {
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note to open in Lite edit mode");
+        setSearchOpen(false);
+        return;
+      }
       openNoteInLiteEdit();
       return;
     }
 
     if (actionId === "open-note-full-edit") {
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note to open in full editor");
+        setSearchOpen(false);
+        return;
+      }
       openNoteInFullEditor();
       return;
     }
@@ -7916,6 +7942,11 @@ export default function App() {
     }
 
     if (actionId === "open-tasks-current-note") {
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note first");
+        setSearchOpen(false);
+        return;
+      }
       if (!activeNote) {
         setToastMessage("Open a note first");
         setSearchOpen(false);
@@ -7932,6 +7963,11 @@ export default function App() {
     }
 
     if (actionId === "open-files-current-note") {
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note first");
+        setSearchOpen(false);
+        return;
+      }
       if (!activeNote) {
         setToastMessage("Open a note first");
         setSearchOpen(false);
@@ -7947,6 +7983,11 @@ export default function App() {
     }
 
     if (actionId === "open-calendar-current-note") {
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note first");
+        setSearchOpen(false);
+        return;
+      }
       if (!activeNote) {
         setToastMessage("Open a note first");
         setSearchOpen(false);
@@ -7969,6 +8010,11 @@ export default function App() {
     }
 
     if (actionId === "open-active-local-graph") {
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note to open local graph");
+        setSearchOpen(false);
+        return;
+      }
       if (!activeNote) {
         setToastMessage("Open a note first");
         setSearchOpen(false);

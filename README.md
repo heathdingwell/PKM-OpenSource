@@ -33,3 +33,10 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Vault snapshots for manual backup/restore:
   - Export via command palette: `Export vault snapshot`
   - Restore via command palette: `Import vault snapshot`
+- ENEX import (Evernote export basics):
+  - Import `.enex` files via command palette: `Import ENEX archive`
+- Active-note export actions via command palette:
+  - `Export note as Markdown`
+  - `Export note as PDF`
+- Vault refresh action:
+  - Reload from disk via command palette: `Reload vault from disk`

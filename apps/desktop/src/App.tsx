@@ -553,6 +553,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "share-note", label: "Share note link", keywords: ["share", "link", "note"] },
   { id: "copy-note-link", label: "Copy note link", keywords: ["link", "copy", "share", "note"] },
   { id: "copy-note-markdown", label: "Copy note markdown", keywords: ["markdown", "copy", "note"] },
+  { id: "copy-note-html", label: "Copy note HTML", keywords: ["html", "copy", "note"] },
   { id: "copy-note-text", label: "Copy note text", keywords: ["text", "copy", "plain", "note"] },
   { id: "export-note-markdown", label: "Export note as Markdown", keywords: ["export", "markdown", "note", "file"] },
   { id: "export-note-text", label: "Export note as Text", keywords: ["export", "text", "txt", "note", "file"] },
@@ -670,6 +671,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "share", label: "Share", shortcut: "cmd+alt+s" },
   { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
   { id: "copy-markdown", label: "Copy markdown" },
+  { id: "copy-html", label: "Copy HTML" },
   { id: "copy-text", label: "Copy text" },
   { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
   { id: "divider-1", label: "", divider: true },
@@ -7045,6 +7047,16 @@ export default function App() {
       return;
     }
 
+    if (actionId === "copy-note-html") {
+      if (activeNote) {
+        void copyNoteHtml(activeNote.id);
+      } else {
+        setToastMessage("Open a note before copying HTML");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
     if (actionId === "copy-note-text") {
       if (activeNote) {
         void copyNoteText(activeNote.id);
@@ -8650,6 +8662,34 @@ export default function App() {
     await copyNotesMarkdown([noteId]);
   }
 
+  async function copyNotesHtml(noteIds: string[]): Promise<void> {
+    const selected = noteIds
+      .map((noteId) => notes.find((entry) => entry.id === noteId))
+      .filter((note): note is AppNote => Boolean(note));
+    if (!selected.length) {
+      return;
+    }
+
+    const value = selected
+      .map((note) => pdfMarkdownParser.render(note.markdown || ""))
+      .join("\n\n<!-- --- -->\n\n");
+    const successToast = selected.length === 1 ? "Note HTML copied" : `HTML copied for ${selected.length} notes`;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        setToastMessage(successToast);
+        return;
+      } catch {
+        // Fall through to showing generated HTML when clipboard is unavailable.
+      }
+    }
+    setToastMessage(value);
+  }
+
+  async function copyNoteHtml(noteId: string): Promise<void> {
+    await copyNotesHtml([noteId]);
+  }
+
   async function copyNotesText(noteIds: string[]): Promise<void> {
     const selected = noteIds
       .map((noteId) => notes.find((entry) => entry.id === noteId))
@@ -8929,6 +8969,12 @@ a{color:#1d4ed8}
 
     if (action === "copy-markdown") {
       void copyNotesMarkdown(contextMenu.noteIds);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "copy-html") {
+      void copyNotesHtml(contextMenu.noteIds);
       setContextMenu(null);
       return;
     }

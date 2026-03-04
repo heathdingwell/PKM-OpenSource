@@ -554,6 +554,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "copy-note-link", label: "Copy note link", keywords: ["link", "copy", "share", "note"] },
   { id: "copy-note-markdown", label: "Copy note markdown", keywords: ["markdown", "copy", "note"] },
   { id: "export-note-markdown", label: "Export note as Markdown", keywords: ["export", "markdown", "note", "file"] },
+  { id: "export-note-text", label: "Export note as Text", keywords: ["export", "text", "txt", "note", "file"] },
   { id: "export-note-html", label: "Export note as HTML", keywords: ["export", "html", "note", "file"] },
   { id: "export-note-pdf", label: "Export note as PDF", keywords: ["export", "pdf", "note"] },
   { id: "duplicate-note", label: "Duplicate note", keywords: ["duplicate", "copy", "note"] },
@@ -685,6 +686,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
   { id: "divider-4", label: "", divider: true },
   { id: "export", label: "Export" },
+  { id: "export-text", label: "Export as Text" },
   { id: "export-html", label: "Export as HTML" },
   { id: "export-pdf", label: "Export as PDF" },
   { id: "print", label: "Print", shortcut: "cmd+p" },
@@ -6974,6 +6976,16 @@ export default function App() {
       return;
     }
 
+    if (actionId === "export-note-text") {
+      if (activeNote) {
+        exportNoteText(activeNote.id);
+      } else {
+        setToastMessage("Open a note before exporting");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
     if (actionId === "export-note-markdown") {
       if (activeNote) {
         exportNote(activeNote.id);
@@ -8690,6 +8702,27 @@ a{color:#1d4ed8}
     setToastMessage(`Exported HTML "${note.title}"`);
   }
 
+  function exportNoteText(noteId: string): void {
+    const note = notes.find((entry) => entry.id === noteId);
+    if (!note || typeof document === "undefined") {
+      return;
+    }
+
+    const rendered = pdfMarkdownParser.render(note.markdown || "");
+    const container = document.createElement("div");
+    container.innerHTML = rendered;
+    const plainText = (container.textContent || "").replace(/\u00a0/g, " ").trim();
+    const content = plainText || note.title || "Untitled";
+    const blob = new Blob([`${content}\n`], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${toFileName(note.title).replace(/\.md$/i, "")}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setToastMessage(`Exported text "${note.title}"`);
+  }
+
   async function exportNotePdf(noteId: string): Promise<void> {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note) {
@@ -8943,6 +8976,12 @@ a{color:#1d4ed8}
 
     if (action === "export") {
       exportNote(targetId);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "export-text") {
+      exportNoteText(targetId);
       setContextMenu(null);
       return;
     }

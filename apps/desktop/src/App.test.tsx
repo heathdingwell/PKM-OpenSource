@@ -954,6 +954,26 @@ describe("App", () => {
     clickSpy.mockRestore();
   });
 
+  it("exports note as text from command palette", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-text");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">export note text" }
+    });
+    fireEvent.click(screen.getByText("Export note as Text"));
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Exported text "Agenda"')).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
   it("exports note markdown from command palette", () => {
     const createObjectURL = vi.fn(() => "blob:pkm-note");
     const revokeObjectURL = vi.fn();
@@ -3243,6 +3263,27 @@ describe("App", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(screen.getByText('Exported HTML "Agenda"')).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
+  it("exports a note as text from note context menu", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-text");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Export as Text" }));
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Exported text "Agenda"')).toBeInTheDocument();
     clickSpy.mockRestore();
   });
 

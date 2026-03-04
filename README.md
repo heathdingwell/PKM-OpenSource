@@ -42,6 +42,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - Imports into current notebook, or `Imported` when browsing `All Notes`
 - Active-note export actions via command palette:
   - `Export note as Markdown`
+  - `Export note as Text`
   - `Export note as HTML`
   - `Export note as PDF`
 - Focused/full editor actions via command palette:

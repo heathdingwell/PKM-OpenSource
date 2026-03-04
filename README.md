@@ -61,6 +61,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Open note in full editor`
 - Quick search result actions:
   - `Open in Lite edit mode` (button or `⌥⌘O`)
+  - `Open in full editor` (button or `⇧⌘O`)
 - Vault refresh action:
   - Reload from disk via command palette: `Reload vault from disk`
 - Explicit AI provider actions via command palette:

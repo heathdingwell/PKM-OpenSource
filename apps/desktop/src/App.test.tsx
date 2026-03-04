@@ -616,6 +616,20 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Group: Notebook" })).toBeInTheDocument();
   });
 
+  it("sets note sort mode from command palette action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set sort title z-a" }
+    });
+    fireEvent.click(screen.getByText("Set sort: Title (Z-A)"));
+
+    const titles = Array.from(document.querySelectorAll(".note-card strong")).map((node) => node.textContent ?? "");
+    const sorted = [...titles].sort((left, right) => right.localeCompare(left));
+    expect(titles).toEqual(sorted);
+    expect(screen.getByText("Sort set to Title (Z-A)")).toBeInTheDocument();
+  });
+
   it("toggles collapsible sections from command palette action", () => {
     render(<App />);
     expect(document.querySelector(".preview-section")).toBeNull();

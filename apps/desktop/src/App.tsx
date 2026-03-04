@@ -581,6 +581,12 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "toggle-density", label: "Toggle note density", keywords: ["density", "compact", "comfortable"] },
   { id: "toggle-grouping", label: "Toggle note grouping", keywords: ["group", "sections", "date", "notebook", "tag"] },
+  { id: "set-sort-updated-desc", label: "Set sort: Updated (newest first)", keywords: ["sort", "updated", "newest"] },
+  { id: "set-sort-updated-asc", label: "Set sort: Updated (oldest first)", keywords: ["sort", "updated", "oldest"] },
+  { id: "set-sort-created-desc", label: "Set sort: Created (newest first)", keywords: ["sort", "created", "newest"] },
+  { id: "set-sort-created-asc", label: "Set sort: Created (oldest first)", keywords: ["sort", "created", "oldest"] },
+  { id: "set-sort-title-asc", label: "Set sort: Title (A-Z)", keywords: ["sort", "title", "a-z"] },
+  { id: "set-sort-title-desc", label: "Set sort: Title (Z-A)", keywords: ["sort", "title", "z-a"] },
   { id: "toggle-collapsible-sections", label: "Toggle collapsible sections", keywords: ["collapse", "sections", "preview"] },
   { id: "toggle-focus", label: "Toggle focus mode", keywords: ["focus", "layout", "panes"] },
   { id: "toggle-editor", label: "Toggle markdown/rich editor", keywords: ["editor", "markdown", "rich"] },
@@ -4710,6 +4716,12 @@ export default function App() {
     setToastMessage(`Theme switched to ${theme}`);
   }
 
+  function applySortMode(mode: NoteSortMode): void {
+    setSortMode(mode);
+    const label = sortModes.find((entry) => entry.id === mode)?.label ?? mode;
+    setToastMessage(`Sort set to ${label}`);
+  }
+
   function toggleAiPanel(): void {
     setAiPanelOpen((previous) => {
       const next = !previous;
@@ -7049,6 +7061,42 @@ export default function App() {
 
     if (actionId === "toggle-grouping") {
       setNoteGroupMode((previous) => nextNoteGroupMode(previous));
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-sort-updated-desc") {
+      applySortMode("updated-desc");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-sort-updated-asc") {
+      applySortMode("updated-asc");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-sort-created-desc") {
+      applySortMode("created-desc");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-sort-created-asc") {
+      applySortMode("created-asc");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-sort-title-asc") {
+      applySortMode("title-asc");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-sort-title-desc") {
+      applySortMode("title-desc");
       setSearchOpen(false);
       return;
     }

@@ -7573,8 +7573,17 @@ export default function App() {
     }
 
     if (actionId === "copy-note-markdown") {
-      if (activeNote) {
-        void copyNoteMarkdown(activeNote.id);
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        if (targetNoteIds.length > 1) {
+          void copyNotesMarkdown(targetNoteIds);
+        } else {
+          void copyNoteMarkdown(targetNoteIds[0]);
+        }
       } else {
         setToastMessage("Open a note before copying markdown");
       }
@@ -7583,8 +7592,17 @@ export default function App() {
     }
 
     if (actionId === "copy-note-html") {
-      if (activeNote) {
-        void copyNoteHtml(activeNote.id);
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        if (targetNoteIds.length > 1) {
+          void copyNotesHtml(targetNoteIds);
+        } else {
+          void copyNoteHtml(targetNoteIds[0]);
+        }
       } else {
         setToastMessage("Open a note before copying HTML");
       }
@@ -7593,8 +7611,17 @@ export default function App() {
     }
 
     if (actionId === "copy-note-text") {
-      if (activeNote) {
-        void copyNoteText(activeNote.id);
+      const targetNoteIds = selectedVisibleNoteIds.length
+        ? selectedVisibleNoteIds
+        : activeNote
+          ? [activeNote.id]
+          : [];
+      if (targetNoteIds.length) {
+        if (targetNoteIds.length > 1) {
+          void copyNotesText(targetNoteIds);
+        } else {
+          void copyNoteText(targetNoteIds[0]);
+        }
       } else {
         setToastMessage("Open a note before copying text");
       }

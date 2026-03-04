@@ -1121,6 +1121,31 @@ describe("App", () => {
     expect(screen.getByText("Note markdown copied")).toBeInTheDocument();
   });
 
+  it("copies selected notes markdown from command palette", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">copy markdown" }
+    });
+    fireEvent.click(screen.getByText("Copy note markdown"));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("\n\n---\n\n");
+    expect(screen.getByText("Markdown copied for 2 notes")).toBeInTheDocument();
+  });
+
   it("copies note html from command palette", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -1140,6 +1165,31 @@ describe("App", () => {
     expect(screen.getByText("Note HTML copied")).toBeInTheDocument();
   });
 
+  it("copies selected notes html from command palette", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">copy note html" }
+    });
+    fireEvent.click(screen.getByText("Copy note HTML"));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("<!-- --- -->");
+    expect(screen.getByText("HTML copied for 2 notes")).toBeInTheDocument();
+  });
+
   it("copies note text from command palette", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -1157,6 +1207,31 @@ describe("App", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("Priority 1");
     expect(screen.getByText("Note text copied")).toBeInTheDocument();
+  });
+
+  it("copies selected notes text from command palette", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">copy text" }
+    });
+    fireEvent.click(screen.getByText("Copy note text"));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("\n\n---\n\n");
+    expect(screen.getByText("Text copied for 2 notes")).toBeInTheDocument();
   });
 
   it("shares note link from command palette", async () => {

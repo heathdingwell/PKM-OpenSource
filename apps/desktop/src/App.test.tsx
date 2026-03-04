@@ -2101,6 +2101,23 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
   });
 
+  it("restores trashed search result with alt+cmd+z in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "Backspace", metaKey: true, altKey: true });
+    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "z", metaKey: true, altKey: true });
+
+    expect(screen.getByText('"Agenda" restored from Trash')).toBeInTheDocument();
+  });
+
   it("opens note in lite edit mode from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -2987,7 +3004,7 @@ describe("App", () => {
     fireEvent.change(searchInput, { target: { value: "agenda" } });
     searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Restore$/i }));
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Restore/i }));
 
     expect(screen.getByText('"Agenda" restored from Trash')).toBeInTheDocument();
   });

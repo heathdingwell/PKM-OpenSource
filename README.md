@@ -91,7 +91,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Export as PDF` for selected result (button or `⌥⌘4`)
   - `Print` selected result (button or `⌥⌘P`)
   - `Duplicate note` for selected result (button or `⌥⌘D`)
-  - `Restore` selected trashed result (button)
+  - `Restore` selected trashed result (button or `⌥⌘Z`)
   - `Move to Trash` for selected active result (button or `⌥⌘⌫`)
   - `Delete permanently` for selected trashed result (button or `⌥⌘⌫`)
   - `Copy path` for selected result (button or `⌥⌘L`)

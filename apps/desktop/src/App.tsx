@@ -14315,6 +14315,12 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (matchesMetaAltLetter("z") && selectedNote?.trashedAt) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "restore-note");
+                  return;
+                }
+
                 if (hasMeta && event.altKey && (lowerKey === "backspace" || event.code === "Backspace") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "trash-note");
@@ -15058,7 +15064,7 @@ a{color:#1d4ed8}
                         openSearchResult(selectedSearchResult, "restore-note");
                       }}
                     >
-                      Restore
+                      Restore <kbd>⌥⌘Z</kbd>
                     </button>
                   ) : null}
                   <button

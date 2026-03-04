@@ -561,6 +561,60 @@ describe("App", () => {
     expect(screen.getByText('You are editing your "Agenda" template')).toBeInTheDocument();
   });
 
+  it("toggles active note shortcut from command palette", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note shortcut" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note shortcut"));
+    expect(screen.getByText("1 added to shortcuts")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note shortcut" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note shortcut"));
+    expect(screen.getByText("1 removed from shortcuts")).toBeInTheDocument();
+  });
+
+  it("toggles active note home pin from command palette", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note pin to home" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note pin to home"));
+    expect(screen.getByText("1 pinned to Home")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note pin to home" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note pin to home"));
+    expect(screen.getByText("1 unpinned from Home")).toBeInTheDocument();
+  });
+
+  it("toggles active note notebook pin from command palette", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note pin to notebook" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note pin to notebook"));
+    expect(screen.getByText("1 pinned to notebook")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note pin to notebook" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note pin to notebook"));
+    expect(screen.getByText("1 unpinned from notebook")).toBeInTheDocument();
+  });
+
   it("opens tasks modal scoped to current note from command palette", () => {
     render(<App />);
 

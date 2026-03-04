@@ -25,6 +25,10 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 ## Implemented now
 - Templates view with "set as template" and "use template" flows.
   - Command palette: `Open templates`, `Toggle active note template`
+- Active-note pinning actions via command palette:
+  - `Toggle active note shortcut`
+  - `Toggle active note pin to home`
+  - `Toggle active note pin to notebook`
 - Trash mode with restore/permanent delete and empty trash actions.
 - Backlinks dock in notes view.
 - Configurable Git vault backups (desktop):

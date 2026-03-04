@@ -593,6 +593,13 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "insert-ai-transcript", label: "Insert AI chat transcript into note", keywords: ["ai", "copilot", "chat", "transcript", "insert"] },
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
   { id: "toggle-active-note-template", label: "Toggle active note template", keywords: ["template", "note", "active"] },
+  { id: "toggle-active-note-shortcut", label: "Toggle active note shortcut", keywords: ["shortcut", "active", "note"] },
+  { id: "toggle-active-note-pin-home", label: "Toggle active note pin to home", keywords: ["pin", "home", "active", "note"] },
+  {
+    id: "toggle-active-note-pin-notebook",
+    label: "Toggle active note pin to notebook",
+    keywords: ["pin", "notebook", "active", "note"]
+  },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "set-view-cards", label: "Set view: Cards", keywords: ["view", "cards", "layout"] },
   { id: "set-view-list", label: "Set view: List", keywords: ["view", "list", "layout"] },
@@ -7651,6 +7658,66 @@ export default function App() {
         setToastMessage(`${unmarked} removed from templates`);
       } else {
         setToastMessage("No template changes");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-active-note-shortcut") {
+      if (!activeNote) {
+        setToastMessage("Open a note first");
+        setSearchOpen(false);
+        return;
+      }
+      const { added, removed } = toggleShortcutNotes([activeNote.id]);
+      if (added && removed) {
+        setToastMessage(`Shortcuts updated (+${added}/-${removed})`);
+      } else if (added) {
+        setToastMessage(`${added} added to shortcuts`);
+      } else if (removed) {
+        setToastMessage(`${removed} removed from shortcuts`);
+      } else {
+        setToastMessage("No shortcut changes");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-active-note-pin-home") {
+      if (!activeNote) {
+        setToastMessage("Open a note first");
+        setSearchOpen(false);
+        return;
+      }
+      const { pinned, unpinned } = togglePinnedNotes([activeNote.id], "home");
+      if (pinned && unpinned) {
+        setToastMessage(`Home pins updated (+${pinned}/-${unpinned})`);
+      } else if (pinned) {
+        setToastMessage(`${pinned} pinned to Home`);
+      } else if (unpinned) {
+        setToastMessage(`${unpinned} unpinned from Home`);
+      } else {
+        setToastMessage("No pin changes");
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-active-note-pin-notebook") {
+      if (!activeNote) {
+        setToastMessage("Open a note first");
+        setSearchOpen(false);
+        return;
+      }
+      const { pinned, unpinned } = togglePinnedNotes([activeNote.id], "notebook");
+      if (pinned && unpinned) {
+        setToastMessage(`Notebook pins updated (+${pinned}/-${unpinned})`);
+      } else if (pinned) {
+        setToastMessage(`${pinned} pinned to notebook`);
+      } else if (unpinned) {
+        setToastMessage(`${unpinned} unpinned from notebook`);
+      } else {
+        setToastMessage("No pin changes");
       }
       setSearchOpen(false);
       return;

@@ -1812,6 +1812,16 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
   });
 
+  it("opens selected search result copy dialog using KeyY code in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "÷", code: "KeyY", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
+  });
+
   it("opens selected search result rename with alt+cmd+r in search modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -1828,6 +1838,16 @@ describe("App", () => {
     const searchInput = screen.getByPlaceholderText("Search or ask a question");
     fireEvent.change(searchInput, { target: { value: "agenda" } });
     fireEvent.keyDown(searchInput, { key: "f", metaKey: true, shiftKey: true });
+
+    expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
+  });
+
+  it("opens selected search result find-in-note using KeyF code in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: ";", code: "KeyF", metaKey: true, shiftKey: true });
 
     expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
   });

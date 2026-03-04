@@ -14120,6 +14120,21 @@ a{color:#1d4ed8}
                 const hasMeta = event.metaKey || event.ctrlKey;
                 const matchesMetaAltDigit = (digit: string): boolean =>
                   hasMeta && event.altKey && (event.key === digit || event.code === `Digit${digit}`);
+                const matchesMetaLetter = (letter: string): boolean =>
+                  hasMeta &&
+                  !event.altKey &&
+                  !event.shiftKey &&
+                  (lowerKey === letter.toLowerCase() || event.code === `Key${letter.toUpperCase()}`);
+                const matchesMetaAltLetter = (letter: string): boolean =>
+                  hasMeta &&
+                  event.altKey &&
+                  !event.shiftKey &&
+                  (lowerKey === letter.toLowerCase() || event.code === `Key${letter.toUpperCase()}`);
+                const matchesMetaShiftLetter = (letter: string): boolean =>
+                  hasMeta &&
+                  event.shiftKey &&
+                  !event.altKey &&
+                  (lowerKey === letter.toLowerCase() || event.code === `Key${letter.toUpperCase()}`);
 
                 if (event.key === "Escape") {
                   event.preventDefault();
@@ -14127,7 +14142,7 @@ a{color:#1d4ed8}
                   return;
                 }
 
-                if (hasMeta && lowerKey === "l" && selectedNote) {
+                if (hasMeta && !event.shiftKey && (lowerKey === "l" || event.code === "KeyL") && selectedNote) {
                   if (event.altKey) {
                     event.preventDefault();
                     openSearchResult(selectedNote, "copy-path");
@@ -14138,61 +14153,61 @@ a{color:#1d4ed8}
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "o" && selectedNote) {
+                if (matchesMetaAltLetter("o") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-lite-edit");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "s" && selectedNote) {
+                if (matchesMetaAltLetter("s") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "share-link");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "h" && selectedNote) {
+                if (matchesMetaAltLetter("h") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-history");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "t" && selectedNote) {
+                if (matchesMetaAltLetter("t") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-tags");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "m" && selectedNote) {
+                if (matchesMetaAltLetter("m") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "move-note");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "y" && selectedNote) {
+                if (matchesMetaAltLetter("y") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "copy-note");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "r" && selectedNote) {
+                if (matchesMetaAltLetter("r") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "rename-note");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "j" && selectedNote) {
+                if (matchesMetaAltLetter("j") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-tasks");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "f" && selectedNote) {
+                if (matchesMetaAltLetter("f") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-files");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "c" && selectedNote) {
+                if (matchesMetaAltLetter("c") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-calendar");
                   return;
@@ -14246,67 +14261,67 @@ a{color:#1d4ed8}
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "p" && selectedNote) {
+                if (matchesMetaAltLetter("p") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "print-note");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "d" && selectedNote) {
+                if (matchesMetaAltLetter("d") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "duplicate-note");
                   return;
                 }
 
-                if (hasMeta && event.altKey && lowerKey === "backspace" && selectedNote) {
+                if (hasMeta && event.altKey && (lowerKey === "backspace" || event.code === "Backspace") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "trash-note");
                   return;
                 }
 
-                if (hasMeta && event.shiftKey && lowerKey === "i" && selectedNote) {
+                if (matchesMetaShiftLetter("i") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-info");
                   return;
                 }
 
-                if (hasMeta && event.shiftKey && lowerKey === "f" && selectedNote) {
+                if (matchesMetaShiftLetter("f") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "find-note");
                   return;
                 }
 
-                if (hasMeta && event.shiftKey && lowerKey === "o" && selectedNote) {
+                if (matchesMetaShiftLetter("o") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-full-edit");
                   return;
                 }
 
-                if (hasMeta && !event.altKey && lowerKey === "o" && selectedNote) {
+                if (matchesMetaLetter("o") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-window");
                   return;
                 }
 
-                if (hasMeta && event.shiftKey && lowerKey === "m" && selectedNote) {
+                if (matchesMetaShiftLetter("m") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "copy-markdown");
                   return;
                 }
 
-                if (hasMeta && event.shiftKey && lowerKey === "g" && selectedNote) {
+                if (matchesMetaShiftLetter("g") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-local-graph");
                   return;
                 }
 
-                if (hasMeta && event.shiftKey && lowerKey === "h" && selectedNote) {
+                if (matchesMetaShiftLetter("h") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "copy-html");
                   return;
                 }
 
-                if (hasMeta && event.shiftKey && lowerKey === "t" && selectedNote) {
+                if (matchesMetaShiftLetter("t") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "copy-text");
                   return;

@@ -6724,12 +6724,18 @@ export default function App() {
       | "open-window"
       | "open-lite-edit"
       | "open-full-edit"
-      | "open-local-graph" = "open"
+      | "open-local-graph"
+      | "share-link" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
     if (mode === "copy-link") {
       void copyNoteLink(note.id);
+      return;
+    }
+
+    if (mode === "share-link") {
+      void copyNoteLink(note.id, "Share link copied");
       return;
     }
 
@@ -13912,6 +13918,12 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.altKey && lowerKey === "s" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "share-link");
+                  return;
+                }
+
                 if (hasMeta && event.shiftKey && lowerKey === "o" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-full-edit");
@@ -14303,6 +14315,17 @@ a{color:#1d4ed8}
                     }}
                   >
                     Copy link <kbd>⌘L</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "share-link");
+                      }
+                    }}
+                  >
+                    Share <kbd>⌥⌘S</kbd>
                   </button>
                   <button
                     type="button"

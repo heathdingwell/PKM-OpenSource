@@ -1593,6 +1593,23 @@ describe("App", () => {
     openSpy.mockRestore();
   });
 
+  it("shares selected search result link with alt+cmd+s in search modal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "s", metaKey: true, altKey: true });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Share link copied")).toBeInTheDocument();
+  });
+
   it("opens selected search result in lite edit mode with alt+cmd+o in search modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -1984,6 +2001,25 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /Copy link/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
+  });
+
+  it("shares note link from quick search footer action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Share/i }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Share link copied")).toBeInTheDocument();
   });
 
   it("copies note markdown from quick search footer action", async () => {

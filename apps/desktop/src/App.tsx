@@ -589,6 +589,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "git-backup-now", label: "Run Git backup now", keywords: ["git", "backup", "commit"] },
   { id: "export-snapshot", label: "Export vault snapshot", keywords: ["backup", "snapshot", "export", "vault"] },
   { id: "import-snapshot", label: "Import vault snapshot", keywords: ["backup", "snapshot", "import", "restore", "vault"] },
+  { id: "reload-vault", label: "Reload vault from disk", keywords: ["reload", "refresh", "vault", "disk"] },
   { id: "undo-last-action", label: "Undo last action", keywords: ["undo", "restore", "revert"] },
   { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
 ];
@@ -5486,6 +5487,31 @@ export default function App() {
     vaultSnapshotInputRef.current?.click();
   }
 
+  async function reloadVaultFromDisk(): Promise<void> {
+    if (!window.pkmShell?.loadVaultState) {
+      setToastMessage("Vault reload is unavailable in this build");
+      return;
+    }
+
+    if (saveState !== "saved") {
+      flushActiveDraft();
+    }
+
+    try {
+      const payload = (await window.pkmShell.loadVaultState()) as ShellNotesPayload | null;
+      if (!payload || !Array.isArray(payload)) {
+        setToastMessage("Vault reload returned no notes");
+        return;
+      }
+
+      const hydrated = payload.filter(isAppNote);
+      setNotes(hydrated);
+      setToastMessage(`Reloaded ${hydrated.length} ${hydrated.length === 1 ? "note" : "notes"} from disk`);
+    } catch {
+      setToastMessage("Failed to reload vault from disk");
+    }
+  }
+
   async function importVaultSnapshotFromFile(file: File): Promise<void> {
     if (!file) {
       return;
@@ -6884,6 +6910,12 @@ export default function App() {
     if (actionId === "import-snapshot") {
       setSearchOpen(false);
       triggerVaultSnapshotImport();
+      return;
+    }
+
+    if (actionId === "reload-vault") {
+      setSearchOpen(false);
+      void reloadVaultFromDisk();
       return;
     }
 

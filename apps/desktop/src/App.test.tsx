@@ -868,6 +868,62 @@ describe("App", () => {
     clickSpy.mockRestore();
   });
 
+  it("reloads vault notes from disk from command palette", async () => {
+    const now = new Date().toISOString();
+    const loadVaultState = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: "disk-note-1",
+          path: "Inbox/Disk Note.md",
+          title: "Disk Note",
+          snippet: "Loaded from disk.",
+          tags: ["disk"],
+          linksOut: [],
+          createdAt: now,
+          updatedAt: now,
+          notebook: "Inbox",
+          markdown: "# Disk Note\n\nLoaded from disk."
+        }
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "disk-note-2",
+          path: "Inbox/Disk Note Reloaded.md",
+          title: "Disk Note Reloaded",
+          snippet: "Reloaded from disk.",
+          tags: ["disk"],
+          linksOut: [],
+          createdAt: now,
+          updatedAt: now,
+          notebook: "Inbox",
+          markdown: "# Disk Note Reloaded\n\nReloaded from disk."
+        }
+      ]);
+    (window as unknown as { pkmShell?: { loadVaultState: typeof loadVaultState } }).pkmShell = { loadVaultState };
+
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Disk Note", level: 2 })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">reload vault" }
+    });
+    fireEvent.click(screen.getByText("Reload vault from disk"));
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Disk Note Reloaded", level: 2 })).toBeInTheDocument());
+  });
+
+  it("shows unavailable toast when reloading vault in local mode", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">reload vault" }
+    });
+    fireEvent.click(screen.getByText("Reload vault from disk"));
+
+    expect(screen.getByText("Vault reload is unavailable in this build")).toBeInTheDocument();
+  });
+
   it("opens snapshot picker from command palette", () => {
     render(<App />);
     const input = document.getElementById("vault-snapshot-input") as HTMLInputElement;

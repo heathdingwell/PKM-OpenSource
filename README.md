@@ -35,8 +35,14 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - Restore via command palette: `Import vault snapshot`
 - ENEX import (Evernote export basics):
   - Import `.enex` files via command palette: `Import ENEX archive`
+  - Imported notes are grouped into a notebook derived from the ENEX file name when importing from `All Notes`
+  - Preserves note source URL and resource file names in generated Markdown
 - Active-note export actions via command palette:
   - `Export note as Markdown`
   - `Export note as PDF`
 - Vault refresh action:
   - Reload from disk via command palette: `Reload vault from disk`
+- Explicit theme actions via command palette:
+  - `Set theme: Cobalt`
+  - `Set theme: Sky`
+  - `Set theme: Slate`

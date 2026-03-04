@@ -562,6 +562,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "export-note-pdf", label: "Export note as PDF", keywords: ["export", "pdf", "note"] },
   { id: "duplicate-note", label: "Duplicate note", keywords: ["duplicate", "copy", "note"] },
   { id: "trash-note", label: "Move note to trash", keywords: ["trash", "delete", "note"] },
+  { id: "restore-note", label: "Restore note from Trash", keywords: ["trash", "restore", "note"] },
   { id: "rename-note", label: "Rename note", keywords: ["rename", "title", "note"] },
   { id: "move-note", label: "Move note", keywords: ["move", "notebook", "note"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
@@ -7638,6 +7639,21 @@ export default function App() {
         const moved = moveNotesToTrash([activeNote.id]);
         if (moved > 0) {
           setToastMessage(`"${activeNote.title}" moved to Trash`);
+        }
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "restore-note") {
+      if (!activeNote) {
+        setToastMessage("Open a note before restoring");
+      } else if (!activeNote.trashedAt) {
+        setToastMessage("Open a trashed note before restoring");
+      } else {
+        const restored = restoreNotesFromTrash([activeNote.id]);
+        if (restored > 0) {
+          setToastMessage(`"${activeNote.title}" restored from Trash`);
         }
       }
       setSearchOpen(false);

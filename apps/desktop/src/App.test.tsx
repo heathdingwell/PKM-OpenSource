@@ -2172,6 +2172,35 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
   });
 
+  it("restores the active trashed note from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">trash note" }
+    });
+    fireEvent.click(screen.getByText("Move note to trash"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">restore note" }
+    });
+    fireEvent.click(screen.getByText("Restore note from Trash"));
+
+    expect(screen.getByText('"Agenda" restored from Trash')).toBeInTheDocument();
+  });
+
+  it("requires an active trashed note for restore from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">restore note" }
+    });
+    fireEvent.click(screen.getByText("Restore note from Trash"));
+
+    expect(screen.getByText("Open a trashed note before restoring")).toBeInTheDocument();
+  });
+
   it("opens or creates today's note from command palette without duplicates", async () => {
     render(<App />);
     const now = new Date();

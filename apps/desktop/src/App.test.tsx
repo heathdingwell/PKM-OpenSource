@@ -1738,6 +1738,39 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
+  it("opens selected search result tasks with alt+cmd+j in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "j", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("opens selected search result files with alt+cmd+f in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "f", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
+    expect(screen.getByText("No attachments found")).toBeInTheDocument();
+  });
+
+  it("opens selected search result calendar with alt+cmd+c in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "c", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
   it("duplicates selected search result with alt+cmd+d in search modal", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -2355,6 +2388,45 @@ describe("App", () => {
     expect(searchActions).toBeTruthy();
     fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move note/i }));
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens selected quick search result tasks from footer action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Open tasks/i }));
+    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("opens selected quick search result files from footer action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Open files/i }));
+    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
+    expect(screen.getByText("No attachments found")).toBeInTheDocument();
+  });
+
+  it("opens selected quick search result calendar from footer action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Open calendar/i }));
+    expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
   it("duplicates selected quick search result from footer action", async () => {

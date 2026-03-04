@@ -6740,7 +6740,10 @@ export default function App() {
       | "move-note"
       | "duplicate-note"
       | "trash-note"
-      | "copy-path" = "open"
+      | "copy-path"
+      | "open-note-tasks"
+      | "open-note-files"
+      | "open-note-calendar" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
@@ -6776,6 +6779,24 @@ export default function App() {
 
     if (mode === "move-note") {
       openMoveDialogForNotes([note.id], "move");
+      return;
+    }
+
+    if (mode === "open-note-tasks") {
+      focusNote(note.id);
+      openTasksPanel("current-note");
+      return;
+    }
+
+    if (mode === "open-note-files") {
+      focusNote(note.id);
+      openFilesPanel("current-note");
+      return;
+    }
+
+    if (mode === "open-note-calendar") {
+      focusNote(note.id);
+      openCalendarPanel("current-note");
       return;
     }
 
@@ -14042,6 +14063,24 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.altKey && lowerKey === "j" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "open-note-tasks");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && lowerKey === "f" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "open-note-files");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && lowerKey === "c" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "open-note-calendar");
+                  return;
+                }
+
                 if (hasMeta && event.altKey && lowerKey === "d" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "duplicate-note");
@@ -14594,6 +14633,39 @@ a{color:#1d4ed8}
                     }}
                   >
                     Move note <kbd>⌥⌘M</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open-note-tasks");
+                      }
+                    }}
+                  >
+                    Open tasks <kbd>⌥⌘J</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open-note-files");
+                      }
+                    }}
+                  >
+                    Open files <kbd>⌥⌘F</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open-note-calendar");
+                      }
+                    }}
+                  >
+                    Open calendar <kbd>⌥⌘C</kbd>
                   </button>
                   <button
                     type="button"

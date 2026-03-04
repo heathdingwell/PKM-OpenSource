@@ -53,6 +53,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Explicit view and density actions via command palette:
   - `Set view: Cards|List`
   - `Set density: Comfortable|Compact`
+- Explicit grouping actions via command palette:
+  - `Set grouping: Off|Updated|Notebook|Tag`
 - Explicit editor font actions via command palette:
   - `Set editor font: Palatino|Georgia|Sans Serif|Monospace`
 - Explicit editor font size actions via command palette:

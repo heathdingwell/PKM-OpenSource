@@ -306,6 +306,19 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
   });
 
+  it("blocks rename keyboard shortcut for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "r", metaKey: true, shiftKey: true });
+    expect(screen.getByText("Select one note to rename")).toBeInTheDocument();
+  });
+
   it("opens rename note dialog using KeyR code with keyboard shortcut", () => {
     render(<App />);
 
@@ -1249,6 +1262,24 @@ describe("App", () => {
     fireEvent.click(screen.getByText("Rename note"));
 
     expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
+  });
+
+  it("blocks rename from command palette for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">rename note" }
+    });
+    fireEvent.click(screen.getByText("Rename note"));
+
+    expect(screen.getByText("Select one note to rename")).toBeInTheDocument();
   });
 
   it("opens move note dialog from command palette", () => {

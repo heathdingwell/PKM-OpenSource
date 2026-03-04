@@ -4383,6 +4383,10 @@ export default function App() {
 
         if (matchesMetaShiftLetter("r")) {
           event.preventDefault();
+          if (selectedVisibleNoteIds.length > 1) {
+            setToastMessage("Select one note to rename");
+            return;
+          }
           openNoteRename();
           return;
         }
@@ -7553,7 +7557,16 @@ export default function App() {
     }
 
     if (actionId === "rename-note") {
-      openNoteRename();
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note to rename");
+        setSearchOpen(false);
+        return;
+      }
+      if (selectedVisibleNoteIds.length === 1) {
+        openNoteRename(selectedVisibleNoteIds[0]);
+      } else {
+        openNoteRename();
+      }
       return;
     }
 

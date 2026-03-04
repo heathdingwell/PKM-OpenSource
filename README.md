@@ -73,6 +73,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Note history` for selected result (button or `⌥⌘H`)
   - `Edit tags` for selected result (button or `⌥⌘T`)
   - `Move note` for selected result (button or `⌥⌘M`)
+  - `Duplicate note` for selected result (button or `⌥⌘D`)
+  - `Move to Trash` for selected result (button or `⌥⌘⌫`)
 - Vault refresh action:
   - Reload from disk via command palette: `Reload vault from disk`
 - Explicit AI provider actions via command palette:

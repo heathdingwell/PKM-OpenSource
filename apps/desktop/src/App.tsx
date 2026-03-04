@@ -6729,7 +6729,9 @@ export default function App() {
       | "open-note-info"
       | "open-note-history"
       | "open-note-tags"
-      | "move-note" = "open"
+      | "move-note"
+      | "duplicate-note"
+      | "trash-note" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
@@ -6760,6 +6762,21 @@ export default function App() {
 
     if (mode === "move-note") {
       openMoveDialogForNotes([note.id], "move");
+      return;
+    }
+
+    if (mode === "duplicate-note") {
+      void duplicateNotes([note.id]);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (mode === "trash-note") {
+      const moved = moveNotesToTrash([note.id]);
+      if (moved > 0) {
+        setToastMessage(`"${note.title}" moved to Trash`);
+      }
+      setSearchOpen(false);
       return;
     }
 
@@ -13966,6 +13983,18 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.altKey && lowerKey === "d" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "duplicate-note");
+                  return;
+                }
+
+                if (hasMeta && event.altKey && lowerKey === "backspace" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "trash-note");
+                  return;
+                }
+
                 if (hasMeta && event.shiftKey && lowerKey === "i" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-note-info");
@@ -14495,6 +14524,28 @@ a{color:#1d4ed8}
                     }}
                   >
                     Move note <kbd>⌥⌘M</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "duplicate-note");
+                      }
+                    }}
+                  >
+                    Duplicate note <kbd>⌥⌘D</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "trash-note");
+                      }
+                    }}
+                  >
+                    Move to Trash <kbd>⌥⌘⌫</kbd>
                   </button>
                 </>
               )}

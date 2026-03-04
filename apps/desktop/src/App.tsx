@@ -6622,7 +6622,7 @@ export default function App() {
 
   function openSearchResult(
     note: AppNote,
-    mode: "open" | "copy-link" | "copy-markdown" | "copy-html" | "copy-text" | "open-window" = "open"
+    mode: "open" | "copy-link" | "copy-markdown" | "copy-html" | "copy-text" | "open-window" | "open-lite-edit" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
@@ -6648,6 +6648,12 @@ export default function App() {
 
     if (mode === "open-window") {
       openNoteInNewWindow(note.id);
+      return;
+    }
+
+    if (mode === "open-lite-edit") {
+      openFocusedEditor(note.id);
+      setSearchOpen(false);
       return;
     }
 
@@ -13711,7 +13717,13 @@ a{color:#1d4ed8}
                   return;
                 }
 
-                if (hasMeta && lowerKey === "o" && selectedNote) {
+                if (hasMeta && event.altKey && lowerKey === "o" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "open-lite-edit");
+                  return;
+                }
+
+                if (hasMeta && !event.altKey && lowerKey === "o" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "open-window");
                   return;
@@ -14134,6 +14146,17 @@ a{color:#1d4ed8}
                     }}
                   >
                     Open in new window <kbd>⌘O</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open-lite-edit");
+                      }
+                    }}
+                  >
+                    Open in Lite edit mode <kbd>⌥⌘O</kbd>
                   </button>
                 </>
               )}

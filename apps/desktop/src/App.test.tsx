@@ -1513,6 +1513,17 @@ describe("App", () => {
     openSpy.mockRestore();
   });
 
+  it("opens selected search result in lite edit mode with alt+cmd+o in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "o", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
+  });
+
   it("opens note in lite edit mode from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -1987,6 +1998,17 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /Open in new window/i }));
     expect(openSpy).toHaveBeenCalledTimes(1);
     openSpy.mockRestore();
+  });
+
+  it("opens selected quick search result in lite edit mode from footer action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Open in Lite edit mode/i }));
+    expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
   it("clears recent searches from command palette action", () => {

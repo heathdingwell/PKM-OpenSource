@@ -3261,17 +3261,18 @@ export default function App() {
       return [];
     }
 
+    const sourceNotes = browseMode === "trash" ? trashedNotes : activeNotes;
     const scopedNotes =
       searchScope === "current" && selectedNotebook !== "All Notes"
-        ? activeNotes.filter((note) => note.notebook === selectedNotebook)
-        : activeNotes;
+        ? sourceNotes.filter((note) => note.notebook === selectedNotebook)
+        : sourceNotes;
 
     const updatedAfter = parsedQuickQuery.updatedAfterDate ? new Date(`${parsedQuickQuery.updatedAfterDate}T00:00:00`) : null;
     const updatedBefore = parsedQuickQuery.updatedBeforeDate ? new Date(`${parsedQuickQuery.updatedBeforeDate}T23:59:59`) : null;
     const createdAfter = parsedQuickQuery.createdAfterDate ? new Date(`${parsedQuickQuery.createdAfterDate}T00:00:00`) : null;
     const createdBefore = parsedQuickQuery.createdBeforeDate ? new Date(`${parsedQuickQuery.createdBeforeDate}T23:59:59`) : null;
     const notebookFilter = parsedQuickQuery.notebook?.toLowerCase() ?? null;
-    const backlinkCountByNoteId = buildBacklinkCountByNoteId(activeNotes);
+    const backlinkCountByNoteId = buildBacklinkCountByNoteId(sourceNotes);
 
     const filteredScope = scopedNotes.filter((note) => {
       if (searchFilters.includes("attachments") && !noteHasAttachmentLink(note.markdown)) {
@@ -3385,9 +3386,21 @@ export default function App() {
         .slice(0, 8);
     }
 
-    return searchIndex
+    const queryIndex = (() => {
+      if (browseMode !== "trash") {
+        return searchIndex;
+      }
+
+      const index = new SearchIndex();
+      for (const note of sourceNotes) {
+        index.upsert(note, note.markdown);
+      }
+      return index;
+    })();
+
+    return queryIndex
       .search(queryText)
-      .map((result) => activeNotes.find((note) => note.id === result.noteId))
+      .map((result) => sourceNotes.find((note) => note.id === result.noteId))
       .filter((note): note is AppNote => {
         if (!note) {
           return false;
@@ -3395,7 +3408,7 @@ export default function App() {
         return scopedIds.has(note.id);
       })
       .slice(0, 8);
-  }, [activeNotes, commandMode, parsedQuickQuery, searchIndex, searchScope, selectedNotebook, searchFilters]);
+  }, [activeNotes, browseMode, commandMode, parsedQuickQuery, searchIndex, searchScope, selectedNotebook, searchFilters, trashedNotes]);
 
   const selectedSearchResult = quickResults[searchSelected] ?? null;
   const selectedPaletteAction = paletteResults[searchSelected] ?? null;
@@ -6763,6 +6776,7 @@ export default function App() {
       | "toggle-note-shortcut"
       | "toggle-note-pin-home"
       | "toggle-note-pin-notebook"
+      | "restore-note"
       | "export-note-markdown"
       | "export-note-html"
       | "export-note-text"
@@ -6891,9 +6905,25 @@ export default function App() {
     }
 
     if (mode === "trash-note") {
-      const moved = moveNotesToTrash([note.id]);
-      if (moved > 0) {
-        setToastMessage(`"${note.title}" moved to Trash`);
+      if (note.trashedAt) {
+        const removed = deleteNotesPermanently([note.id]);
+        if (removed > 0) {
+          setToastMessage(`"${note.title}" deleted permanently`);
+        }
+      } else {
+        const moved = moveNotesToTrash([note.id]);
+        if (moved > 0) {
+          setToastMessage(`"${note.title}" moved to Trash`);
+        }
+      }
+      setSearchOpen(false);
+      return;
+    }
+
+    if (mode === "restore-note") {
+      const restored = restoreNotesFromTrash([note.id]);
+      if (restored > 0) {
+        setToastMessage(`"${note.title}" restored from Trash`);
       }
       setSearchOpen(false);
       return;
@@ -15021,6 +15051,16 @@ a{color:#1d4ed8}
                   >
                     Duplicate note <kbd>⌥⌘D</kbd>
                   </button>
+                  {selectedSearchResult?.trashedAt ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        openSearchResult(selectedSearchResult, "restore-note");
+                      }}
+                    >
+                      Restore
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     disabled={!selectedSearchResult}
@@ -15030,7 +15070,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Move to Trash <kbd>⌥⌘⌫</kbd>
+                    {selectedSearchResult?.trashedAt ? "Delete permanently" : "Move to Trash"} <kbd>⌥⌘⌫</kbd>
                   </button>
                 </>
               )}

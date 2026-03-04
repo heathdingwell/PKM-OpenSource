@@ -2970,6 +2970,50 @@ describe("App", () => {
     expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
   });
 
+  it("restores selected quick search result from footer action when browsing trash", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    let searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move to Trash/i }));
+    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Restore$/i }));
+
+    expect(screen.getByText('"Agenda" restored from Trash')).toBeInTheDocument();
+  });
+
+  it("deletes selected quick search result permanently from footer action when browsing trash", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    let searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move to Trash/i }));
+    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Delete permanently/i }));
+
+    expect(screen.getByText('"Agenda" deleted permanently')).toBeInTheDocument();
+  });
+
   it("clears recent searches from command palette action", () => {
     render(<App />);
 

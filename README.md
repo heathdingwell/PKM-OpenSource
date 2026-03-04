@@ -91,7 +91,9 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Export as PDF` for selected result (button or `⌥⌘4`)
   - `Print` selected result (button or `⌥⌘P`)
   - `Duplicate note` for selected result (button or `⌥⌘D`)
-  - `Move to Trash` for selected result (button or `⌥⌘⌫`)
+  - `Restore` selected trashed result (button)
+  - `Move to Trash` for selected active result (button or `⌥⌘⌫`)
+  - `Delete permanently` for selected trashed result (button or `⌥⌘⌫`)
   - `Copy path` for selected result (button or `⌥⌘L`)
 - Vault refresh action:
   - Reload from disk via command palette: `Reload vault from disk`

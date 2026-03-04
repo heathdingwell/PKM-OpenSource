@@ -2172,6 +2172,27 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
   });
 
+  it("moves selected notes to trash from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">trash note" }
+    });
+    fireEvent.click(screen.getByText("Move note to trash"));
+
+    expect(screen.getByText("2 notes moved to Trash")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    const trashedCards = document.querySelectorAll(".note-grid .note-card");
+    expect(trashedCards.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("restores the active trashed note from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

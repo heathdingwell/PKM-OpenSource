@@ -7629,17 +7629,24 @@ export default function App() {
     }
 
     if (actionId === "trash-note") {
-      if (!activeNote) {
+      const targetNotes = selectedVisibleNoteIds.length
+        ? notes.filter((note) => selectedVisibleNoteIds.includes(note.id))
+        : activeNote
+          ? [activeNote]
+          : [];
+      if (!targetNotes.length) {
         setToastMessage("Open a note before moving to Trash");
-      } else if (activeNote.trashedAt) {
-        const removed = deleteNotesPermanently([activeNote.id]);
+      } else if (targetNotes.every((note) => Boolean(note.trashedAt))) {
+        const removed = deleteNotesPermanently(targetNotes.map((note) => note.id));
         if (removed > 0) {
-          setToastMessage(`"${activeNote.title}" deleted permanently`);
+          setToastMessage(
+            removed === 1 ? `"${targetNotes[0]?.title ?? "Note"}" deleted permanently` : `${removed} notes deleted permanently`
+          );
         }
       } else {
-        const moved = moveNotesToTrash([activeNote.id]);
+        const moved = moveNotesToTrash(targetNotes.map((note) => note.id));
         if (moved > 0) {
-          setToastMessage(`"${activeNote.title}" moved to Trash`);
+          setToastMessage(moved === 1 ? `"${targetNotes[0]?.title ?? "Note"}" moved to Trash` : `${moved} notes moved to Trash`);
         }
       }
       setSearchOpen(false);
@@ -7647,14 +7654,25 @@ export default function App() {
     }
 
     if (actionId === "restore-note") {
-      if (!activeNote) {
+      const targetNotes = selectedVisibleNoteIds.length
+        ? notes.filter((note) => selectedVisibleNoteIds.includes(note.id))
+        : activeNote
+          ? [activeNote]
+          : [];
+      if (!targetNotes.length) {
         setToastMessage("Open a note before restoring");
-      } else if (!activeNote.trashedAt) {
-        setToastMessage("Open a trashed note before restoring");
       } else {
-        const restored = restoreNotesFromTrash([activeNote.id]);
+        const trashedTargets = targetNotes.filter((note) => Boolean(note.trashedAt));
+        if (!trashedTargets.length) {
+          setToastMessage("Open a trashed note before restoring");
+          setSearchOpen(false);
+          return;
+        }
+        const restored = restoreNotesFromTrash(trashedTargets.map((note) => note.id));
         if (restored > 0) {
-          setToastMessage(`"${activeNote.title}" restored from Trash`);
+          setToastMessage(
+            restored === 1 ? `"${trashedTargets[0]?.title ?? "Note"}" restored from Trash` : `${restored} notes restored from Trash`
+          );
         }
       }
       setSearchOpen(false);
@@ -7662,14 +7680,25 @@ export default function App() {
     }
 
     if (actionId === "delete-note-permanently") {
-      if (!activeNote) {
+      const targetNotes = selectedVisibleNoteIds.length
+        ? notes.filter((note) => selectedVisibleNoteIds.includes(note.id))
+        : activeNote
+          ? [activeNote]
+          : [];
+      if (!targetNotes.length) {
         setToastMessage("Open a note before deleting");
-      } else if (!activeNote.trashedAt) {
-        setToastMessage("Move note to Trash before deleting permanently");
       } else {
-        const removed = deleteNotesPermanently([activeNote.id]);
+        const trashedTargets = targetNotes.filter((note) => Boolean(note.trashedAt));
+        if (!trashedTargets.length) {
+          setToastMessage("Move note to Trash before deleting permanently");
+          setSearchOpen(false);
+          return;
+        }
+        const removed = deleteNotesPermanently(trashedTargets.map((note) => note.id));
         if (removed > 0) {
-          setToastMessage(`"${activeNote.title}" deleted permanently`);
+          setToastMessage(
+            removed === 1 ? `"${trashedTargets[0]?.title ?? "Note"}" deleted permanently` : `${removed} notes deleted permanently`
+          );
         }
       }
       setSearchOpen(false);

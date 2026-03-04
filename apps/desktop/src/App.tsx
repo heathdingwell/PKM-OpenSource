@@ -6716,7 +6716,8 @@ export default function App() {
       | "copy-text"
       | "open-window"
       | "open-lite-edit"
-      | "open-full-edit" = "open"
+      | "open-full-edit"
+      | "open-local-graph" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
@@ -6754,6 +6755,19 @@ export default function App() {
     if (mode === "open-full-edit") {
       focusNote(note.id);
       setLiteEditMode(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (mode === "open-local-graph") {
+      focusNote(note.id);
+      setSidebarView("notes");
+      setBrowseMode("graph");
+      setGraphScope("local");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
       setSearchOpen(false);
       return;
     }
@@ -13849,6 +13863,12 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (hasMeta && event.shiftKey && lowerKey === "g" && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "open-local-graph");
+                  return;
+                }
+
                 if (hasMeta && event.shiftKey && lowerKey === "h" && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "copy-html");
@@ -14282,6 +14302,17 @@ a{color:#1d4ed8}
                     }}
                   >
                     Open in full editor <kbd>⇧⌘O</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open-local-graph");
+                      }
+                    }}
+                  >
+                    Open local graph <kbd>⇧⌘G</kbd>
                   </button>
                 </>
               )}

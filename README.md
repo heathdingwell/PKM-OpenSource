@@ -63,6 +63,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Quick search result actions:
   - `Open in Lite edit mode` (button or `⌥⌘O`)
   - `Open in full editor` (button or `⇧⌘O`)
+  - `Open local graph` (button or `⇧⌘G`)
 - Vault refresh action:
   - Reload from disk via command palette: `Reload vault from disk`
 - Explicit AI provider actions via command palette:

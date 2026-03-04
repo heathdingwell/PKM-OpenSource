@@ -14118,6 +14118,8 @@ a{color:#1d4ed8}
                 const lowerKey = event.key.toLowerCase();
                 const selectedNote = !commandMode ? quickResults[searchSelected] : null;
                 const hasMeta = event.metaKey || event.ctrlKey;
+                const matchesMetaAltDigit = (digit: string): boolean =>
+                  hasMeta && event.altKey && (event.key === digit || event.code === `Digit${digit}`);
 
                 if (event.key === "Escape") {
                   event.preventDefault();
@@ -14196,49 +14198,49 @@ a{color:#1d4ed8}
                   return;
                 }
 
-                if (hasMeta && event.altKey && event.key === "5" && selectedNote) {
+                if (matchesMetaAltDigit("5") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "toggle-note-template");
                   return;
                 }
 
-                if (hasMeta && event.altKey && event.key === "6" && selectedNote) {
+                if (matchesMetaAltDigit("6") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "toggle-note-shortcut");
                   return;
                 }
 
-                if (hasMeta && event.altKey && event.key === "7" && selectedNote) {
+                if (matchesMetaAltDigit("7") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "toggle-note-pin-home");
                   return;
                 }
 
-                if (hasMeta && event.altKey && event.key === "8" && selectedNote) {
+                if (matchesMetaAltDigit("8") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "toggle-note-pin-notebook");
                   return;
                 }
 
-                if (hasMeta && event.altKey && event.key === "1" && selectedNote) {
+                if (matchesMetaAltDigit("1") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "export-note-markdown");
                   return;
                 }
 
-                if (hasMeta && event.altKey && event.key === "2" && selectedNote) {
+                if (matchesMetaAltDigit("2") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "export-note-html");
                   return;
                 }
 
-                if (hasMeta && event.altKey && event.key === "3" && selectedNote) {
+                if (matchesMetaAltDigit("3") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "export-note-text");
                   return;
                 }
 
-                if (hasMeta && event.altKey && event.key === "4" && selectedNote) {
+                if (matchesMetaAltDigit("4") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "export-note-pdf");
                   return;

@@ -1884,6 +1884,25 @@ describe("App", () => {
     expect(await screen.findByText('You are editing your "Agenda" template')).toBeInTheDocument();
   });
 
+  it("supports physical Digit5 shortcut code for quick search template toggle", async () => {
+    render(<App />);
+    const hadTemplateBanner = Boolean(screen.queryByText('You are editing your "Agenda" template'));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "[", code: "Digit5", metaKey: true, altKey: true });
+
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+    if (hadTemplateBanner) {
+      await waitFor(() => {
+        expect(screen.queryByText('You are editing your "Agenda" template')).not.toBeInTheDocument();
+      });
+      return;
+    }
+    expect(await screen.findByText('You are editing your "Agenda" template')).toBeInTheDocument();
+  });
+
   it("toggles selected search result shortcut with alt+cmd+6 in search modal", async () => {
     render(<App />);
     const hadShortcut = Boolean(screen.queryByRole("button", { name: "Remove shortcut Agenda" }));

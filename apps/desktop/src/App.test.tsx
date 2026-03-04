@@ -3052,6 +3052,53 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
+  it("blocks duplicate quick-search action for trashed notes", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    let searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move to Trash/i }));
+    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Duplicate note/i }));
+
+    expect(screen.getByText("Restore notes from Trash to use this action")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Agenda copy", level: 2 })).not.toBeInTheDocument();
+  });
+
+  it("blocks shortcut quick-search toggle for trashed notes", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    let searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move to Trash/i }));
+    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(
+      within(searchActions as HTMLElement).getByRole("button", { name: /^(Add to shortcuts|Remove from shortcuts)/i })
+    );
+
+    expect(screen.getByText("Restore notes from Trash to use this action")).toBeInTheDocument();
+  });
+
   it("clears recent searches from command palette action", () => {
     render(<App />);
 

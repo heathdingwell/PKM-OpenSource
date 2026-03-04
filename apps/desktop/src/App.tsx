@@ -6785,6 +6785,24 @@ export default function App() {
   ): void {
     rememberSearchQuery(quickQuery);
 
+    if (
+      note.trashedAt &&
+      [
+        "move-note",
+        "copy-note",
+        "duplicate-note",
+        "open-note-tags",
+        "toggle-note-template",
+        "toggle-note-shortcut",
+        "toggle-note-pin-home",
+        "toggle-note-pin-notebook"
+      ].includes(mode)
+    ) {
+      setToastMessage("Restore notes from Trash to use this action");
+      setSearchOpen(false);
+      return;
+    }
+
     if (mode === "copy-link") {
       void copyNoteLink(note.id);
       return;

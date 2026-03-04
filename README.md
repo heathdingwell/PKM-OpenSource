@@ -74,6 +74,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Note info` for selected result (button or `⇧⌘I`)
   - `Note history` for selected result (button or `⌥⌘H`)
   - `Edit tags` for selected result (button or `⌥⌘T`)
+  - `Rename note` for selected result (button)
+  - `Find in note` for selected result (button)
   - `Move note` for selected result (button or `⌥⌘M`)
   - `Copy to...` for selected result (button)
   - `Open tasks` for selected result (button or `⌥⌘J`)

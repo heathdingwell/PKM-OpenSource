@@ -6737,6 +6737,8 @@ export default function App() {
       | "open-note-info"
       | "open-note-history"
       | "open-note-tags"
+      | "rename-note"
+      | "find-note"
       | "move-note"
       | "copy-note"
       | "duplicate-note"
@@ -6784,6 +6786,17 @@ export default function App() {
 
     if (mode === "open-note-tags") {
       openTagEditor(note.id);
+      return;
+    }
+
+    if (mode === "rename-note") {
+      openNoteRename(note.id);
+      return;
+    }
+
+    if (mode === "find-note") {
+      focusNote(note.id);
+      openFindInNote();
       return;
     }
 
@@ -14712,6 +14725,28 @@ a{color:#1d4ed8}
                     }}
                   >
                     Edit tags <kbd>⌥⌘T</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "rename-note");
+                      }
+                    }}
+                  >
+                    Rename note
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "find-note");
+                      }
+                    }}
+                  >
+                    Find in note
                   </button>
                   <button
                     type="button"

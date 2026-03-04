@@ -4389,6 +4389,12 @@ export default function App() {
           return;
         }
 
+        if (key === "l" && !event.shiftKey && event.altKey) {
+          event.preventDefault();
+          void copyNotePath(activeNote.id);
+          return;
+        }
+
         if (key === "s" && !event.shiftKey && event.altKey) {
           event.preventDefault();
           void copyNoteLink(activeNote.id, "Share link copied");

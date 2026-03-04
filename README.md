@@ -62,6 +62,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Copy note markdown`
   - `Copy note HTML`
   - `Copy note text`
+  - Keyboard: `⌥⌘L` copies active note path
 - Focused/full editor actions via command palette:
   - `Open note in Lite edit mode`
   - `Open note in full editor`

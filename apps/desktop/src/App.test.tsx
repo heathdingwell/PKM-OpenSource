@@ -1354,6 +1354,29 @@ describe("App", () => {
     expect(screen.getByText("Imported HTML files (2) into Imported")).toBeInTheDocument();
   });
 
+  it("imports html title from document title when body has no heading", async () => {
+    window.localStorage.setItem(
+      "pkm-os.desktop.prefs.v1",
+      JSON.stringify({
+        selectedNotebook: "All Notes",
+        activeId: ""
+      })
+    );
+    render(<App />);
+    const input = document.getElementById("html-import-input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    const file = new File(["<html><head><title>From HTML Title</title></head><body><p>Body only.</p></body></html>"], "TitleOnly.html", {
+      type: "text/html"
+    });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "From HTML Title", level: 2 })).toBeInTheDocument()
+    );
+    expect(screen.getByText("Imported HTML files (1) into Imported")).toBeInTheDocument();
+  });
+
   it("sets AI provider from command palette", async () => {
     render(<App />);
 

@@ -6049,10 +6049,30 @@ export default function App() {
       }
 
       const fallbackTitle = noteTitleFromFileName(file.name);
-      const markdown = normalizePastedMarkdown(createClipboardTurndownService().turndown(sanitizeClipboardHtml(raw)));
-      const normalized = markdown ? (markdown.startsWith("# ") ? markdown : `# ${fallbackTitle}\n\n${markdown}`) : `# ${fallbackTitle}\n\n`;
+      let preferredTitle = fallbackTitle;
+      let htmlSource = raw;
+      if (typeof DOMParser !== "undefined") {
+        const parsed = new DOMParser().parseFromString(raw, "text/html");
+        const documentTitle = parsed.querySelector("title")?.textContent?.trim();
+        if (documentTitle) {
+          preferredTitle = documentTitle;
+        }
+        const bodyHtml = parsed.body?.innerHTML;
+        if (bodyHtml?.trim()) {
+          htmlSource = bodyHtml;
+        }
+      }
+
+      const markdown = normalizePastedMarkdown(
+        createClipboardTurndownService().turndown(sanitizeClipboardHtml(htmlSource))
+      );
+      const normalized = markdown
+        ? markdown.startsWith("# ")
+          ? markdown
+          : `# ${preferredTitle}\n\n${markdown}`
+        : `# ${preferredTitle}\n\n`;
       const parsed = parseForPreview(normalized);
-      const title = parsed.title || fallbackTitle;
+      const title = parsed.title || preferredTitle;
       const timestamp = file.lastModified ? new Date(file.lastModified).toISOString() : new Date().toISOString();
       const path = allocatePath(targetNotebook, title);
       const seed: AppNote = {

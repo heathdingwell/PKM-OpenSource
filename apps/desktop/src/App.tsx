@@ -6748,7 +6748,12 @@ export default function App() {
       | "toggle-note-template"
       | "toggle-note-shortcut"
       | "toggle-note-pin-home"
-      | "toggle-note-pin-notebook" = "open"
+      | "toggle-note-pin-notebook"
+      | "export-note-markdown"
+      | "export-note-html"
+      | "export-note-text"
+      | "export-note-pdf"
+      | "print-note" = "open"
   ): void {
     rememberSearchQuery(quickQuery);
 
@@ -6881,6 +6886,37 @@ export default function App() {
 
     if (mode === "copy-text") {
       void copyNoteText(note.id);
+      return;
+    }
+
+    if (mode === "export-note-markdown") {
+      exportNote(note.id);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (mode === "export-note-html") {
+      exportNoteHtml(note.id);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (mode === "export-note-text") {
+      exportNoteText(note.id);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (mode === "export-note-pdf") {
+      void exportNotePdf(note.id);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (mode === "print-note") {
+      focusNote(note.id);
+      window.print();
+      setSearchOpen(false);
       return;
     }
 
@@ -14775,6 +14811,61 @@ a{color:#1d4ed8}
                     }}
                   >
                     Pin to notebook
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "export-note-markdown");
+                      }
+                    }}
+                  >
+                    Export as Markdown
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "export-note-html");
+                      }
+                    }}
+                  >
+                    Export as HTML
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "export-note-text");
+                      }
+                    }}
+                  >
+                    Export as Text
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "export-note-pdf");
+                      }
+                    }}
+                  >
+                    Export as PDF
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "print-note");
+                      }
+                    }}
+                  >
+                    Print
                   </button>
                   <button
                     type="button"

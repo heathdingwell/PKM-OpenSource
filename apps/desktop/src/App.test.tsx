@@ -653,6 +653,19 @@ describe("App", () => {
     expect(screen.getByText("Density set to Compact")).toBeInTheDocument();
   });
 
+  it("sets note grouping from command palette actions", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set grouping tag" }
+    });
+    fireEvent.click(screen.getByText("Set grouping: Tag"));
+
+    expect(screen.getByRole("button", { name: "Group: Tag" })).toBeInTheDocument();
+    expect(screen.getByText("Grouping set to Tag")).toBeInTheDocument();
+  });
+
   it("toggles collapsible sections from command palette action", () => {
     render(<App />);
     expect(document.querySelector(".preview-section")).toBeNull();

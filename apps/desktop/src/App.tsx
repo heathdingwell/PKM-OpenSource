@@ -585,6 +585,10 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-density-comfortable", label: "Set density: Comfortable", keywords: ["density", "comfortable", "spacing"] },
   { id: "set-density-compact", label: "Set density: Compact", keywords: ["density", "compact", "spacing"] },
   { id: "toggle-grouping", label: "Toggle note grouping", keywords: ["group", "sections", "date", "notebook", "tag"] },
+  { id: "set-grouping-off", label: "Set grouping: Off", keywords: ["grouping", "off", "none"] },
+  { id: "set-grouping-updated", label: "Set grouping: Updated", keywords: ["grouping", "updated", "date"] },
+  { id: "set-grouping-notebook", label: "Set grouping: Notebook", keywords: ["grouping", "notebook"] },
+  { id: "set-grouping-tag", label: "Set grouping: Tag", keywords: ["grouping", "tag"] },
   { id: "set-sort-updated-desc", label: "Set sort: Updated (newest first)", keywords: ["sort", "updated", "newest"] },
   { id: "set-sort-updated-asc", label: "Set sort: Updated (oldest first)", keywords: ["sort", "updated", "oldest"] },
   { id: "set-sort-created-desc", label: "Set sort: Created (newest first)", keywords: ["sort", "created", "newest"] },
@@ -4743,6 +4747,11 @@ export default function App() {
     setToastMessage(`Density set to ${mode === "comfortable" ? "Comfortable" : "Compact"}`);
   }
 
+  function applyGrouping(mode: NoteGroupMode): void {
+    setNoteGroupMode(mode);
+    setToastMessage(`Grouping set to ${noteGroupModeLabel(mode).replace("Group: ", "")}`);
+  }
+
   function applyEditorFontFamily(mode: EditorFontFamilyId): void {
     setEditorFontFamily(mode);
     const label = editorFontFamilies.find((entry) => entry.id === mode)?.label ?? mode;
@@ -7118,6 +7127,30 @@ export default function App() {
 
     if (actionId === "toggle-grouping") {
       setNoteGroupMode((previous) => nextNoteGroupMode(previous));
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-grouping-off") {
+      applyGrouping("none");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-grouping-updated") {
+      applyGrouping("updated-date");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-grouping-notebook") {
+      applyGrouping("notebook");
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-grouping-tag") {
+      applyGrouping("tag");
       setSearchOpen(false);
       return;
     }

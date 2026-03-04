@@ -44,6 +44,9 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Export note as Markdown`
   - `Export note as HTML`
   - `Export note as PDF`
+- Focused/full editor actions via command palette:
+  - `Open note in Lite edit mode`
+  - `Open note in full editor`
 - Vault refresh action:
   - Reload from disk via command palette: `Reload vault from disk`
 - Explicit AI provider actions via command palette:

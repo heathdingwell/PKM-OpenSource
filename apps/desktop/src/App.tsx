@@ -549,6 +549,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-note-history", label: "Open note history", keywords: ["history", "restore", "versions"] },
   { id: "open-note-window", label: "Open note in new window", keywords: ["window", "detach", "note"] },
   { id: "open-note-lite-edit", label: "Open note in Lite edit mode", keywords: ["lite", "edit", "focus"] },
+  { id: "open-note-full-edit", label: "Open note in full editor", keywords: ["full", "editor", "note", "exit", "lite"] },
   { id: "share-note", label: "Share note link", keywords: ["share", "link", "note"] },
   { id: "copy-note-link", label: "Copy note link", keywords: ["link", "copy", "share", "note"] },
   { id: "copy-note-markdown", label: "Copy note markdown", keywords: ["markdown", "copy", "note"] },
@@ -5566,6 +5567,21 @@ export default function App() {
     setSearchOpen(false);
   }
 
+  function openNoteInFullEditor(noteId?: string): void {
+    const targetId = noteId ?? activeNote?.id;
+    if (!targetId) {
+      setToastMessage("Open a note first");
+      return;
+    }
+
+    if (targetId !== activeId) {
+      focusNote(targetId);
+    }
+
+    setLiteEditMode(false);
+    setSearchOpen(false);
+  }
+
   function openLinkedNote(targetNote: AppNote): void {
     insertReciprocalLink(targetNote.id, activeNote);
     focusNote(targetNote.id);
@@ -6896,6 +6912,11 @@ export default function App() {
 
     if (actionId === "open-note-lite-edit") {
       openNoteInLiteEdit();
+      return;
+    }
+
+    if (actionId === "open-note-full-edit") {
+      openNoteInFullEditor();
       return;
     }
 

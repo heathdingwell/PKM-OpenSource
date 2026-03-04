@@ -1300,6 +1300,24 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
+  it("opens note in full editor from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">lite" }
+    });
+    fireEvent.click(screen.getByText("Open note in Lite edit mode"));
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">full editor" }
+    });
+    fireEvent.click(screen.getByText("Open note in full editor"));
+
+    expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
+  });
+
   it("duplicates the active note from command palette", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

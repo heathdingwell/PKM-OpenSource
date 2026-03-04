@@ -497,6 +497,40 @@ describe("App", () => {
     expect(screen.getByText("No reminders scheduled.")).toBeInTheDocument();
   });
 
+  it("opens templates from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open templates" }
+    });
+    fireEvent.click(screen.getByText("Open templates"));
+
+    expect(screen.getByRole("heading", { name: "Templates", level: 1 })).toBeInTheDocument();
+  });
+
+  it("toggles active note template from command palette", () => {
+    render(<App />);
+    expect(screen.getByText('You are editing your "Agenda" template')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note template" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note template"));
+
+    expect(screen.getByText("1 removed from templates")).toBeInTheDocument();
+    expect(screen.queryByText('You are editing your "Agenda" template')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note template" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note template"));
+
+    expect(screen.getByText("1 marked as template")).toBeInTheDocument();
+    expect(screen.getByText('You are editing your "Agenda" template')).toBeInTheDocument();
+  });
+
   it("opens tasks modal scoped to current note from command palette", () => {
     render(<App />);
 

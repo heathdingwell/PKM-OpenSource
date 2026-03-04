@@ -592,6 +592,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "insert-last-ai-reply", label: "Insert last AI reply into note", keywords: ["ai", "copilot", "insert"] },
   { id: "insert-ai-transcript", label: "Insert AI chat transcript into note", keywords: ["ai", "copilot", "chat", "transcript", "insert"] },
   { id: "open-templates", label: "Open templates", keywords: ["templates"] },
+  { id: "toggle-active-note-template", label: "Toggle active note template", keywords: ["template", "note", "active"] },
   { id: "toggle-view", label: "Toggle list/card view", keywords: ["view", "cards", "list"] },
   { id: "set-view-cards", label: "Set view: Cards", keywords: ["view", "cards", "layout"] },
   { id: "set-view-list", label: "Set view: List", keywords: ["view", "list", "layout"] },
@@ -7478,6 +7479,26 @@ export default function App() {
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "toggle-active-note-template") {
+      if (!activeNote) {
+        setToastMessage("Open a note first");
+        setSearchOpen(false);
+        return;
+      }
+      const { marked, unmarked } = toggleTemplateNotes([activeNote.id]);
+      if (marked && unmarked) {
+        setToastMessage(`Templates updated (+${marked}/-${unmarked})`);
+      } else if (marked) {
+        setToastMessage(`${marked} marked as template`);
+      } else if (unmarked) {
+        setToastMessage(`${unmarked} removed from templates`);
+      } else {
+        setToastMessage("No template changes");
+      }
       setSearchOpen(false);
       return;
     }

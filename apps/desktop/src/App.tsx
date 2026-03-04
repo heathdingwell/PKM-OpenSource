@@ -10606,6 +10606,12 @@ a{color:#1d4ed8}
     }
   }
 
+  function focusSidebarTreeBoundary(edge: "start" | "end"): void {
+    const items = sidebarTreeItems();
+    const target = edge === "start" ? items[0] : items[items.length - 1];
+    target?.focus();
+  }
+
   function focusNotebookParentStackHeader(button: HTMLButtonElement): void {
     const stackGroup = button.closest(".stack-group");
     if (!stackGroup) {
@@ -10662,6 +10668,16 @@ a{color:#1d4ed8}
             if (event.key === "ArrowLeft") {
               event.preventDefault();
               focusNotebookParentStackHeader(event.currentTarget);
+              return;
+            }
+            if (event.key === "Home") {
+              event.preventDefault();
+              focusSidebarTreeBoundary("start");
+              return;
+            }
+            if (event.key === "End") {
+              event.preventDefault();
+              focusSidebarTreeBoundary("end");
               return;
             }
             if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
@@ -12219,6 +12235,16 @@ a{color:#1d4ed8}
                           .closest(".stack-group")
                           ?.querySelector<HTMLButtonElement>("button.notebook-item");
                         firstNotebook?.focus();
+                        return;
+                      }
+                      if (event.key === "Home") {
+                        event.preventDefault();
+                        focusSidebarTreeBoundary("start");
+                        return;
+                      }
+                      if (event.key === "End") {
+                        event.preventDefault();
+                        focusSidebarTreeBoundary("end");
                         return;
                       }
                       if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {

@@ -5805,6 +5805,20 @@ describe("App", () => {
     expect(document.activeElement).toBe(notebookRows[0]);
   });
 
+  it("jumps to notebook tree boundaries with home and end keys", () => {
+    render(<App />);
+
+    const treeRows = Array.from(document.querySelectorAll('button[data-sidebar-tree-item="true"]')) as HTMLButtonElement[];
+    expect(treeRows.length).toBeGreaterThan(1);
+
+    treeRows[0]?.focus();
+    fireEvent.keyDown(treeRows[0] as HTMLButtonElement, { key: "End" });
+    expect(document.activeElement).toBe(treeRows[treeRows.length - 1]);
+
+    fireEvent.keyDown(treeRows[treeRows.length - 1] as HTMLButtonElement, { key: "Home" });
+    expect(document.activeElement).toBe(treeRows[0]);
+  });
+
   it("navigates stack header and nested notebook rows with arrow keys", () => {
     render(<App />);
     const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];

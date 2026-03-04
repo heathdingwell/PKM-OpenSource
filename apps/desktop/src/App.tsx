@@ -5832,7 +5832,13 @@ export default function App() {
   }
 
   async function importMarkdownFiles(files: FileList | File[]): Promise<void> {
-    const source = Array.from(files ?? []).filter((file) => file && file.name.toLowerCase().endsWith(".md"));
+    const source = Array.from(files ?? []).filter((file) => {
+      if (!file) {
+        return false;
+      }
+      const lowerName = file.name.toLowerCase();
+      return lowerName.endsWith(".md") || lowerName.endsWith(".markdown") || file.type.toLowerCase().includes("markdown");
+    });
     if (!source.length) {
       setToastMessage("No Markdown files selected");
       return;
@@ -12928,7 +12934,7 @@ a{color:#1d4ed8}
         id="markdown-import-input"
         ref={markdownImportInputRef}
         type="file"
-        accept=".md,text/markdown,text/plain"
+        accept=".md,.markdown,text/markdown,text/plain"
         aria-label="Import Markdown files"
         className="visually-hidden-input"
         multiple

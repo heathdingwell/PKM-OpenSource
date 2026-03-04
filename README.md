@@ -38,7 +38,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - Imported notes are grouped into a notebook derived from the ENEX file name when importing from `All Notes`
   - Preserves note source URL and resource file names in generated Markdown
 - Markdown file import:
-  - Import one or many `.md` files via command palette: `Import Markdown files`
+  - Import one or many `.md`/`.markdown` files via command palette: `Import Markdown files`
   - Imports into current notebook, or `Imported` when browsing `All Notes`
 - Active-note export actions via command palette:
   - `Export note as Markdown`

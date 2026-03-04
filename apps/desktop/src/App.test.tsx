@@ -1173,7 +1173,7 @@ describe("App", () => {
     expect(input).toBeTruthy();
 
     const first = new File(["# Imported Alpha\n\nOne"], "Imported-Alpha.md", { type: "text/markdown" });
-    const second = new File(["No heading content"], "Imported-Beta.md", { type: "text/markdown" });
+    const second = new File(["No heading content"], "Imported-Beta.markdown", { type: "text/plain" });
     fireEvent.change(input, { target: { files: [first, second] } });
 
     await waitFor(() =>

@@ -7448,6 +7448,43 @@ describe("App", () => {
     expect(editor?.value).toContain("Block 60 minutes for focused writing.");
   });
 
+  it("clears AI chat from command palette action", async () => {
+    const chatWithLlm = vi.fn().mockResolvedValue({
+      message: "Keep your morning block focused."
+    });
+    (window as unknown as { pkmShell?: { chatWithLlm: typeof chatWithLlm } }).pkmShell = { chatWithLlm };
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.change(screen.getByPlaceholderText("Ask about this note or your vault..."), {
+      target: { value: "How should I begin?" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText(/morning block focused/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">clear ai chat" } });
+    fireEvent.click(screen.getByText("Clear AI chat"));
+
+    expect(screen.getByText("Cleared AI chat")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    expect(screen.queryByText(/morning block focused/i)).not.toBeInTheDocument();
+  });
+
+  it("shows guard message when clearing AI chat from command palette with no messages", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">clear ai chat" } });
+    fireEvent.click(screen.getByText("Clear AI chat"));
+
+    expect(screen.getByText("AI chat already empty")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("saves configurable git backup settings", async () => {
     const getGitBackupStatus = vi.fn().mockResolvedValue({
       enabled: true,

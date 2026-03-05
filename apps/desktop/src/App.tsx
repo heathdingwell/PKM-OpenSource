@@ -612,6 +612,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "empty-trash", label: "Empty trash", keywords: ["trash", "delete"] },
   { id: "open-ai", label: "Open AI copilot", keywords: ["ai", "copilot", "assistant", "chat"] },
   { id: "open-ai-settings", label: "Open AI settings", keywords: ["ai", "copilot", "settings", "provider"] },
+  { id: "clear-ai-chat", label: "Clear AI chat", keywords: ["ai", "copilot", "chat", "clear", "reset"] },
   { id: "test-ai-connection", label: "Test AI connection", keywords: ["ai", "connection", "test", "provider"] },
   { id: "fetch-ai-models", label: "Fetch AI models", keywords: ["ai", "models", "fetch", "provider"] },
   { id: "set-ai-provider-openai", label: "Set AI provider: OpenAI", keywords: ["ai", "provider", "openai"] },
@@ -5240,9 +5241,13 @@ export default function App() {
     setToastMessage(`AI provider set to ${aiProviderLabel(provider)}`);
   }
 
-  function clearAiChat(): void {
-    setAiMessages([]);
+  function clearAiChat(): boolean {
+    const hadMessages = aiMessages.length > 0;
+    if (hadMessages) {
+      setAiMessages([]);
+    }
     setAiError(null);
+    return hadMessages;
   }
 
   function insertAiReplyIntoNote(message: AiChatMessage): void {
@@ -8887,6 +8892,13 @@ export default function App() {
       setAiPanelOpen(true);
       setAiShowSettings(true);
       setMetadataOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "clear-ai-chat") {
+      const cleared = clearAiChat();
+      setToastMessage(cleared ? "Cleared AI chat" : "AI chat already empty");
       setSearchOpen(false);
       return;
     }

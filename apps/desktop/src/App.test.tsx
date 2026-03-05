@@ -2615,6 +2615,24 @@ describe("App", () => {
     expect(screen.getByText("Provider")).toBeInTheDocument();
   });
 
+  it("toggles AI pane from command palette", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle ai copilot pane" }
+    });
+    fireEvent.click(screen.getByText("Toggle AI copilot pane"));
+    expect(screen.getByRole("heading", { name: "AI Copilot", level: 4 })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle ai copilot pane" }
+    });
+    fireEvent.click(screen.getByText("Toggle AI copilot pane"));
+    expect(screen.queryByRole("heading", { name: "AI Copilot", level: 4 })).not.toBeInTheDocument();
+  });
+
   it("tests AI connection from command palette action", async () => {
     const testLlmConnection = vi.fn().mockResolvedValue({
       ok: true,

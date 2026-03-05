@@ -541,6 +541,7 @@ const OPEN_NOTEBOOK_ACTION_PREFIX = "open-notebook:";
 const OPEN_TAG_ACTION_PREFIX = "open-tag:";
 const OPEN_RECENT_NOTE_ACTION_PREFIX = "open-recent-note:";
 const OPEN_SHORTCUT_NOTE_ACTION_PREFIX = "open-shortcut-note:";
+const OPEN_HOME_PINNED_NOTE_ACTION_PREFIX = "open-home-pin-note:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3315,16 +3316,33 @@ export default function App() {
       })),
     [shortcutNotes]
   );
+  const homePinnedPaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      homePinnedNotes.map((note) => ({
+        id: `${OPEN_HOME_PINNED_NOTE_ACTION_PREFIX}${note.id}`,
+        label: `Open home pin: ${note.title}`,
+        keywords: ["home", "pin", "pinned", "note", "open", note.title, note.notebook]
+      })),
+    [homePinnedNotes]
+  );
   const allPaletteActions = useMemo<CommandPaletteAction[]>(
     () => [
       ...commandPaletteActions,
+      ...homePinnedPaletteActions,
       ...shortcutNotePaletteActions,
       ...recentNotePaletteActions,
       ...notebookPaletteActions,
       ...tagPaletteActions,
       ...savedSearchPaletteActions
     ],
-    [shortcutNotePaletteActions, recentNotePaletteActions, notebookPaletteActions, tagPaletteActions, savedSearchPaletteActions]
+    [
+      homePinnedPaletteActions,
+      shortcutNotePaletteActions,
+      recentNotePaletteActions,
+      notebookPaletteActions,
+      tagPaletteActions,
+      savedSearchPaletteActions
+    ]
   );
   const paletteResults = useMemo(() => {
     if (!commandMode) {
@@ -7651,6 +7669,26 @@ export default function App() {
       const target = notes.find((note) => note.id === noteId && !note.trashedAt);
       if (!target) {
         setToastMessage("Shortcut note no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setSelectedNotebook(target.notebook);
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      focusNote(target.id);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(OPEN_HOME_PINNED_NOTE_ACTION_PREFIX)) {
+      const noteId = actionId.slice(OPEN_HOME_PINNED_NOTE_ACTION_PREFIX.length);
+      const target = notes.find((note) => note.id === noteId && !note.trashedAt);
+      if (!target) {
+        setToastMessage("Pinned note no longer exists");
         setSearchOpen(false);
         return;
       }

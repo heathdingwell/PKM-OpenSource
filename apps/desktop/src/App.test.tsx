@@ -3246,6 +3246,32 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("removes shortcut note from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const toDoCard = screen.getAllByText("To-do list")[0].closest("button");
+    expect(toDoCard).toBeTruthy();
+
+    fireEvent.click(toDoCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note shortcut" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note shortcut"));
+    expect(screen.getByRole("button", { name: "Remove shortcut To-do list" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">remove shortcut note to-do list" }
+    });
+    fireEvent.click(screen.getByText("Remove shortcut note: To-do list"));
+
+    expect(screen.queryByRole("button", { name: "Remove shortcut To-do list" })).not.toBeInTheDocument();
+    expect(screen.getByText('Removed shortcut note "To-do list"')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("opens shortcut notebook from command palette", () => {
     render(<App />);
     const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];

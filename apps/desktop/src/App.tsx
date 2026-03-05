@@ -548,6 +548,7 @@ const OPEN_SHORTCUT_TAG_ACTION_PREFIX = "open-shortcut-tag:";
 const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
 const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
 const OPEN_RECENT_SEARCH_ACTION_PREFIX = "open-recent-search:";
+const REMOVE_SHORTCUT_NOTE_ACTION_PREFIX = "remove-shortcut-note:";
 const REMOVE_SHORTCUT_NOTEBOOK_ACTION_PREFIX = "remove-shortcut-notebook:";
 const REMOVE_SHORTCUT_TAG_ACTION_PREFIX = "remove-shortcut-tag:";
 const commandPaletteActions: CommandPaletteAction[] = [
@@ -3364,11 +3365,18 @@ export default function App() {
   );
   const shortcutNotePaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
-      shortcutNotes.map((note) => ({
-        id: `${OPEN_SHORTCUT_NOTE_ACTION_PREFIX}${note.id}`,
-        label: `Open shortcut note: ${note.title}`,
-        keywords: ["shortcut", "note", "open", note.title, note.notebook]
-      })),
+      shortcutNotes.flatMap((note) => [
+        {
+          id: `${OPEN_SHORTCUT_NOTE_ACTION_PREFIX}${note.id}`,
+          label: `Open shortcut note: ${note.title}`,
+          keywords: ["shortcut", "note", "open", note.title, note.notebook]
+        },
+        {
+          id: `${REMOVE_SHORTCUT_NOTE_ACTION_PREFIX}${note.id}`,
+          label: `Remove shortcut note: ${note.title}`,
+          keywords: ["shortcut", "note", "remove", "delete", note.title, note.notebook]
+        }
+      ]),
     [shortcutNotes]
   );
   const homePinnedPaletteActions = useMemo<CommandPaletteAction[]>(
@@ -7858,6 +7866,20 @@ export default function App() {
       removeShortcutTag(tag);
       setSearchOpen(false);
       setToastMessage(`Removed shortcut tag "#${tag}"`);
+      return;
+    }
+
+    if (actionId.startsWith(REMOVE_SHORTCUT_NOTE_ACTION_PREFIX)) {
+      const noteId = actionId.slice(REMOVE_SHORTCUT_NOTE_ACTION_PREFIX.length);
+      const target = shortcutNotes.find((note) => note.id === noteId);
+      if (!target) {
+        setToastMessage("Shortcut note no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      removeShortcut(noteId);
+      setSearchOpen(false);
+      setToastMessage(`Removed shortcut note "${target.title}"`);
       return;
     }
 

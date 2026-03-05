@@ -1343,6 +1343,40 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: /Move "Daily Notes" to stack/i, level: 3 })).toBeInTheDocument();
   });
 
+  it("opens rename current notebook from command palette", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+
+    expect(dailyNotebook()).toBeTruthy();
+    fireEvent.click(dailyNotebook() as HTMLButtonElement);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">rename current notebook" }
+    });
+    fireEvent.click(screen.getByText("Rename current notebook"));
+
+    expect(screen.getByRole("heading", { name: "Rename notebook", level: 3 })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Daily Notes")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("guards rename current notebook from command palette when all notes is selected", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">rename current notebook" }
+    });
+    fireEvent.click(screen.getByText("Rename current notebook"));
+
+    expect(screen.getByText("Select a notebook first")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("removes current notebook from stack from command palette", () => {
     render(<App />);
     const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];

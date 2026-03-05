@@ -564,6 +564,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
   { id: "new-from-template", label: "New from template", keywords: ["template", "clone"] },
   { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
+  { id: "rename-notebook", label: "Rename current notebook", keywords: ["rename", "notebook", "current"] },
   { id: "new-stack", label: "New stack", keywords: ["stack", "group", "notebook"] },
   { id: "move-notebook-stack", label: "Move current notebook to stack", keywords: ["stack", "move", "notebook"] },
   { id: "remove-notebook-stack", label: "Remove current notebook from stack", keywords: ["stack", "remove", "notebook"] },
@@ -8210,6 +8211,16 @@ export default function App() {
     if (actionId === "new-stack") {
       setSearchOpen(false);
       createStack();
+      return;
+    }
+
+    if (actionId === "rename-notebook") {
+      if (selectedNotebook === "All Notes") {
+        setToastMessage("Select a notebook first");
+      } else {
+        setRenameDialog({ oldName: selectedNotebook, newName: selectedNotebook });
+      }
+      setSearchOpen(false);
       return;
     }
 

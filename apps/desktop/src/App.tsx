@@ -4481,7 +4481,6 @@ export default function App() {
       setCalendarQuery("");
       setCalendarFilter("all");
       setCalendarSortMode("soonest");
-      setCalendarScopeMode("all");
     }
   }, [calendarDialogOpen]);
 
@@ -4490,7 +4489,6 @@ export default function App() {
       setFilesQuery("");
       setFilesFilterKind("all");
       setFilesSortMode("recent");
-      setFilesScopeMode("all");
     }
   }, [filesDialogOpen]);
 
@@ -9025,7 +9023,18 @@ export default function App() {
                 : actionId === "set-files-filter-other"
                   ? "other"
                   : "all";
-      openFilesPanel("all");
+      if (filesDialogOpen) {
+        setSidebarView("notes");
+        setTasksDialogOpen(false);
+        setFilesDialogOpen(true);
+        setCalendarDialogOpen(false);
+        setAiPanelOpen(false);
+        setSearchOpen(false);
+        setFilesFilterKind(filter);
+        return;
+      }
+      const nextScope: AttachmentScopeMode = filesScopeMode === "current-note" && activeNote ? "current-note" : "all";
+      openFilesPanel(nextScope);
       setFilesFilterKind(filter);
       setAiPanelOpen(false);
       return;
@@ -9062,7 +9071,18 @@ export default function App() {
           : actionId === "set-files-sort-name-desc"
             ? "name-desc"
             : "recent";
-      openFilesPanel("all");
+      if (filesDialogOpen) {
+        setSidebarView("notes");
+        setTasksDialogOpen(false);
+        setFilesDialogOpen(true);
+        setCalendarDialogOpen(false);
+        setAiPanelOpen(false);
+        setSearchOpen(false);
+        setFilesSortMode(sort);
+        return;
+      }
+      const nextScope: AttachmentScopeMode = filesScopeMode === "current-note" && activeNote ? "current-note" : "all";
+      openFilesPanel(nextScope);
       setFilesSortMode(sort);
       setAiPanelOpen(false);
       return;
@@ -9109,14 +9129,38 @@ export default function App() {
     }
 
     if (actionId === "set-calendar-sort-soonest" || actionId === "set-calendar-sort-latest") {
-      openCalendarPanel("all");
+      if (calendarDialogOpen) {
+        setSidebarView("calendar");
+        setTasksDialogOpen(false);
+        setFilesDialogOpen(false);
+        setCalendarDialogOpen(true);
+        setAiPanelOpen(false);
+        setSearchOpen(false);
+        setCalendarSortMode(actionId === "set-calendar-sort-latest" ? "latest" : "soonest");
+        return;
+      }
+      const nextScope: CalendarScopeMode =
+        calendarScopeMode === "current-note" && activeNote ? "current-note" : "all";
+      openCalendarPanel(nextScope);
       setCalendarSortMode(actionId === "set-calendar-sort-latest" ? "latest" : "soonest");
       setAiPanelOpen(false);
       return;
     }
 
     if (actionId === "set-calendar-filter-all") {
-      openCalendarPanel("all");
+      if (calendarDialogOpen) {
+        setSidebarView("calendar");
+        setTasksDialogOpen(false);
+        setFilesDialogOpen(false);
+        setCalendarDialogOpen(true);
+        setAiPanelOpen(false);
+        setSearchOpen(false);
+        setCalendarFilter("all");
+        return;
+      }
+      const nextScope: CalendarScopeMode =
+        calendarScopeMode === "current-note" && activeNote ? "current-note" : "all";
+      openCalendarPanel(nextScope);
       setCalendarFilter("all");
       setAiPanelOpen(false);
       return;
@@ -9131,7 +9175,19 @@ export default function App() {
         setSearchOpen(false);
         return;
       }
-      openCalendarPanel("all");
+      if (calendarDialogOpen) {
+        setSidebarView("calendar");
+        setTasksDialogOpen(false);
+        setFilesDialogOpen(false);
+        setCalendarDialogOpen(true);
+        setAiPanelOpen(false);
+        setSearchOpen(false);
+        setCalendarFilter(calendarName);
+        return;
+      }
+      const nextScope: CalendarScopeMode =
+        calendarScopeMode === "current-note" && activeNote ? "current-note" : "all";
+      openCalendarPanel(nextScope);
       setCalendarFilter(calendarName);
       setAiPanelOpen(false);
       return;

@@ -1336,6 +1336,39 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("preserves files scope when changing files filter from command palette", () => {
+    render(<App />);
+    let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Capture\n\n![Photo shot](./attachments/photo.png)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set files scope current note" }
+    });
+    fireEvent.click(screen.getByText("Set files scope: Current note"));
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set files filter images" }
+    });
+    fireEvent.click(screen.getByText("Set files filter: Images"));
+    expect(screen.getByRole("button", { name: /^Images \(/ })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+    expect(screen.getByText("Photo shot")).toBeInTheDocument();
+    expect(screen.queryByText("Doc PDF")).not.toBeInTheDocument();
+  });
+
   it("sets files scope to current note from command palette actions", () => {
     render(<App />);
     let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
@@ -1381,6 +1414,37 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Name A-Z" })).toHaveClass("active");
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("preserves files scope when changing files sort from command palette", () => {
+    render(<App />);
+    let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Capture\n\n![Photo shot](./attachments/photo.png)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set files scope current note" }
+    });
+    fireEvent.click(screen.getByText("Set files scope: Current note"));
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set files sort name a-z" }
+    });
+    fireEvent.click(screen.getByText("Set files sort: Name (A-Z)"));
+    expect(screen.getByRole("button", { name: "Name A-Z" })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
   it("blocks current-note files action from command palette for multi-selected notes", () => {
@@ -1448,6 +1512,39 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("preserves calendar scope when changing calendar sort from command palette", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open calendar" }
+    });
+    fireEvent.click(screen.getByText("Open calendar"));
+    const firstCalendarModal = screen.getByRole("heading", { name: "Calendar", level: 3 }).closest("section");
+    expect(firstCalendarModal).toBeTruthy();
+    const weeklyRow = within(firstCalendarModal as HTMLElement).getByText("Weekly planning").closest(".calendar-row");
+    expect(weeklyRow).toBeTruthy();
+    fireEvent.click(
+      within(weeklyRow as HTMLElement).getByRole("button", { name: "Link active note for Weekly planning" })
+    );
+    fireEvent.click(within(firstCalendarModal as HTMLElement).getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open calendar for current note" }
+    });
+    fireEvent.click(screen.getByText("Open calendar for current note"));
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set calendar sort latest" }
+    });
+    fireEvent.click(screen.getByText("Set calendar sort: Latest"));
+    expect(screen.getByRole("button", { name: "Latest" })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
   it("sets calendar filter from command palette actions", () => {
     render(<App />);
 
@@ -1460,6 +1557,39 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Events \(/ })).toHaveClass("active");
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("preserves calendar scope when changing calendar filter from command palette", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open calendar" }
+    });
+    fireEvent.click(screen.getByText("Open calendar"));
+    const firstCalendarModal = screen.getByRole("heading", { name: "Calendar", level: 3 }).closest("section");
+    expect(firstCalendarModal).toBeTruthy();
+    const weeklyRow = within(firstCalendarModal as HTMLElement).getByText("Weekly planning").closest(".calendar-row");
+    expect(weeklyRow).toBeTruthy();
+    fireEvent.click(
+      within(weeklyRow as HTMLElement).getByRole("button", { name: "Link active note for Weekly planning" })
+    );
+    fireEvent.click(within(firstCalendarModal as HTMLElement).getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open calendar for current note" }
+    });
+    fireEvent.click(screen.getByText("Open calendar for current note"));
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set calendar filter events" }
+    });
+    fireEvent.click(screen.getByText("Set calendar filter: Events"));
+    expect(screen.getByRole("button", { name: /^Events \(/ })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
   it("blocks current-note calendar action from command palette for multi-selected notes", () => {

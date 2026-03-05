@@ -540,6 +540,7 @@ const REMOVE_SAVED_SEARCH_ACTION_PREFIX = "remove-saved-search:";
 const OPEN_NOTEBOOK_ACTION_PREFIX = "open-notebook:";
 const OPEN_TAG_ACTION_PREFIX = "open-tag:";
 const OPEN_RECENT_NOTE_ACTION_PREFIX = "open-recent-note:";
+const REMOVE_RECENT_NOTE_ACTION_PREFIX = "remove-recent-note:";
 const OPEN_SHORTCUT_NOTE_ACTION_PREFIX = "open-shortcut-note:";
 const OPEN_HOME_PINNED_NOTE_ACTION_PREFIX = "open-home-pin-note:";
 const OPEN_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX = "open-notebook-pin-note:";
@@ -3351,11 +3352,18 @@ export default function App() {
   );
   const recentNotePaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
-      recentNotes.map((note) => ({
-        id: `${OPEN_RECENT_NOTE_ACTION_PREFIX}${note.id}`,
-        label: `Open recent note: ${note.title}`,
-        keywords: ["recent", "note", "open", note.title, note.notebook]
-      })),
+      recentNotes.flatMap((note) => [
+        {
+          id: `${OPEN_RECENT_NOTE_ACTION_PREFIX}${note.id}`,
+          label: `Open recent note: ${note.title}`,
+          keywords: ["recent", "note", "open", note.title, note.notebook]
+        },
+        {
+          id: `${REMOVE_RECENT_NOTE_ACTION_PREFIX}${note.id}`,
+          label: `Remove recent note: ${note.title}`,
+          keywords: ["recent", "note", "remove", "delete", note.title, note.notebook]
+        }
+      ]),
     [recentNotes]
   );
   const recentSearchPaletteActions = useMemo<CommandPaletteAction[]>(
@@ -5635,6 +5643,10 @@ export default function App() {
     setToastMessage("Cleared recent notes");
   }
 
+  function removeRecentNote(noteId: string): void {
+    setRecentNoteIds((previous) => previous.filter((entry) => entry !== noteId));
+  }
+
   function syncSlashSuggestion(markdown: string, caret: number): void {
     const head = markdown.slice(0, caret);
     const match = head.match(/(?:^|\s)\/([a-z0-9-]*)$/i);
@@ -7829,6 +7841,20 @@ export default function App() {
       setAiPanelOpen(false);
       focusNote(target.id);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(REMOVE_RECENT_NOTE_ACTION_PREFIX)) {
+      const noteId = actionId.slice(REMOVE_RECENT_NOTE_ACTION_PREFIX.length);
+      const target = recentNotes.find((note) => note.id === noteId);
+      if (!target) {
+        setToastMessage("Recent note no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      removeRecentNote(noteId);
+      setSearchOpen(false);
+      setToastMessage(`Removed recent note "${target.title}"`);
       return;
     }
 

@@ -3216,6 +3216,30 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("removes recent note from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const targetCard = screen.getAllByText("To-do list")[0].closest("button");
+    expect(targetCard).toBeTruthy();
+    fireEvent.click(targetCard as HTMLButtonElement);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">remove recent note to-do list" }
+    });
+    fireEvent.click(screen.getByText("Remove recent note: To-do list"));
+
+    expect(screen.getByText('Removed recent note "To-do list"')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open recent note to-do list" }
+    });
+    expect(screen.queryByText("Open recent note: To-do list")).not.toBeInTheDocument();
+  });
+
   it("opens shortcut note from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

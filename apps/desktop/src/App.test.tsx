@@ -7459,6 +7459,51 @@ describe("App", () => {
     expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
   });
 
+  it("opens tasks from note context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
+    expect(noteCard).toBeTruthy();
+    fireEvent.contextMenu(noteCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Open tasks/i }));
+
+    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("opens files from note context menu", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
+    expect(noteCard).toBeTruthy();
+    fireEvent.contextMenu(noteCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Open files/i }));
+
+    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("opens calendar from note context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
+    expect(noteCard).toBeTruthy();
+    fireEvent.contextMenu(noteCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Open calendar/i }));
+
+    expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
   it("opens reminders from note context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

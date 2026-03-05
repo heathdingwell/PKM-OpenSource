@@ -786,6 +786,9 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "toggle-collapsible-sections", label: "Collapsible sections" },
   { id: "divider-3", label: "", divider: true },
   { id: "find", label: "Find in note", shortcut: "cmd+f" },
+  { id: "open-tasks", label: "Open tasks", shortcut: "cmd+alt+j" },
+  { id: "open-files", label: "Open files", shortcut: "cmd+alt+f" },
+  { id: "open-calendar", label: "Open calendar", shortcut: "cmd+alt+c" },
   { id: "open-reminders", label: "Open reminders", shortcut: "cmd+alt+u" },
   { id: "note-info", label: "Note info", shortcut: "cmd+shift+i" },
   { id: "toggle-template", label: "Set as template" },
@@ -11294,6 +11297,33 @@ a{color:#1d4ed8}
         focusNote(targetId);
       }
       openFindInNote();
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-tasks") {
+      if (targetId && targetId !== activeId) {
+        focusNote(targetId);
+      }
+      openTasksPanel("current-note");
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-files") {
+      if (targetId && targetId !== activeId) {
+        focusNote(targetId);
+      }
+      openFilesPanel("current-note");
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-calendar") {
+      if (targetId && targetId !== activeId) {
+        focusNote(targetId);
+      }
+      openCalendarPanel("current-note");
       setContextMenu(null);
       return;
     }

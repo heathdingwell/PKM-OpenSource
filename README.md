@@ -145,6 +145,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Explicit view and density actions via command palette:
   - `Set view: Cards|List`
   - `Set density: Comfortable|Compact`
+- Reminder filtering actions via command palette:
+  - `Set reminders filter: All|Overdue|Today|Upcoming`
 - Explicit grouping actions via command palette:
   - `Set grouping: Off|Updated|Notebook|Tag`
 - Explicit editor font actions via command palette:

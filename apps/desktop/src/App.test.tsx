@@ -857,6 +857,26 @@ describe("App", () => {
     expect(screen.getByText("No reminders scheduled.")).toBeInTheDocument();
   });
 
+  it("sets reminders filter from command palette actions", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set reminders filter overdue" }
+    });
+    fireEvent.click(screen.getByText("Set reminders filter: Overdue"));
+    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Overdue" })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set reminders filter all" }
+    });
+    fireEvent.click(screen.getByText("Set reminders filter: All"));
+    expect(screen.getByRole("button", { name: "All" })).toHaveClass("active");
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("opens templates from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

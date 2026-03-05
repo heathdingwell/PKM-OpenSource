@@ -596,6 +596,10 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "copy-note", label: "Copy note to notebook", keywords: ["copy", "note", "notebook"] },
   { id: "open-shortcuts", label: "Open shortcuts", keywords: ["shortcuts", "pinned"] },
   { id: "open-reminders", label: "Open reminders", keywords: ["reminders", "dates", "follow-up"] },
+  { id: "set-reminders-filter-all", label: "Set reminders filter: All", keywords: ["reminders", "filter", "all"] },
+  { id: "set-reminders-filter-overdue", label: "Set reminders filter: Overdue", keywords: ["reminders", "filter", "overdue"] },
+  { id: "set-reminders-filter-today", label: "Set reminders filter: Today", keywords: ["reminders", "filter", "today"] },
+  { id: "set-reminders-filter-upcoming", label: "Set reminders filter: Upcoming", keywords: ["reminders", "filter", "upcoming"] },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
   { id: "open-tasks-current-note", label: "Open tasks for current note", keywords: ["tasks", "todos", "note", "current"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
@@ -8720,6 +8724,32 @@ export default function App() {
     if (actionId === "open-reminders") {
       setSidebarView("notes");
       setBrowseMode("reminders");
+      setSelectedNotebook("All Notes");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (
+      actionId === "set-reminders-filter-all" ||
+      actionId === "set-reminders-filter-overdue" ||
+      actionId === "set-reminders-filter-today" ||
+      actionId === "set-reminders-filter-upcoming"
+    ) {
+      const filter: ReminderDueFilter =
+        actionId === "set-reminders-filter-overdue"
+          ? "overdue"
+          : actionId === "set-reminders-filter-today"
+            ? "today"
+            : actionId === "set-reminders-filter-upcoming"
+              ? "upcoming"
+              : "all";
+      setSidebarView("notes");
+      setBrowseMode("reminders");
+      setReminderDueFilter(filter);
       setSelectedNotebook("All Notes");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);

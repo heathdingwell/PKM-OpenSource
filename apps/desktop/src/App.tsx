@@ -542,6 +542,7 @@ const OPEN_TAG_ACTION_PREFIX = "open-tag:";
 const OPEN_RECENT_NOTE_ACTION_PREFIX = "open-recent-note:";
 const OPEN_SHORTCUT_NOTE_ACTION_PREFIX = "open-shortcut-note:";
 const OPEN_HOME_PINNED_NOTE_ACTION_PREFIX = "open-home-pin-note:";
+const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3325,9 +3326,19 @@ export default function App() {
       })),
     [homePinnedNotes]
   );
+  const templatePaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      templateNotes.map((note) => ({
+        id: `${OPEN_TEMPLATE_NOTE_ACTION_PREFIX}${note.id}`,
+        label: `Open template: ${note.title}`,
+        keywords: ["template", "note", "open", note.title, note.notebook]
+      })),
+    [templateNotes]
+  );
   const allPaletteActions = useMemo<CommandPaletteAction[]>(
     () => [
       ...commandPaletteActions,
+      ...templatePaletteActions,
       ...homePinnedPaletteActions,
       ...shortcutNotePaletteActions,
       ...recentNotePaletteActions,
@@ -3337,6 +3348,7 @@ export default function App() {
     ],
     [
       homePinnedPaletteActions,
+      templatePaletteActions,
       shortcutNotePaletteActions,
       recentNotePaletteActions,
       notebookPaletteActions,
@@ -7675,6 +7687,26 @@ export default function App() {
       setSidebarView("notes");
       setBrowseMode("all");
       setSelectedNotebook(target.notebook);
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      focusNote(target.id);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(OPEN_TEMPLATE_NOTE_ACTION_PREFIX)) {
+      const noteId = actionId.slice(OPEN_TEMPLATE_NOTE_ACTION_PREFIX.length);
+      const target = notes.find((note) => note.id === noteId && !note.trashedAt && note.isTemplate);
+      if (!target) {
+        setToastMessage("Template no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("templates");
+      setSelectedNotebook("All Notes");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);

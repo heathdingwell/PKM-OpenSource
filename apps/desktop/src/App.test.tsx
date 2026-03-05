@@ -3276,6 +3276,19 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("opens template note from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open template agenda" }
+    });
+    fireEvent.click(screen.getByText("Open template: Agenda"));
+
+    expect(screen.getByRole("heading", { name: "Templates", level: 1 })).toBeInTheDocument();
+    expect(screen.getByText('You are editing your "Agenda" template')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("creates and edits a saved search via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

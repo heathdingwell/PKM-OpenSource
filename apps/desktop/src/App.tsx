@@ -5091,7 +5091,12 @@ export default function App() {
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "i") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        !event.altKey &&
+        (event.key.toLowerCase() === "i" || event.code === "KeyI")
+      ) {
         event.preventDefault();
         if (selectedVisibleNoteIds.length > 1) {
           setToastMessage("Select one note to view info");
@@ -5113,7 +5118,12 @@ export default function App() {
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.altKey && event.key.toLowerCase() === "h") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.altKey &&
+        !event.shiftKey &&
+        (event.key.toLowerCase() === "h" || event.code === "KeyH")
+      ) {
         event.preventDefault();
         if (selectedVisibleNoteIds.length > 1) {
           setToastMessage("Select one note to view history");
@@ -5123,7 +5133,12 @@ export default function App() {
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.altKey && event.key.toLowerCase() === "t") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.altKey &&
+        !event.shiftKey &&
+        (event.key.toLowerCase() === "t" || event.code === "KeyT")
+      ) {
         event.preventDefault();
         if (selectedVisibleNoteIds.length > 1) {
           openBulkTagDialog(selectedVisibleNoteIds);

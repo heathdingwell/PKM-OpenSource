@@ -337,6 +337,13 @@ describe("App", () => {
     expect(screen.getByText("No history yet")).toBeInTheDocument();
   });
 
+  it("opens note history using KeyH keyboard code", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "˙", code: "KeyH", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
+  });
+
   it("blocks note history keyboard shortcut for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -354,6 +361,13 @@ describe("App", () => {
     render(<App />);
 
     fireEvent.keyDown(window, { key: "i", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
+  });
+
+  it("opens note metadata using KeyI keyboard code", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "ˆ", code: "KeyI", metaKey: true, shiftKey: true });
     expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
   });
 
@@ -376,6 +390,13 @@ describe("App", () => {
     fireEvent.keyDown(window, { key: "t", metaKey: true, altKey: true });
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
+  });
+
+  it("opens note tags editor using KeyT keyboard code", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "†", code: "KeyT", metaKey: true, altKey: true });
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
 
   it("prints the active note with keyboard shortcut", () => {
@@ -567,6 +588,13 @@ describe("App", () => {
     render(<App />);
 
     fireEvent.keyDown(window, { key: "m", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens move note dialog using KeyM code with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "µ", code: "KeyM", metaKey: true, altKey: true });
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
@@ -778,6 +806,20 @@ describe("App", () => {
     expect(screen.getByText("Note HTML copied")).toBeInTheDocument();
   });
 
+  it("copies note html using KeyH keyboard code", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "Ó", code: "KeyH", metaKey: true, shiftKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note HTML copied")).toBeInTheDocument();
+  });
+
   it("copies selected note html with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -813,6 +855,20 @@ describe("App", () => {
     expect(screen.getByText("Note text copied")).toBeInTheDocument();
   });
 
+  it("copies note text using KeyT keyboard code", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "ˇ", code: "KeyT", metaKey: true, shiftKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note text copied")).toBeInTheDocument();
+  });
+
   it("copies selected note text with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -843,6 +899,20 @@ describe("App", () => {
     render(<App />);
 
     fireEvent.keyDown(window, { key: "l", metaKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note link copied")).toBeInTheDocument();
+  });
+
+  it("copies note link using KeyL code with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "¬", code: "KeyL", metaKey: true });
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
@@ -975,6 +1045,20 @@ describe("App", () => {
     expect(screen.getByText("Share link copied")).toBeInTheDocument();
   });
 
+  it("shares note link using KeyS code with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "ß", code: "KeyS", metaKey: true, altKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Share link copied")).toBeInTheDocument();
+  });
+
   it("shares selected note links with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -1000,6 +1084,15 @@ describe("App", () => {
     render(<App />);
 
     fireEvent.keyDown(window, { key: "o", metaKey: true });
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    openSpy.mockRestore();
+  });
+
+  it("opens note in new window using KeyO code with keyboard shortcut", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "ø", code: "KeyO", metaKey: true });
     expect(openSpy).toHaveBeenCalledTimes(1);
     openSpy.mockRestore();
   });
@@ -1247,6 +1340,28 @@ describe("App", () => {
     clickSpy.mockRestore();
   });
 
+  it("exports selected notes as HTML using Digit2 code with keyboard shortcut", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-html-code");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "@", code: "Digit2", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(2);
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Exported HTML for 2 notes")).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
   it("exports selected notes as text with keyboard shortcut", () => {
     const createObjectURL = vi.fn(() => "blob:pkm-note-text");
     const revokeObjectURL = vi.fn();
@@ -1269,6 +1384,28 @@ describe("App", () => {
     clickSpy.mockRestore();
   });
 
+  it("exports selected notes as text using Digit3 code with keyboard shortcut", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-text-code");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "#", code: "Digit3", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(2);
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Exported text for 2 notes")).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
   it("exports the active note as PDF with keyboard shortcut", async () => {
     const exportNotePdf = vi.fn().mockResolvedValue({ ok: true, path: "/tmp/Agenda.pdf" });
     (window as unknown as { pkmShell?: { exportNotePdf: typeof exportNotePdf } }).pkmShell = { exportNotePdf };
@@ -1279,6 +1416,18 @@ describe("App", () => {
     await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
     expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
     expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+  });
+
+  it("exports the active note as PDF using Digit4 code with keyboard shortcut", async () => {
+    const exportNotePdf = vi.fn().mockResolvedValue({ ok: true, path: "/tmp/Agenda-code.pdf" });
+    (window as unknown as { pkmShell?: { exportNotePdf: typeof exportNotePdf } }).pkmShell = { exportNotePdf };
+
+    render(<App />);
+    fireEvent.keyDown(window, { key: "$", code: "Digit4", metaKey: true, altKey: true });
+
+    await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
+    expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
+    expect(screen.getByText("Exported PDF to /tmp/Agenda-code.pdf")).toBeInTheDocument();
   });
 
   it("blocks PDF export keyboard shortcut for multi-selected notes", () => {

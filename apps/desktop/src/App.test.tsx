@@ -378,6 +378,26 @@ describe("App", () => {
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
+  it("prints the active note with keyboard shortcut", () => {
+    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "p", metaKey: true, altKey: true });
+    expect(printSpy).toHaveBeenCalledTimes(1);
+
+    printSpy.mockRestore();
+  });
+
+  it("prints the active note using KeyP keyboard code", () => {
+    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "π", code: "KeyP", metaKey: true, altKey: true });
+    expect(printSpy).toHaveBeenCalledTimes(1);
+
+    printSpy.mockRestore();
+  });
+
   it("opens tasks scoped to current note with keyboard shortcut", () => {
     render(<App />);
 
@@ -497,6 +517,23 @@ describe("App", () => {
 
     fireEvent.keyDown(window, { key: "c", metaKey: true, altKey: true });
     expect(screen.getByText("Select one note first")).toBeInTheDocument();
+  });
+
+  it("blocks print keyboard shortcut for multi-selected notes", () => {
+    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "p", metaKey: true, altKey: true });
+    expect(screen.getByText("Select one note to print")).toBeInTheDocument();
+    expect(printSpy).not.toHaveBeenCalled();
+
+    printSpy.mockRestore();
   });
 
   it("opens rename note dialog with keyboard shortcut", () => {
@@ -6990,7 +7027,7 @@ describe("App", () => {
     fireEvent.contextMenu(todoCard as HTMLButtonElement);
     const contextMenu = document.querySelector(".context-menu");
     expect(contextMenu).toBeTruthy();
-    fireEvent.click(within(contextMenu as HTMLElement).getByRole("button", { name: "Copy markdown" }));
+    fireEvent.click(within(contextMenu as HTMLElement).getByRole("button", { name: /Copy markdown/i }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const payload = String(writeText.mock.calls[0]?.[0] ?? "");
@@ -7013,7 +7050,7 @@ describe("App", () => {
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Copy path" }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy path/i }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
@@ -7033,7 +7070,7 @@ describe("App", () => {
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Copy HTML" }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy HTML/i }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("<h1>Agenda</h1>");
@@ -7053,7 +7090,7 @@ describe("App", () => {
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Copy text" }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy text/i }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("Priority 1");
@@ -7797,7 +7834,7 @@ describe("App", () => {
     fireEvent.click(cards[0] as HTMLButtonElement);
     fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy markdown" }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy markdown/i }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const payload = String(writeText.mock.calls[0]?.[0] ?? "");
@@ -7822,7 +7859,7 @@ describe("App", () => {
     fireEvent.click(cards[0] as HTMLButtonElement);
     fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy HTML" }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy HTML/i }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const payload = String(writeText.mock.calls[0]?.[0] ?? "");
@@ -7847,7 +7884,7 @@ describe("App", () => {
     fireEvent.click(cards[0] as HTMLButtonElement);
     fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy text" }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy text/i }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const payload = String(writeText.mock.calls[0]?.[0] ?? "");

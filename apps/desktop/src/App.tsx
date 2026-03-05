@@ -770,10 +770,10 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "open-local-graph", label: "Open local graph" },
   { id: "share", label: "Share", shortcut: "cmd+alt+s" },
   { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
-  { id: "copy-path", label: "Copy path" },
-  { id: "copy-markdown", label: "Copy markdown" },
-  { id: "copy-html", label: "Copy HTML" },
-  { id: "copy-text", label: "Copy text" },
+  { id: "copy-path", label: "Copy path", shortcut: "cmd+alt+l" },
+  { id: "copy-markdown", label: "Copy markdown", shortcut: "cmd+shift+m" },
+  { id: "copy-html", label: "Copy HTML", shortcut: "cmd+shift+h" },
+  { id: "copy-text", label: "Copy text", shortcut: "cmd+shift+t" },
   { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
   { id: "divider-1", label: "", divider: true },
   { id: "move", label: "Move", shortcut: "cmd+shift+m" },
@@ -799,7 +799,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "export-text", label: "Export as Text" },
   { id: "export-html", label: "Export as HTML" },
   { id: "export-pdf", label: "Export as PDF" },
-  { id: "print", label: "Print", shortcut: "cmd+p" },
+  { id: "print", label: "Print", shortcut: "cmd+alt+p" },
   { id: "divider-5", label: "", divider: true },
   { id: "restore-trash", label: "Restore from Trash" },
   { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace" }
@@ -4943,6 +4943,28 @@ export default function App() {
         } else {
           openTagEditor();
         }
+        return;
+      }
+
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.altKey &&
+        !event.shiftKey &&
+        (event.key.toLowerCase() === "p" || event.code === "KeyP")
+      ) {
+        event.preventDefault();
+        if (searchOpen) {
+          return;
+        }
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note to print");
+          return;
+        }
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          return;
+        }
+        window.print();
         return;
       }
 

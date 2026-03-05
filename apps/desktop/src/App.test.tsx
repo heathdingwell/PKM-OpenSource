@@ -6558,6 +6558,35 @@ describe("App", () => {
     expect(screen.getByText("3 selected")).toBeInTheDocument();
   });
 
+  it("supports shift+arrow range selection from keyboard note navigation", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(3);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+
+    fireEvent.keyDown(window, { key: "ArrowDown", shiftKey: true });
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "ArrowDown", shiftKey: true });
+    expect(screen.getByText("3 selected")).toBeInTheDocument();
+  });
+
+  it("collapses keyboard range selection when moving without shift", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(3);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.keyDown(window, { key: "ArrowDown", shiftKey: true });
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    expect(screen.queryByText("2 selected")).not.toBeInTheDocument();
+  });
+
   it("copies multi-selected notes from bulk actions", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

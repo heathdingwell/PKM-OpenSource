@@ -4498,7 +4498,13 @@ export default function App() {
           const targetIndex = Math.max(0, Math.min(visibleNotes.length - 1, fallbackIndex + delta));
           const target = visibleNotes[targetIndex];
           if (target) {
-            focusNote(target.id);
+            if (event.shiftKey) {
+              const anchor = lastSelectedId ?? visibleNotes[fallbackIndex]?.id ?? target.id;
+              extendNoteSelection(anchor, target.id);
+            } else {
+              focusNote(target.id);
+            }
+            focusNoteCard(target.id);
           }
           return;
         }
@@ -4814,7 +4820,8 @@ export default function App() {
     sidebarView,
     browseMode,
     visibleNotes,
-    activeId
+    activeId,
+    lastSelectedId
   ]);
 
   useEffect(() => {
@@ -5839,6 +5846,33 @@ export default function App() {
     setSlashMenu(null);
   }
 
+  function visibleSelectionRange(anchorId: string, targetId: string): string[] {
+    const ids = visibleNotes.map((note) => note.id);
+    const start = ids.indexOf(anchorId);
+    const end = ids.indexOf(targetId);
+    if (start < 0 || end < 0) {
+      return [];
+    }
+    const low = Math.min(start, end);
+    const high = Math.max(start, end);
+    return ids.slice(low, high + 1);
+  }
+
+  function extendNoteSelection(anchorId: string, targetId: string): void {
+    const range = visibleSelectionRange(anchorId, targetId);
+    if (!range.length) {
+      focusNote(targetId);
+      return;
+    }
+    setSelectedIds(new Set(range));
+    setActiveId(targetId);
+    setLastSelectedId(anchorId);
+    touchRecent(targetId);
+    setLinkSuggestion(null);
+    setMentionSuggestion(null);
+    setSlashMenu(null);
+  }
+
   function openFocusedEditor(noteId: string): void {
     focusNote(noteId);
     setEditorMode("markdown");
@@ -5940,16 +5974,7 @@ export default function App() {
     const isRange = event.shiftKey && lastSelectedId;
 
     if (isRange && lastSelectedId) {
-      const ids = visibleNotes.map((note) => note.id);
-      const start = ids.indexOf(lastSelectedId);
-      const end = ids.indexOf(noteId);
-      if (start >= 0 && end >= 0) {
-        const low = Math.min(start, end);
-        const high = Math.max(start, end);
-        const range = ids.slice(low, high + 1);
-        setSelectedIds(new Set(range));
-      }
-      setActiveId(noteId);
+      extendNoteSelection(lastSelectedId, noteId);
       return;
     }
 
@@ -12071,7 +12096,7 @@ a{color:#1d4ed8}
     });
   }
 
-  function focusRelativeVisibleNote(fromNoteId: string, delta: number): void {
+  function focusRelativeVisibleNote(fromNoteId: string, delta: number, extendRange = false): void {
     const index = visibleNotes.findIndex((note) => note.id === fromNoteId);
     if (index < 0) {
       return;
@@ -12084,7 +12109,12 @@ a{color:#1d4ed8}
     if (!next) {
       return;
     }
-    focusNote(next.id);
+    if (extendRange) {
+      const anchorId = lastSelectedId ?? fromNoteId;
+      extendNoteSelection(anchorId, next.id);
+    } else {
+      focusNote(next.id);
+    }
     focusNoteCard(next.id);
   }
 
@@ -13377,12 +13407,12 @@ a{color:#1d4ed8}
                             onKeyDown={(event) => {
                               if (event.key === "ArrowDown" || event.key === "ArrowRight") {
                                 event.preventDefault();
-                                focusRelativeVisibleNote(note.id, 1);
+                                focusRelativeVisibleNote(note.id, 1, event.shiftKey);
                                 return;
                               }
                               if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
                                 event.preventDefault();
-                                focusRelativeVisibleNote(note.id, -1);
+                                focusRelativeVisibleNote(note.id, -1, event.shiftKey);
                                 return;
                               }
                               if (event.key === "Home") {

@@ -151,6 +151,9 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Set tasks filter: All|Overdue|Today|Upcoming|No due`
 - File filtering actions via command palette:
   - `Set files filter: All|Images|PDFs|Videos|Audio|Other`
+- Files scope/sort actions via command palette:
+  - `Set files scope: All notes|Current note`
+  - `Set files sort: Recent|Name (A-Z)|Name (Z-A)`
 - Explicit grouping actions via command palette:
   - `Set grouping: Off|Updated|Notebook|Tag`
 - Explicit editor font actions via command palette:

@@ -614,6 +614,15 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-files-filter-videos", label: "Set files filter: Videos", keywords: ["files", "attachments", "filter", "video"] },
   { id: "set-files-filter-audio", label: "Set files filter: Audio", keywords: ["files", "attachments", "filter", "audio"] },
   { id: "set-files-filter-other", label: "Set files filter: Other", keywords: ["files", "attachments", "filter", "other"] },
+  { id: "set-files-scope-all", label: "Set files scope: All notes", keywords: ["files", "attachments", "scope", "all"] },
+  {
+    id: "set-files-scope-current-note",
+    label: "Set files scope: Current note",
+    keywords: ["files", "attachments", "scope", "current", "note"]
+  },
+  { id: "set-files-sort-recent", label: "Set files sort: Recent", keywords: ["files", "attachments", "sort", "recent"] },
+  { id: "set-files-sort-name-asc", label: "Set files sort: Name (A-Z)", keywords: ["files", "attachments", "sort", "name", "a-z"] },
+  { id: "set-files-sort-name-desc", label: "Set files sort: Name (Z-A)", keywords: ["files", "attachments", "sort", "name", "z-a"] },
   { id: "open-files-current-note", label: "Open files for current note", keywords: ["attachments", "files", "note", "current"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
   { id: "open-calendar-current-note", label: "Open calendar for current note", keywords: ["events", "calendar", "note", "current"] },
@@ -8842,6 +8851,43 @@ export default function App() {
                   : "all";
       openFilesPanel("all");
       setFilesFilterKind(filter);
+      setAiPanelOpen(false);
+      return;
+    }
+
+    if (actionId === "set-files-scope-all" || actionId === "set-files-scope-current-note") {
+      if (actionId === "set-files-scope-current-note") {
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note first");
+          setSearchOpen(false);
+          return;
+        }
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          setSearchOpen(false);
+          return;
+        }
+        openFilesPanel("current-note");
+      } else {
+        openFilesPanel("all");
+      }
+      setAiPanelOpen(false);
+      return;
+    }
+
+    if (
+      actionId === "set-files-sort-recent" ||
+      actionId === "set-files-sort-name-asc" ||
+      actionId === "set-files-sort-name-desc"
+    ) {
+      const sort: AttachmentSortMode =
+        actionId === "set-files-sort-name-asc"
+          ? "name-asc"
+          : actionId === "set-files-sort-name-desc"
+            ? "name-desc"
+            : "recent";
+      openFilesPanel("all");
+      setFilesSortMode(sort);
       setAiPanelOpen(false);
       return;
     }

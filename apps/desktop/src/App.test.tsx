@@ -1157,6 +1157,53 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("sets files scope to current note from command palette actions", () => {
+    render(<App />);
+    let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Capture\n\n![Photo shot](./attachments/photo.png)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set files scope current note" }
+    });
+    fireEvent.click(screen.getByText("Set files scope: Current note"));
+
+    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+    expect(screen.getByText("Photo shot")).toBeInTheDocument();
+    expect(screen.queryByText("Doc PDF")).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("sets files sort mode from command palette actions", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Zed file](./attachments/z.pdf)\n[Ace file](./attachments/a.pdf)" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set files sort name a-z" }
+    });
+    fireEvent.click(screen.getByText("Set files sort: Name (A-Z)"));
+
+    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Name A-Z" })).toHaveClass("active");
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("blocks current-note files action from command palette for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

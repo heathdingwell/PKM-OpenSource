@@ -3237,6 +3237,26 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("opens all notes from command palette", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open notebook daily notes" }
+    });
+    fireEvent.click(screen.getByText("Open notebook: Daily Notes"));
+    expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open all notes" }
+    });
+    fireEvent.click(screen.getByText("Open all notes"));
+
+    expect(screen.getByRole("heading", { name: "All Notes", level: 1 })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("opens tag filter from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

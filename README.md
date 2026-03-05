@@ -26,6 +26,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Templates view with "set as template" and "use template" flows.
   - Command palette: `Open templates`, `Toggle active note template`
 - Notebook management from command palette includes `New notebook` and `Rename current notebook`.
+- Navigation includes command palette action `Open all notes` to reset notebook scope.
 - Active-note pinning actions via command palette:
   - `Toggle active note shortcut`
   - `Toggle active note pin to home`

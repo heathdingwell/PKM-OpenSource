@@ -570,6 +570,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "remove-notebook-stack", label: "Remove current notebook from stack", keywords: ["stack", "remove", "notebook"] },
   { id: "open-home", label: "Open home", keywords: ["home", "dashboard"] },
   { id: "open-notes", label: "Open notes", keywords: ["notes", "sidebar"] },
+  { id: "open-all-notes", label: "Open all notes", keywords: ["all", "notes", "notebook"] },
   { id: "open-note-info", label: "Open note info", keywords: ["metadata", "info", "note"] },
   { id: "open-note-tags", label: "Edit note tags", keywords: ["tags", "labels", "metadata"] },
   { id: "open-note-history", label: "Open note history", keywords: ["history", "restore", "versions"] },
@@ -8264,6 +8265,18 @@ export default function App() {
     if (actionId === "open-notes") {
       setSidebarView("notes");
       setBrowseMode("all");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-all-notes") {
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setSelectedNotebook("All Notes");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);

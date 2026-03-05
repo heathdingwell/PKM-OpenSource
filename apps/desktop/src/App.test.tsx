@@ -3614,6 +3614,35 @@ describe("App", () => {
     expect(stackedDailyNotebook()).toBeTruthy();
   });
 
+  it("removes stack from command palette", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+    const stackedDailyNotebook = () =>
+      (Array.from(document.querySelectorAll(".stack-group .notebook-item")) as HTMLButtonElement[]).find((entry) =>
+        entry.textContent?.includes("Daily Notes")
+      );
+
+    expect(dailyNotebook()).toBeTruthy();
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Move to stack..." }));
+    fireEvent.change(screen.getByPlaceholderText("New stack name"), { target: { value: "Ops" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(stackedDailyNotebook()).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">remove stack ops" }
+    });
+    fireEvent.click(screen.getByText("Remove stack: Ops"));
+
+    expect(screen.getByText('Removed stack "Ops". 1 notebook unstacked.')).toBeInTheDocument();
+    expect(document.querySelector(".stack-group .notebook-item")).toBeNull();
+    expect(
+      Array.from(document.querySelectorAll(".notebook-item")).some((entry) => entry.textContent?.includes("Daily Notes"))
+    ).toBe(true);
+  });
+
   it("creates and edits a saved search via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

@@ -551,6 +551,7 @@ const OPEN_SHORTCUT_TAG_ACTION_PREFIX = "open-shortcut-tag:";
 const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
 const REMOVE_TEMPLATE_NOTE_ACTION_PREFIX = "remove-template-note:";
 const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
+const REMOVE_STACK_ACTION_PREFIX = "remove-stack:";
 const OPEN_RECENT_SEARCH_ACTION_PREFIX = "open-recent-search:";
 const REMOVE_RECENT_SEARCH_ACTION_PREFIX = "remove-recent-search:";
 const REMOVE_SHORTCUT_NOTE_ACTION_PREFIX = "remove-shortcut-note:";
@@ -3448,11 +3449,18 @@ export default function App() {
   );
   const stackPaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
-      stackNames.map((stack) => ({
-        id: `${TOGGLE_STACK_ACTION_PREFIX}${encodeURIComponent(stack)}`,
-        label: `Toggle stack: ${stack}`,
-        keywords: ["stack", "toggle", "collapse", "expand", stack]
-      })),
+      stackNames.flatMap((stack) => [
+        {
+          id: `${TOGGLE_STACK_ACTION_PREFIX}${encodeURIComponent(stack)}`,
+          label: `Toggle stack: ${stack}`,
+          keywords: ["stack", "toggle", "collapse", "expand", stack]
+        },
+        {
+          id: `${REMOVE_STACK_ACTION_PREFIX}${encodeURIComponent(stack)}`,
+          label: `Remove stack: ${stack}`,
+          keywords: ["stack", "remove", "delete", "unstack", stack]
+        }
+      ]),
     [stackNames]
   );
   const allPaletteActions = useMemo<CommandPaletteAction[]>(
@@ -8003,6 +8011,19 @@ export default function App() {
         return;
       }
       toggleStackCollapsed(stack);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(REMOVE_STACK_ACTION_PREFIX)) {
+      const stackId = actionId.slice(REMOVE_STACK_ACTION_PREFIX.length);
+      const stack = decodeURIComponent(stackId);
+      if (!stackNames.includes(stack)) {
+        setToastMessage("Stack no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      removeStack(stack);
       setSearchOpen(false);
       return;
     }

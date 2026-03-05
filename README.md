@@ -36,6 +36,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Command palette dynamically includes `Open tag: #...` actions for current tags.
 - Command palette dynamically includes recent note actions: `Open recent note: ...` and `Remove recent note: ...`.
 - Command palette dynamically includes recent search actions: `Open recent search: ...` and `Remove recent search: ...`.
+- Sidebar recent notes now support removing individual entries inline.
 - Command palette dynamically includes shortcut note actions: `Open shortcut note: ...` and `Remove shortcut note: ...`.
 - Command palette dynamically includes shortcut notebook/tag actions: `Open shortcut notebook: ...`, `Remove shortcut notebook: ...`, `Open shortcut tag: #...`, and `Remove shortcut tag: #...`.
 - Command palette dynamically includes Home pin actions: `Open home pin: ...` and `Remove home pin: ...`.

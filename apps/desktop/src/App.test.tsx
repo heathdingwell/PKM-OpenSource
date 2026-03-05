@@ -131,6 +131,22 @@ describe("App", () => {
     expect(screen.getByText("No recent notes yet")).toBeInTheDocument();
   });
 
+  it("removes a single recent note from the sidebar section", () => {
+    render(<App />);
+    const notesList = screen.getByLabelText("Notes list");
+    const card = Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+      entry.textContent?.includes("To-do list")
+    );
+    expect(card).toBeTruthy();
+    fireEvent.click(card as HTMLButtonElement);
+
+    const removeButton = screen.getByRole("button", { name: "Remove recent note To-do list" });
+    fireEvent.click(removeButton);
+
+    expect(screen.queryByRole("button", { name: "Remove recent note To-do list" })).not.toBeInTheDocument();
+    expect(screen.getByText('Removed recent note "To-do list"')).toBeInTheDocument();
+  });
+
   it("clears recent notes from command palette action", () => {
     render(<App />);
     const notesList = screen.getByLabelText("Notes list");

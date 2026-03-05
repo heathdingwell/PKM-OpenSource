@@ -12616,7 +12616,7 @@ a{color:#1d4ed8}
           {recentNotes.length ? (
             <ul className="shortcut-list">
               {recentNotes.map((note) => (
-                <li key={note.id}>
+                <li key={note.id} className="shortcut-row">
                   <button
                     type="button"
                     className="recent-item"
@@ -12627,6 +12627,17 @@ a{color:#1d4ed8}
                   >
                     <span>{note.title}</span>
                     <small>{formatRelativeTime(note.updatedAt)}</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="shortcut-remove"
+                    aria-label={`Remove recent note ${note.title}`}
+                    onClick={() => {
+                      removeRecentNote(note.id);
+                      setToastMessage(`Removed recent note "${note.title}"`);
+                    }}
+                  >
+                    ×
                   </button>
                 </li>
               ))}

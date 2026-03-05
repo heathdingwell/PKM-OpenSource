@@ -3166,6 +3166,18 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: todayTitle, level: 2 })).toBeInTheDocument();
   });
 
+  it("opens notebook from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open notebook daily notes" }
+    });
+    fireEvent.click(screen.getByText("Open notebook: Daily Notes"));
+
+    expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("creates and edits a saved search via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

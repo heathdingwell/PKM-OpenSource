@@ -537,6 +537,7 @@ const sidePinned = ["Home", "Shortcuts", "Notes", "Reminders", "Trash", "Tasks",
 const OPEN_SAVED_SEARCH_ACTION_PREFIX = "open-saved-search:";
 const EDIT_SAVED_SEARCH_ACTION_PREFIX = "edit-saved-search:";
 const REMOVE_SAVED_SEARCH_ACTION_PREFIX = "remove-saved-search:";
+const OPEN_NOTEBOOK_ACTION_PREFIX = "open-notebook:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3272,9 +3273,21 @@ export default function App() {
         }),
     [savedSearches]
   );
+  const notebookPaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      notebookList
+        .slice()
+        .sort((left, right) => left.localeCompare(right))
+        .map((notebook) => ({
+          id: `${OPEN_NOTEBOOK_ACTION_PREFIX}${encodeURIComponent(notebook)}`,
+          label: `Open notebook: ${notebook}`,
+          keywords: ["notebook", "open", notebook]
+        })),
+    [notebookList]
+  );
   const allPaletteActions = useMemo<CommandPaletteAction[]>(
-    () => [...commandPaletteActions, ...savedSearchPaletteActions],
-    [savedSearchPaletteActions]
+    () => [...commandPaletteActions, ...notebookPaletteActions, ...savedSearchPaletteActions],
+    [notebookPaletteActions, savedSearchPaletteActions]
   );
   const paletteResults = useMemo(() => {
     if (!commandMode) {
@@ -7533,6 +7546,25 @@ export default function App() {
       removeSavedSearch(saved.id);
       setSearchOpen(false);
       setToastMessage(`Removed saved search "${saved.label}"`);
+      return;
+    }
+
+    if (actionId.startsWith(OPEN_NOTEBOOK_ACTION_PREFIX)) {
+      const notebookId = actionId.slice(OPEN_NOTEBOOK_ACTION_PREFIX.length);
+      const notebook = decodeURIComponent(notebookId);
+      if (!notebookList.includes(notebook)) {
+        setToastMessage("Notebook no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setSelectedNotebook(notebook);
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
       return;
     }
 

@@ -7137,6 +7137,36 @@ describe("App", () => {
     expect(notebookItems().some((entry) => entry.textContent?.includes("Daily Notes"))).toBe(true);
   });
 
+  it("stacks a notebook by dragging it onto a stack header", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+    const inboxNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Inbox"));
+    const stackedNotebook = (name: string) =>
+      (Array.from(document.querySelectorAll(".stack-group .notebook-item")) as HTMLButtonElement[]).find((entry) =>
+        entry.textContent?.includes(name)
+      );
+
+    expect(dailyNotebook()).toBeTruthy();
+    expect(inboxNotebook()).toBeTruthy();
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Move to stack..." }));
+    fireEvent.change(screen.getByPlaceholderText("New stack name"), { target: { value: "Ops" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const opsStack = screen.getByRole("button", { name: /Ops/i });
+    const dataTransfer = {
+      effectAllowed: "move",
+      setData: vi.fn(),
+      getData: vi.fn()
+    } as unknown as DataTransfer;
+    fireEvent.dragStart(inboxNotebook() as HTMLButtonElement, { dataTransfer });
+    fireEvent.dragOver(opsStack);
+    fireEvent.drop(opsStack);
+
+    expect(stackedNotebook("Inbox")).toBeTruthy();
+  });
+
   it("adds tag shortcuts and applies tag filter from shortcut", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

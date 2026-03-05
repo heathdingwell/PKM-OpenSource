@@ -542,6 +542,7 @@ const OPEN_TAG_ACTION_PREFIX = "open-tag:";
 const OPEN_RECENT_NOTE_ACTION_PREFIX = "open-recent-note:";
 const OPEN_SHORTCUT_NOTE_ACTION_PREFIX = "open-shortcut-note:";
 const OPEN_HOME_PINNED_NOTE_ACTION_PREFIX = "open-home-pin-note:";
+const OPEN_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX = "open-notebook-pin-note:";
 const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
 const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
 const commandPaletteActions: CommandPaletteAction[] = [
@@ -3201,6 +3202,12 @@ export default function App() {
       .slice(0, 16);
   }, [homePinnedNoteIds, activeNotes]);
 
+  const allNotebookPinnedNotes = useMemo(() => {
+    return notebookPinnedNoteIds
+      .map((noteId) => activeNotes.find((note) => note.id === noteId))
+      .filter((note): note is AppNote => Boolean(note));
+  }, [notebookPinnedNoteIds, activeNotes]);
+
   const notebookPinnedNotes = useMemo(() => {
     if (selectedNotebook === "All Notes") {
       return [];
@@ -3327,6 +3334,15 @@ export default function App() {
       })),
     [homePinnedNotes]
   );
+  const notebookPinnedPaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      allNotebookPinnedNotes.map((note) => ({
+        id: `${OPEN_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX}${note.id}`,
+        label: `Open notebook pin: ${note.title}`,
+        keywords: ["notebook", "pin", "pinned", "note", "open", note.title, note.notebook]
+      })),
+    [allNotebookPinnedNotes]
+  );
   const templatePaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
       templateNotes.map((note) => ({
@@ -3351,6 +3367,7 @@ export default function App() {
       ...stackPaletteActions,
       ...templatePaletteActions,
       ...homePinnedPaletteActions,
+      ...notebookPinnedPaletteActions,
       ...shortcutNotePaletteActions,
       ...recentNotePaletteActions,
       ...notebookPaletteActions,
@@ -3360,6 +3377,7 @@ export default function App() {
     [
       stackPaletteActions,
       homePinnedPaletteActions,
+      notebookPinnedPaletteActions,
       templatePaletteActions,
       shortcutNotePaletteActions,
       recentNotePaletteActions,
@@ -7732,6 +7750,26 @@ export default function App() {
       setSidebarView("notes");
       setBrowseMode("templates");
       setSelectedNotebook("All Notes");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      focusNote(target.id);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(OPEN_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX)) {
+      const noteId = actionId.slice(OPEN_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX.length);
+      const target = notes.find((note) => note.id === noteId && !note.trashedAt);
+      if (!target) {
+        setToastMessage("Pinned note no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setSelectedNotebook(target.notebook);
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);

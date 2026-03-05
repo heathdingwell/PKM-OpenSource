@@ -547,6 +547,7 @@ const OPEN_SHORTCUT_NOTEBOOK_ACTION_PREFIX = "open-shortcut-notebook:";
 const OPEN_SHORTCUT_TAG_ACTION_PREFIX = "open-shortcut-tag:";
 const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
 const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
+const OPEN_RECENT_SEARCH_ACTION_PREFIX = "open-recent-search:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3336,6 +3337,15 @@ export default function App() {
       })),
     [recentNotes]
   );
+  const recentSearchPaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      recentSearches.map((query) => ({
+        id: `${OPEN_RECENT_SEARCH_ACTION_PREFIX}${encodeURIComponent(query)}`,
+        label: `Open recent search: ${query}`,
+        keywords: ["recent", "search", "open", query]
+      })),
+    [recentSearches]
+  );
   const shortcutNotePaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
       shortcutNotes.map((note) => ({
@@ -3385,6 +3395,7 @@ export default function App() {
     () => [
       ...commandPaletteActions,
       ...stackPaletteActions,
+      ...recentSearchPaletteActions,
       ...templatePaletteActions,
       ...homePinnedPaletteActions,
       ...notebookPinnedPaletteActions,
@@ -3398,6 +3409,7 @@ export default function App() {
     ],
     [
       stackPaletteActions,
+      recentSearchPaletteActions,
       homePinnedPaletteActions,
       notebookPinnedPaletteActions,
       templatePaletteActions,
@@ -7822,6 +7834,20 @@ export default function App() {
       setAiPanelOpen(false);
       focusNote(target.id);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(OPEN_RECENT_SEARCH_ACTION_PREFIX)) {
+      const encodedQuery = actionId.slice(OPEN_RECENT_SEARCH_ACTION_PREFIX.length);
+      const query = decodeURIComponent(encodedQuery);
+      if (!recentSearches.includes(query)) {
+        setToastMessage("Recent search no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setQuickQuery(query);
+      setSearchSelected(0);
+      setSearchScope("everywhere");
       return;
     }
 

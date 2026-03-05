@@ -149,6 +149,9 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Set reminders filter: All|Overdue|Today|Upcoming`
 - Task filtering actions via command palette:
   - `Set tasks filter: All|Overdue|Today|Upcoming|No due`
+- Task scope/sort actions via command palette:
+  - `Set tasks scope: All notes|Current note`
+  - `Set tasks sort: Recent|Due soonest|Due latest`
 - File filtering actions via command palette:
   - `Set files filter: All|Images|PDFs|Videos|Audio|Other`
 - Files scope/sort actions via command palette:

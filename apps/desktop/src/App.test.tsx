@@ -1092,6 +1092,56 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("sets tasks scope to current note from command palette actions", () => {
+    render(<App />);
+
+    let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n- [ ] Agenda task" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Capture\n\n- [ ] Capture task" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set tasks scope current note" }
+    });
+    fireEvent.click(screen.getByText("Set tasks scope: Current note"));
+
+    const tasksModal = screen.getByRole("heading", { name: "Tasks", level: 3 }).closest("section");
+    expect(tasksModal).toBeTruthy();
+    expect(within(tasksModal as HTMLElement).getByText("Capture task")).toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).queryByRole("button", { name: /Agenda task/i })).not.toBeInTheDocument();
+    expect(within(tasksModal as HTMLElement).getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("sets tasks sort mode from command palette actions", () => {
+    render(<App />);
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n- [ ] Task one due:2030-01-01\n- [ ] Task two due:2030-01-03" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set tasks sort due latest" }
+    });
+    fireEvent.click(screen.getByText("Set tasks sort: Due latest"));
+
+    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Due latest" })).toHaveClass("active");
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("blocks current-note tasks action from command palette for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

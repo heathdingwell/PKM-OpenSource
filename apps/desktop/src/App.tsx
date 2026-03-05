@@ -607,6 +607,15 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-tasks-filter-today", label: "Set tasks filter: Today", keywords: ["tasks", "filter", "today"] },
   { id: "set-tasks-filter-upcoming", label: "Set tasks filter: Upcoming", keywords: ["tasks", "filter", "upcoming"] },
   { id: "set-tasks-filter-undated", label: "Set tasks filter: No due", keywords: ["tasks", "filter", "no due", "undated"] },
+  { id: "set-tasks-scope-all", label: "Set tasks scope: All notes", keywords: ["tasks", "scope", "all"] },
+  {
+    id: "set-tasks-scope-current-note",
+    label: "Set tasks scope: Current note",
+    keywords: ["tasks", "scope", "current", "note"]
+  },
+  { id: "set-tasks-sort-recent", label: "Set tasks sort: Recent", keywords: ["tasks", "sort", "recent"] },
+  { id: "set-tasks-sort-due-asc", label: "Set tasks sort: Due soonest", keywords: ["tasks", "sort", "due", "soonest"] },
+  { id: "set-tasks-sort-due-desc", label: "Set tasks sort: Due latest", keywords: ["tasks", "sort", "due", "latest"] },
   { id: "open-tasks-current-note", label: "Open tasks for current note", keywords: ["tasks", "todos", "note", "current"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "set-files-filter-all", label: "Set files filter: All", keywords: ["files", "attachments", "filter", "all"] },
@@ -8849,6 +8858,43 @@ export default function App() {
         return;
       }
       openTasksPanel("current-note");
+      setAiPanelOpen(false);
+      return;
+    }
+
+    if (actionId === "set-tasks-scope-all" || actionId === "set-tasks-scope-current-note") {
+      if (actionId === "set-tasks-scope-current-note") {
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note first");
+          setSearchOpen(false);
+          return;
+        }
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          setSearchOpen(false);
+          return;
+        }
+        openTasksPanel("current-note");
+      } else {
+        openTasksPanel("all");
+      }
+      setAiPanelOpen(false);
+      return;
+    }
+
+    if (
+      actionId === "set-tasks-sort-recent" ||
+      actionId === "set-tasks-sort-due-asc" ||
+      actionId === "set-tasks-sort-due-desc"
+    ) {
+      const sort: TaskSortMode =
+        actionId === "set-tasks-sort-due-asc"
+          ? "due-asc"
+          : actionId === "set-tasks-sort-due-desc"
+            ? "due-desc"
+            : "recent";
+      openTasksPanel("all");
+      setTaskSortMode(sort);
       setAiPanelOpen(false);
       return;
     }

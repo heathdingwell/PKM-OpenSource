@@ -8857,10 +8857,11 @@ export default function App() {
             : actionId === "set-reminders-filter-upcoming"
               ? "upcoming"
               : "all";
+      const nextScope: ReminderScopeMode = browseMode === "reminders" ? reminderScopeMode : "all";
       setSidebarView("notes");
       setBrowseMode("reminders");
       setReminderDueFilter(filter);
-      setReminderScopeMode("all");
+      setReminderScopeMode(nextScope);
       setSelectedNotebook("All Notes");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);

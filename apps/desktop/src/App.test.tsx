@@ -891,6 +891,25 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("preserves reminder scope when changing reminder filter from command palette", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set reminders scope current note" }
+    });
+    fireEvent.click(screen.getByText("Set reminders scope: Current note"));
+    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set reminders filter overdue" }
+    });
+    fireEvent.click(screen.getByText("Set reminders filter: Overdue"));
+    expect(screen.getByRole("button", { name: "Overdue" })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
+  });
+
   it("opens reminders scoped to current note from command palette", () => {
     render(<App />);
 

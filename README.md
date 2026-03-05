@@ -38,8 +38,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Command palette dynamically includes `Open recent search: ...` actions from recent search history.
 - Command palette dynamically includes shortcut note actions: `Open shortcut note: ...` and `Remove shortcut note: ...`.
 - Command palette dynamically includes shortcut notebook/tag actions: `Open shortcut notebook: ...`, `Remove shortcut notebook: ...`, `Open shortcut tag: #...`, and `Remove shortcut tag: #...`.
-- Command palette dynamically includes `Open home pin: ...` actions from notes pinned to Home.
-- Command palette dynamically includes `Open notebook pin: ...` actions from notes pinned to notebooks.
+- Command palette dynamically includes Home pin actions: `Open home pin: ...` and `Remove home pin: ...`.
+- Command palette dynamically includes notebook pin actions: `Open notebook pin: ...` and `Remove notebook pin: ...`.
 - Command palette dynamically includes `Open template: ...` actions from templates.
 - Command palette dynamically includes `Toggle stack: ...` actions for custom notebook stacks.
 - Command palette dynamically includes saved search actions: `Open saved search: ...`, `Edit saved search: ...`, and `Remove saved search: ...`.

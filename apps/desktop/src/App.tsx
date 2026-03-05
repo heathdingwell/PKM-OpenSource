@@ -543,6 +543,8 @@ const OPEN_RECENT_NOTE_ACTION_PREFIX = "open-recent-note:";
 const OPEN_SHORTCUT_NOTE_ACTION_PREFIX = "open-shortcut-note:";
 const OPEN_HOME_PINNED_NOTE_ACTION_PREFIX = "open-home-pin-note:";
 const OPEN_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX = "open-notebook-pin-note:";
+const REMOVE_HOME_PINNED_NOTE_ACTION_PREFIX = "remove-home-pin-note:";
+const REMOVE_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX = "remove-notebook-pin-note:";
 const OPEN_SHORTCUT_NOTEBOOK_ACTION_PREFIX = "open-shortcut-notebook:";
 const OPEN_SHORTCUT_TAG_ACTION_PREFIX = "open-shortcut-tag:";
 const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
@@ -3381,20 +3383,34 @@ export default function App() {
   );
   const homePinnedPaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
-      homePinnedNotes.map((note) => ({
-        id: `${OPEN_HOME_PINNED_NOTE_ACTION_PREFIX}${note.id}`,
-        label: `Open home pin: ${note.title}`,
-        keywords: ["home", "pin", "pinned", "note", "open", note.title, note.notebook]
-      })),
+      homePinnedNotes.flatMap((note) => [
+        {
+          id: `${OPEN_HOME_PINNED_NOTE_ACTION_PREFIX}${note.id}`,
+          label: `Open home pin: ${note.title}`,
+          keywords: ["home", "pin", "pinned", "note", "open", note.title, note.notebook]
+        },
+        {
+          id: `${REMOVE_HOME_PINNED_NOTE_ACTION_PREFIX}${note.id}`,
+          label: `Remove home pin: ${note.title}`,
+          keywords: ["home", "pin", "pinned", "note", "remove", "delete", note.title, note.notebook]
+        }
+      ]),
     [homePinnedNotes]
   );
   const notebookPinnedPaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
-      allNotebookPinnedNotes.map((note) => ({
-        id: `${OPEN_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX}${note.id}`,
-        label: `Open notebook pin: ${note.title}`,
-        keywords: ["notebook", "pin", "pinned", "note", "open", note.title, note.notebook]
-      })),
+      allNotebookPinnedNotes.flatMap((note) => [
+        {
+          id: `${OPEN_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX}${note.id}`,
+          label: `Open notebook pin: ${note.title}`,
+          keywords: ["notebook", "pin", "pinned", "note", "open", note.title, note.notebook]
+        },
+        {
+          id: `${REMOVE_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX}${note.id}`,
+          label: `Remove notebook pin: ${note.title}`,
+          keywords: ["notebook", "pin", "pinned", "note", "remove", "delete", note.title, note.notebook]
+        }
+      ]),
     [allNotebookPinnedNotes]
   );
   const templatePaletteActions = useMemo<CommandPaletteAction[]>(
@@ -7970,6 +7986,20 @@ export default function App() {
       return;
     }
 
+    if (actionId.startsWith(REMOVE_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX)) {
+      const noteId = actionId.slice(REMOVE_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX.length);
+      const target = allNotebookPinnedNotes.find((note) => note.id === noteId);
+      if (!target) {
+        setToastMessage("Pinned note no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setNotebookPinnedNoteIds((previous) => previous.filter((entry) => entry !== noteId));
+      setSearchOpen(false);
+      setToastMessage(`Removed notebook pin "${target.title}"`);
+      return;
+    }
+
     if (actionId.startsWith(OPEN_HOME_PINNED_NOTE_ACTION_PREFIX)) {
       const noteId = actionId.slice(OPEN_HOME_PINNED_NOTE_ACTION_PREFIX.length);
       const target = notes.find((note) => note.id === noteId && !note.trashedAt);
@@ -7987,6 +8017,20 @@ export default function App() {
       setAiPanelOpen(false);
       focusNote(target.id);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(REMOVE_HOME_PINNED_NOTE_ACTION_PREFIX)) {
+      const noteId = actionId.slice(REMOVE_HOME_PINNED_NOTE_ACTION_PREFIX.length);
+      const target = homePinnedNotes.find((note) => note.id === noteId);
+      if (!target) {
+        setToastMessage("Pinned note no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setHomePinnedNoteIds((previous) => previous.filter((entry) => entry !== noteId));
+      setSearchOpen(false);
+      setToastMessage(`Removed home pin "${target.title}"`);
       return;
     }
 

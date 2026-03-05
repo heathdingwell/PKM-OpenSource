@@ -3404,6 +3404,32 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("removes home pinned note from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const toDoCard = screen.getAllByText("To-do list")[0].closest("button");
+    expect(toDoCard).toBeTruthy();
+
+    fireEvent.click(toDoCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note pin to home" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note pin to home"));
+    expect(screen.getByRole("button", { name: "Unpin from home To-do list" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">remove home pin to-do list" }
+    });
+    fireEvent.click(screen.getByText("Remove home pin: To-do list"));
+
+    expect(screen.queryByRole("button", { name: "Unpin from home To-do list" })).not.toBeInTheDocument();
+    expect(screen.getByText('Removed home pin "To-do list"')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("opens notebook pinned note from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -3431,6 +3457,32 @@ describe("App", () => {
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
     expect(editor?.value).toContain("# To-do list");
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("removes notebook pinned note from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const toDoCard = screen.getAllByText("To-do list")[0].closest("button");
+    expect(toDoCard).toBeTruthy();
+
+    fireEvent.click(toDoCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note pin to notebook" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note pin to notebook"));
+    expect(screen.getByRole("button", { name: "Unpin from notebook To-do list" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">remove notebook pin to-do list" }
+    });
+    fireEvent.click(screen.getByText("Remove notebook pin: To-do list"));
+
+    expect(screen.queryByRole("button", { name: "Unpin from notebook To-do list" })).not.toBeInTheDocument();
+    expect(screen.getByText('Removed notebook pin "To-do list"')).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 

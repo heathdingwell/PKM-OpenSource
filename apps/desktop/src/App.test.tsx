@@ -378,6 +378,64 @@ describe("App", () => {
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
+  it("opens tasks scoped to current note with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "j", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("opens tasks scoped to current note using KeyJ keyboard code", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "∆", code: "KeyJ", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("opens files scoped to current note with keyboard shortcut", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
+    });
+
+    fireEvent.keyDown(window, { key: "f", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("opens files scoped to current note using KeyF keyboard code", () => {
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
+    });
+
+    fireEvent.keyDown(window, { key: "ƒ", code: "KeyF", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("opens calendar scoped to current note with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "c", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("opens calendar scoped to current note using KeyC keyboard code", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "ç", code: "KeyC", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
   it("opens reminders scoped to current note with keyboard shortcut", () => {
     render(<App />);
 
@@ -419,6 +477,25 @@ describe("App", () => {
     fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
 
     fireEvent.keyDown(window, { key: "u", metaKey: true, altKey: true });
+    expect(screen.getByText("Select one note first")).toBeInTheDocument();
+  });
+
+  it("blocks tasks, files, and calendar keyboard shortcuts for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "j", metaKey: true, altKey: true });
+    expect(screen.getByText("Select one note first")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "f", metaKey: true, altKey: true });
+    expect(screen.getByText("Select one note first")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "c", metaKey: true, altKey: true });
     expect(screen.getByText("Select one note first")).toBeInTheDocument();
   });
 

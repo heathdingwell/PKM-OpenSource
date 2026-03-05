@@ -4934,6 +4934,63 @@ export default function App() {
         (event.metaKey || event.ctrlKey) &&
         event.altKey &&
         !event.shiftKey &&
+        (event.key.toLowerCase() === "j" || event.code === "KeyJ")
+      ) {
+        event.preventDefault();
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note first");
+          return;
+        }
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          return;
+        }
+        openTasksPanel("current-note");
+        return;
+      }
+
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.altKey &&
+        !event.shiftKey &&
+        (event.key.toLowerCase() === "f" || event.code === "KeyF")
+      ) {
+        event.preventDefault();
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note first");
+          return;
+        }
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          return;
+        }
+        openFilesPanel("current-note");
+        return;
+      }
+
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.altKey &&
+        !event.shiftKey &&
+        (event.key.toLowerCase() === "c" || event.code === "KeyC")
+      ) {
+        event.preventDefault();
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note first");
+          return;
+        }
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          return;
+        }
+        openCalendarPanel("current-note");
+        return;
+      }
+
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.altKey &&
+        !event.shiftKey &&
         (event.key.toLowerCase() === "u" || event.code === "KeyU")
       ) {
         event.preventDefault();

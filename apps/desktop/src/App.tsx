@@ -543,6 +543,7 @@ const OPEN_RECENT_NOTE_ACTION_PREFIX = "open-recent-note:";
 const OPEN_SHORTCUT_NOTE_ACTION_PREFIX = "open-shortcut-note:";
 const OPEN_HOME_PINNED_NOTE_ACTION_PREFIX = "open-home-pin-note:";
 const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
+const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3335,9 +3336,19 @@ export default function App() {
       })),
     [templateNotes]
   );
+  const stackPaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      stackNames.map((stack) => ({
+        id: `${TOGGLE_STACK_ACTION_PREFIX}${encodeURIComponent(stack)}`,
+        label: `Toggle stack: ${stack}`,
+        keywords: ["stack", "toggle", "collapse", "expand", stack]
+      })),
+    [stackNames]
+  );
   const allPaletteActions = useMemo<CommandPaletteAction[]>(
     () => [
       ...commandPaletteActions,
+      ...stackPaletteActions,
       ...templatePaletteActions,
       ...homePinnedPaletteActions,
       ...shortcutNotePaletteActions,
@@ -3347,6 +3358,7 @@ export default function App() {
       ...savedSearchPaletteActions
     ],
     [
+      stackPaletteActions,
       homePinnedPaletteActions,
       templatePaletteActions,
       shortcutNotePaletteActions,
@@ -7692,6 +7704,19 @@ export default function App() {
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
       focusNote(target.id);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(TOGGLE_STACK_ACTION_PREFIX)) {
+      const stackId = actionId.slice(TOGGLE_STACK_ACTION_PREFIX.length);
+      const stack = decodeURIComponent(stackId);
+      if (!stackNames.includes(stack)) {
+        setToastMessage("Stack no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      toggleStackCollapsed(stack);
       setSearchOpen(false);
       return;
     }

@@ -8921,6 +8921,16 @@ export default function App() {
               : actionId === "set-tasks-filter-undated"
                 ? "undated"
                 : "all";
+      if (tasksDialogOpen) {
+        setSidebarView("tasks");
+        setTasksDialogOpen(true);
+        setFilesDialogOpen(false);
+        setCalendarDialogOpen(false);
+        setAiPanelOpen(false);
+        setSearchOpen(false);
+        setTaskDueFilter(filter);
+        return;
+      }
       openTasksPanel("all");
       setTaskDueFilter(filter);
       setAiPanelOpen(false);
@@ -8974,6 +8984,16 @@ export default function App() {
           : actionId === "set-tasks-sort-due-desc"
             ? "due-desc"
             : "recent";
+      if (tasksDialogOpen) {
+        setSidebarView("tasks");
+        setTasksDialogOpen(true);
+        setFilesDialogOpen(false);
+        setCalendarDialogOpen(false);
+        setAiPanelOpen(false);
+        setSearchOpen(false);
+        setTaskSortMode(sort);
+        return;
+      }
       openTasksPanel("all");
       setTaskSortMode(sort);
       setAiPanelOpen(false);

@@ -1157,6 +1157,38 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("preserves tasks scope when changing task filter from command palette", () => {
+    render(<App />);
+
+    let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n- [ ] Agenda task" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Capture\n\n- [ ] Capture task" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set tasks scope current note" }
+    });
+    fireEvent.click(screen.getByText("Set tasks scope: Current note"));
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set tasks filter overdue" }
+    });
+    fireEvent.click(screen.getByText("Set tasks filter: Overdue"));
+    expect(screen.getByRole("button", { name: /^Overdue \(/ })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
   it("sets tasks scope to current note from command palette actions", () => {
     render(<App />);
 
@@ -1205,6 +1237,38 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Due latest" })).toHaveClass("active");
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("preserves tasks scope when changing task sort from command palette", () => {
+    render(<App />);
+
+    let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n- [ ] Agenda task due:2030-01-01" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Capture\n\n- [ ] Capture task due:2030-01-03" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set tasks scope current note" }
+    });
+    fireEvent.click(screen.getByText("Set tasks scope: Current note"));
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set tasks sort due latest" }
+    });
+    fireEvent.click(screen.getByText("Set tasks sort: Due latest"));
+    expect(screen.getByRole("button", { name: "Due latest" })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
   it("blocks current-note tasks action from command palette for multi-selected notes", () => {

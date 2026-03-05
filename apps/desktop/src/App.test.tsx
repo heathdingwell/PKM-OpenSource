@@ -606,6 +606,48 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
   });
 
+  it("rewrites incoming wikilinks when a note is renamed", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Link Source\n\n[[Agenda|Today Plan]]\n[[Agenda#Appointments]]" }
+    });
+
+    const notesList = screen.getByLabelText("Notes list");
+    const findCard = (title: string) =>
+      Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+        entry.textContent?.includes(title)
+      );
+
+    const agendaCard = findCard("Agenda");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.click(agendaCard as HTMLButtonElement);
+
+    fireEvent.keyDown(window, { key: "r", metaKey: true, shiftKey: true });
+    const renameModal = screen.getByRole("heading", { name: "Rename note", level: 3 }).closest("section");
+    expect(renameModal).toBeTruthy();
+    fireEvent.change(within(renameModal as HTMLElement).getByRole("textbox"), {
+      target: { value: "Master Agenda" }
+    });
+    fireEvent.click(within(renameModal as HTMLElement).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Renamed to "Master Agenda"')).toBeInTheDocument();
+    });
+
+    const linkSourceCard = findCard("Link Source");
+    expect(linkSourceCard).toBeTruthy();
+    fireEvent.click(linkSourceCard as HTMLButtonElement);
+
+    editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor?.value).toContain("[[Master Agenda|Today Plan]]");
+    expect(editor?.value).toContain("[[Master Agenda#Appointments]]");
+  });
+
   it("opens move note dialog with keyboard shortcut", () => {
     render(<App />);
 

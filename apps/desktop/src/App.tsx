@@ -551,6 +551,7 @@ const OPEN_SHORTCUT_TAG_ACTION_PREFIX = "open-shortcut-tag:";
 const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
 const REMOVE_TEMPLATE_NOTE_ACTION_PREFIX = "remove-template-note:";
 const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
+const RENAME_STACK_ACTION_PREFIX = "rename-stack:";
 const REMOVE_STACK_ACTION_PREFIX = "remove-stack:";
 const OPEN_RECENT_SEARCH_ACTION_PREFIX = "open-recent-search:";
 const REMOVE_RECENT_SEARCH_ACTION_PREFIX = "remove-recent-search:";
@@ -3454,6 +3455,11 @@ export default function App() {
           id: `${TOGGLE_STACK_ACTION_PREFIX}${encodeURIComponent(stack)}`,
           label: `Toggle stack: ${stack}`,
           keywords: ["stack", "toggle", "collapse", "expand", stack]
+        },
+        {
+          id: `${RENAME_STACK_ACTION_PREFIX}${encodeURIComponent(stack)}`,
+          label: `Rename stack: ${stack}`,
+          keywords: ["stack", "rename", "edit", stack]
         },
         {
           id: `${REMOVE_STACK_ACTION_PREFIX}${encodeURIComponent(stack)}`,
@@ -8012,6 +8018,19 @@ export default function App() {
       }
       toggleStackCollapsed(stack);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(RENAME_STACK_ACTION_PREFIX)) {
+      const stackId = actionId.slice(RENAME_STACK_ACTION_PREFIX.length);
+      const stack = decodeURIComponent(stackId);
+      if (!stackNames.includes(stack)) {
+        setToastMessage("Stack no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSearchOpen(false);
+      setStackRenameDialog({ oldName: stack, newName: stack });
       return;
     }
 

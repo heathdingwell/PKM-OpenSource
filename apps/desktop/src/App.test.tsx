@@ -585,6 +585,35 @@ describe("App", () => {
     expect(within(moveModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
   });
 
+  it("opens copy dialog with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "y", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens copy dialog using KeyY code with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "¥", code: "KeyY", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens copy dialog for selected notes with keyboard shortcut", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "y", metaKey: true, altKey: true });
+    const copyModal = screen.getByRole("heading", { name: "Copy to", level: 3 }).closest("section");
+    expect(copyModal).toBeTruthy();
+    expect(within(copyModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
+  });
+
   it("copies note html with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -6912,7 +6941,7 @@ describe("App", () => {
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Copy to" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Copy to/i }));
 
     const moveModal = screen.getByRole("heading", { name: "Copy to", level: 3 }).closest("section");
     expect(moveModal).toBeTruthy();

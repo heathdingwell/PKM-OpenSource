@@ -3270,6 +3270,28 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("removes shortcut notebook from command palette", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+
+    expect(dailyNotebook()).toBeTruthy();
+
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Add notebook shortcut" }));
+    expect(screen.getByRole("button", { name: "Remove notebook shortcut Daily Notes" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">remove shortcut notebook daily notes" }
+    });
+    fireEvent.click(screen.getByText("Remove shortcut notebook: Daily Notes"));
+
+    expect(screen.queryByRole("button", { name: "Remove notebook shortcut Daily Notes" })).not.toBeInTheDocument();
+    expect(screen.getByText('Removed shortcut notebook "Daily Notes"')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("opens shortcut tag from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -3286,6 +3308,27 @@ describe("App", () => {
     fireEvent.click(screen.getByText("Open shortcut tag: #focus"));
 
     expect(screen.getByRole("button", { name: "#focus ×" })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("removes shortcut tag from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    fireEvent.change(document.getElementById("tag-input") as HTMLInputElement, { target: { value: "focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.change(screen.getByLabelText("Add tag shortcut"), { target: { value: "focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    expect(screen.getByRole("button", { name: "Remove tag shortcut focus" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">remove shortcut tag focus" }
+    });
+    fireEvent.click(screen.getByText("Remove shortcut tag: #focus"));
+
+    expect(screen.queryByRole("button", { name: "Remove tag shortcut focus" })).not.toBeInTheDocument();
+    expect(screen.getByText('Removed shortcut tag "#focus"')).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 

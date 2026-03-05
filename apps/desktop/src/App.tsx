@@ -548,6 +548,8 @@ const OPEN_SHORTCUT_TAG_ACTION_PREFIX = "open-shortcut-tag:";
 const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
 const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
 const OPEN_RECENT_SEARCH_ACTION_PREFIX = "open-recent-search:";
+const REMOVE_SHORTCUT_NOTEBOOK_ACTION_PREFIX = "remove-shortcut-notebook:";
+const REMOVE_SHORTCUT_TAG_ACTION_PREFIX = "remove-shortcut-tag:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3312,20 +3314,34 @@ export default function App() {
   );
   const shortcutNotebookPaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
-      shortcutNotebookItems.map((notebook) => ({
-        id: `${OPEN_SHORTCUT_NOTEBOOK_ACTION_PREFIX}${encodeURIComponent(notebook)}`,
-        label: `Open shortcut notebook: ${notebook}`,
-        keywords: ["shortcut", "notebook", "open", notebook]
-      })),
+      shortcutNotebookItems.flatMap((notebook) => [
+        {
+          id: `${OPEN_SHORTCUT_NOTEBOOK_ACTION_PREFIX}${encodeURIComponent(notebook)}`,
+          label: `Open shortcut notebook: ${notebook}`,
+          keywords: ["shortcut", "notebook", "open", notebook]
+        },
+        {
+          id: `${REMOVE_SHORTCUT_NOTEBOOK_ACTION_PREFIX}${encodeURIComponent(notebook)}`,
+          label: `Remove shortcut notebook: ${notebook}`,
+          keywords: ["shortcut", "notebook", "remove", "delete", notebook]
+        }
+      ]),
     [shortcutNotebookItems]
   );
   const shortcutTagPaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
-      shortcutTags.map((tag) => ({
-        id: `${OPEN_SHORTCUT_TAG_ACTION_PREFIX}${encodeURIComponent(tag)}`,
-        label: `Open shortcut tag: #${tag}`,
-        keywords: ["shortcut", "tag", "open", tag]
-      })),
+      shortcutTags.flatMap((tag) => [
+        {
+          id: `${OPEN_SHORTCUT_TAG_ACTION_PREFIX}${encodeURIComponent(tag)}`,
+          label: `Open shortcut tag: #${tag}`,
+          keywords: ["shortcut", "tag", "open", tag]
+        },
+        {
+          id: `${REMOVE_SHORTCUT_TAG_ACTION_PREFIX}${encodeURIComponent(tag)}`,
+          label: `Remove shortcut tag: #${tag}`,
+          keywords: ["shortcut", "tag", "remove", "delete", tag]
+        }
+      ]),
     [shortcutTags]
   );
   const recentNotePaletteActions = useMemo<CommandPaletteAction[]>(
@@ -7796,6 +7812,20 @@ export default function App() {
       return;
     }
 
+    if (actionId.startsWith(REMOVE_SHORTCUT_NOTEBOOK_ACTION_PREFIX)) {
+      const notebookId = actionId.slice(REMOVE_SHORTCUT_NOTEBOOK_ACTION_PREFIX.length);
+      const notebook = decodeURIComponent(notebookId);
+      if (!shortcutNotebookItems.includes(notebook)) {
+        setToastMessage("Shortcut notebook no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      removeShortcutNotebook(notebook);
+      setSearchOpen(false);
+      setToastMessage(`Removed shortcut notebook "${notebook}"`);
+      return;
+    }
+
     if (actionId.startsWith(OPEN_SHORTCUT_TAG_ACTION_PREFIX)) {
       const tagId = actionId.slice(OPEN_SHORTCUT_TAG_ACTION_PREFIX.length);
       const tag = decodeURIComponent(tagId);
@@ -7814,6 +7844,20 @@ export default function App() {
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(REMOVE_SHORTCUT_TAG_ACTION_PREFIX)) {
+      const tagId = actionId.slice(REMOVE_SHORTCUT_TAG_ACTION_PREFIX.length);
+      const tag = decodeURIComponent(tagId);
+      if (!shortcutTags.includes(tag)) {
+        setToastMessage("Shortcut tag no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      removeShortcutTag(tag);
+      setSearchOpen(false);
+      setToastMessage(`Removed shortcut tag "#${tag}"`);
       return;
     }
 

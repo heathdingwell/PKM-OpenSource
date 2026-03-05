@@ -786,6 +786,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "toggle-collapsible-sections", label: "Collapsible sections" },
   { id: "divider-3", label: "", divider: true },
   { id: "find", label: "Find in note", shortcut: "cmd+f" },
+  { id: "open-reminders", label: "Open reminders", shortcut: "cmd+alt+u" },
   { id: "note-info", label: "Note info", shortcut: "cmd+shift+i" },
   { id: "toggle-template", label: "Set as template" },
   { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
@@ -11293,6 +11294,23 @@ a{color:#1d4ed8}
         focusNote(targetId);
       }
       openFindInNote();
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-reminders") {
+      if (targetId && targetId !== activeId) {
+        focusNote(targetId);
+      }
+      setSidebarView("notes");
+      setBrowseMode("reminders");
+      setSelectedNotebook("All Notes");
+      setReminderScopeMode("current-note");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
       setContextMenu(null);
       return;
     }

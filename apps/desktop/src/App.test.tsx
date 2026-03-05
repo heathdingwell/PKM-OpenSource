@@ -7459,6 +7459,19 @@ describe("App", () => {
     expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
   });
 
+  it("opens reminders from note context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
+    expect(noteCard).toBeTruthy();
+    fireEvent.contextMenu(noteCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Open reminders/i }));
+
+    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
+  });
+
   it("opens tag editor for the context menu target note", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

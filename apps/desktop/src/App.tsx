@@ -543,6 +543,8 @@ const OPEN_RECENT_NOTE_ACTION_PREFIX = "open-recent-note:";
 const OPEN_SHORTCUT_NOTE_ACTION_PREFIX = "open-shortcut-note:";
 const OPEN_HOME_PINNED_NOTE_ACTION_PREFIX = "open-home-pin-note:";
 const OPEN_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX = "open-notebook-pin-note:";
+const OPEN_SHORTCUT_NOTEBOOK_ACTION_PREFIX = "open-shortcut-notebook:";
+const OPEN_SHORTCUT_TAG_ACTION_PREFIX = "open-shortcut-tag:";
 const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
 const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
 const commandPaletteActions: CommandPaletteAction[] = [
@@ -3307,6 +3309,24 @@ export default function App() {
       })),
     [allTags]
   );
+  const shortcutNotebookPaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      shortcutNotebookItems.map((notebook) => ({
+        id: `${OPEN_SHORTCUT_NOTEBOOK_ACTION_PREFIX}${encodeURIComponent(notebook)}`,
+        label: `Open shortcut notebook: ${notebook}`,
+        keywords: ["shortcut", "notebook", "open", notebook]
+      })),
+    [shortcutNotebookItems]
+  );
+  const shortcutTagPaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      shortcutTags.map((tag) => ({
+        id: `${OPEN_SHORTCUT_TAG_ACTION_PREFIX}${encodeURIComponent(tag)}`,
+        label: `Open shortcut tag: #${tag}`,
+        keywords: ["shortcut", "tag", "open", tag]
+      })),
+    [shortcutTags]
+  );
   const recentNotePaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
       recentNotes.map((note) => ({
@@ -3369,6 +3389,8 @@ export default function App() {
       ...homePinnedPaletteActions,
       ...notebookPinnedPaletteActions,
       ...shortcutNotePaletteActions,
+      ...shortcutNotebookPaletteActions,
+      ...shortcutTagPaletteActions,
       ...recentNotePaletteActions,
       ...notebookPaletteActions,
       ...tagPaletteActions,
@@ -3380,6 +3402,8 @@ export default function App() {
       notebookPinnedPaletteActions,
       templatePaletteActions,
       shortcutNotePaletteActions,
+      shortcutNotebookPaletteActions,
+      shortcutTagPaletteActions,
       recentNotePaletteActions,
       notebookPaletteActions,
       tagPaletteActions,
@@ -7702,6 +7726,47 @@ export default function App() {
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
       focusNote(target.id);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(OPEN_SHORTCUT_NOTEBOOK_ACTION_PREFIX)) {
+      const notebookId = actionId.slice(OPEN_SHORTCUT_NOTEBOOK_ACTION_PREFIX.length);
+      const notebook = decodeURIComponent(notebookId);
+      if (!shortcutNotebookItems.includes(notebook)) {
+        setToastMessage("Shortcut notebook no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setSelectedNotebook(notebook);
+      setTagFilters([]);
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(OPEN_SHORTCUT_TAG_ACTION_PREFIX)) {
+      const tagId = actionId.slice(OPEN_SHORTCUT_TAG_ACTION_PREFIX.length);
+      const tag = decodeURIComponent(tagId);
+      if (!shortcutTags.includes(tag)) {
+        setToastMessage("Shortcut tag no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setSelectedNotebook("All Notes");
+      setTagFilters([tag]);
+      setSearchScope("everywhere");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
       setSearchOpen(false);
       return;
     }

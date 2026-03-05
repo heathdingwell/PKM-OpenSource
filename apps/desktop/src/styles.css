@@ -1225,12 +1225,19 @@ body.is-resizing {
   font-size: 13px;
 }
 
+.note-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .note-card footer {
   margin-top: auto;
   width: 100%;
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 6px;
   color: var(--muted);
   font-size: 12px;
 }
@@ -1240,18 +1247,25 @@ body.is-resizing {
   color: #1f4ecb;
 }
 
-.note-pin {
+.note-chip {
   padding: 1px 6px;
   border-radius: 999px;
+  white-space: nowrap;
+}
+
+.note-pin {
   color: #2456b5;
   background: #dde9ff;
 }
 
 .note-reminder {
-  padding: 1px 6px;
-  border-radius: 999px;
   color: #1f4ecb;
   background: #e9f0ff;
+}
+
+.note-tag-chip {
+  color: #395478;
+  background: #eef3fb;
 }
 
 .note-card-actions {

@@ -111,6 +111,30 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Saved searches", level: 2 })).toBeInTheDocument();
   });
 
+  it("shows compact tag chips on note cards", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\n#project #planning #review" }
+    });
+    fireEvent.keyDown(window, { key: "s", metaKey: true });
+
+    const notesList = screen.getByLabelText("Notes list");
+    const agendaCard = Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+      entry.textContent?.includes("Agenda")
+    );
+    expect(agendaCard).toBeTruthy();
+
+    await waitFor(() => {
+      expect(within(agendaCard as HTMLButtonElement).getByText("#planning")).toBeInTheDocument();
+      expect(within(agendaCard as HTMLButtonElement).getByText("#project")).toBeInTheDocument();
+      expect(within(agendaCard as HTMLButtonElement).getByText("+1")).toBeInTheDocument();
+    });
+  });
+
   it("opens graph mode from the sidebar", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));

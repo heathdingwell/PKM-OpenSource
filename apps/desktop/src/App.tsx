@@ -603,6 +603,11 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-reminders-filter-overdue", label: "Set reminders filter: Overdue", keywords: ["reminders", "filter", "overdue"] },
   { id: "set-reminders-filter-today", label: "Set reminders filter: Today", keywords: ["reminders", "filter", "today"] },
   { id: "set-reminders-filter-upcoming", label: "Set reminders filter: Upcoming", keywords: ["reminders", "filter", "upcoming"] },
+  {
+    id: "open-reminders-current-note",
+    label: "Open reminders for current note",
+    keywords: ["reminders", "current", "note"]
+  },
   { id: "set-reminders-scope-all", label: "Set reminders scope: All notes", keywords: ["reminders", "scope", "all"] },
   {
     id: "set-reminders-scope-current-note",
@@ -8806,6 +8811,29 @@ export default function App() {
       setBrowseMode("reminders");
       setSelectedNotebook("All Notes");
       setReminderScopeMode("all");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-reminders-current-note") {
+      if (selectedVisibleNoteIds.length > 1) {
+        setToastMessage("Select one note first");
+        setSearchOpen(false);
+        return;
+      }
+      if (!activeNote) {
+        setToastMessage("Open a note first");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("reminders");
+      setSelectedNotebook("All Notes");
+      setReminderScopeMode("current-note");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);

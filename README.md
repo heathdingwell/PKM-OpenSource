@@ -149,6 +149,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Set reminders filter: All|Overdue|Today|Upcoming`
 - Reminder scope actions via command palette:
   - `Set reminders scope: All notes|Current note`
+  - `Open reminders for current note`
 - Task filtering actions via command palette:
   - `Set tasks filter: All|Overdue|Today|Upcoming|No due`
 - Task scope/sort actions via command palette:

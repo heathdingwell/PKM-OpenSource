@@ -4926,6 +4926,28 @@ export default function App() {
         return;
       }
 
+      if ((event.metaKey || event.ctrlKey) && event.altKey && event.key.toLowerCase() === "u") {
+        event.preventDefault();
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note first");
+          return;
+        }
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          return;
+        }
+        setSidebarView("notes");
+        setBrowseMode("reminders");
+        setSelectedNotebook("All Notes");
+        setReminderScopeMode("current-note");
+        setTasksDialogOpen(false);
+        setFilesDialogOpen(false);
+        setCalendarDialogOpen(false);
+        setAiPanelOpen(false);
+        setSearchOpen(false);
+        return;
+      }
+
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f" && activeNote) {
         event.preventDefault();
         openFindInNote();

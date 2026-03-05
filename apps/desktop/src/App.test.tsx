@@ -378,6 +378,14 @@ describe("App", () => {
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
+  it("opens reminders scoped to current note with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "u", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
+  });
+
   it("opens bulk tags editor with keyboard shortcut for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -391,6 +399,19 @@ describe("App", () => {
     const bulkTagModal = document.querySelector(".bulk-tag-modal") as HTMLElement | null;
     expect(bulkTagModal).toBeTruthy();
     expect(within(bulkTagModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
+  });
+
+  it("blocks reminders keyboard shortcut for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "u", metaKey: true, altKey: true });
+    expect(screen.getByText("Select one note first")).toBeInTheDocument();
   });
 
   it("opens rename note dialog with keyboard shortcut", () => {

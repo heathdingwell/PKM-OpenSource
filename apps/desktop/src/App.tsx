@@ -215,6 +215,7 @@ interface AppPrefs {
   focusMode?: boolean;
   taskDueFilter?: TaskDueFilter;
   reminderDueFilter?: ReminderDueFilter;
+  reminderScopeMode?: ReminderScopeMode;
   sortMode?: NoteSortMode;
   tagFilters?: string[];
   recentNoteIds?: string[];
@@ -297,6 +298,7 @@ type TaskSortMode = "recent" | "due-asc" | "due-desc";
 type TaskDueFilter = "all" | "overdue" | "today" | "upcoming" | "undated";
 type TaskScopeMode = "all" | "current-note";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
+type ReminderScopeMode = "all" | "current-note";
 type GraphScope = "workspace" | "local";
 
 interface ParsedSearchQuery {
@@ -601,6 +603,12 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-reminders-filter-overdue", label: "Set reminders filter: Overdue", keywords: ["reminders", "filter", "overdue"] },
   { id: "set-reminders-filter-today", label: "Set reminders filter: Today", keywords: ["reminders", "filter", "today"] },
   { id: "set-reminders-filter-upcoming", label: "Set reminders filter: Upcoming", keywords: ["reminders", "filter", "upcoming"] },
+  { id: "set-reminders-scope-all", label: "Set reminders scope: All notes", keywords: ["reminders", "scope", "all"] },
+  {
+    id: "set-reminders-scope-current-note",
+    label: "Set reminders scope: Current note",
+    keywords: ["reminders", "scope", "current", "note"]
+  },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
   { id: "set-tasks-filter-all", label: "Set tasks filter: All", keywords: ["tasks", "filter", "all"] },
   { id: "set-tasks-filter-overdue", label: "Set tasks filter: Overdue", keywords: ["tasks", "filter", "overdue"] },
@@ -2306,6 +2314,7 @@ function defaultPrefs(): AppPrefs {
     focusMode: false,
     taskDueFilter: "all",
     reminderDueFilter: "all",
+    reminderScopeMode: "all",
     sortMode: "updated-desc",
     tagFilters: [],
     recentNoteIds: [],
@@ -2385,6 +2394,7 @@ function loadPrefs(): AppPrefs {
         parsed.reminderDueFilter === "upcoming"
           ? parsed.reminderDueFilter
           : "all",
+      reminderScopeMode: parsed.reminderScopeMode === "current-note" ? "current-note" : "all",
       sortMode: sortModes.some((entry) => entry.id === parsed.sortMode) ? parsed.sortMode : "updated-desc",
       tagFilters: Array.isArray(parsed.tagFilters)
         ? parsed.tagFilters.filter((tag): tag is string => typeof tag === "string")
@@ -2754,6 +2764,7 @@ export default function App() {
   const [taskScopeMode, setTaskScopeMode] = useState<TaskScopeMode>("all");
   const [taskQuery, setTaskQuery] = useState("");
   const [reminderDueFilter, setReminderDueFilter] = useState<ReminderDueFilter>(initialPrefs.reminderDueFilter ?? "all");
+  const [reminderScopeMode, setReminderScopeMode] = useState<ReminderScopeMode>(initialPrefs.reminderScopeMode ?? "all");
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [filesQuery, setFilesQuery] = useState("");
   const [filesFilterKind, setFilesFilterKind] = useState<"all" | AttachmentKind>("all");
@@ -2968,7 +2979,14 @@ export default function App() {
           )
         : filtered;
 
-    const sorted = [...reminderFiltered];
+    const reminderScopeFiltered =
+      browseMode === "reminders" && reminderScopeMode === "current-note"
+        ? activeId
+          ? reminderFiltered.filter((note) => note.id === activeId)
+          : []
+        : reminderFiltered;
+
+    const sorted = [...reminderScopeFiltered];
     if (browseMode === "reminders") {
       sorted.sort((left, right) => {
         if (!left.reminderAt && !right.reminderAt) {
@@ -3024,7 +3042,9 @@ export default function App() {
     shortcutNoteIds,
     shortcutNotebooks,
     shortcutTags,
-    reminderDueFilter
+    reminderDueFilter,
+    reminderScopeMode,
+    activeId
   ]);
 
   const availableTags = useMemo(() => {
@@ -4538,6 +4558,7 @@ export default function App() {
       focusMode,
       taskDueFilter,
       reminderDueFilter,
+      reminderScopeMode,
       sortMode,
       tagFilters,
       recentNoteIds,
@@ -4572,6 +4593,7 @@ export default function App() {
     focusMode,
     taskDueFilter,
     reminderDueFilter,
+    reminderScopeMode,
     sortMode,
     tagFilters,
     recentNoteIds,
@@ -8783,6 +8805,7 @@ export default function App() {
       setSidebarView("notes");
       setBrowseMode("reminders");
       setSelectedNotebook("All Notes");
+      setReminderScopeMode("all");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);
@@ -8808,6 +8831,34 @@ export default function App() {
       setSidebarView("notes");
       setBrowseMode("reminders");
       setReminderDueFilter(filter);
+      setReminderScopeMode("all");
+      setSelectedNotebook("All Notes");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "set-reminders-scope-all" || actionId === "set-reminders-scope-current-note") {
+      if (actionId === "set-reminders-scope-current-note") {
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note first");
+          setSearchOpen(false);
+          return;
+        }
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          setSearchOpen(false);
+          return;
+        }
+        setReminderScopeMode("current-note");
+      } else {
+        setReminderScopeMode("all");
+      }
+      setSidebarView("notes");
+      setBrowseMode("reminders");
       setSelectedNotebook("All Notes");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
@@ -13413,6 +13464,21 @@ a{color:#1d4ed8}
             <div className="header-actions">
               {browseMode === "reminders" ? (
                 <div className="reminder-filter-chips">
+                  <button
+                    type="button"
+                    className={reminderScopeMode === "all" ? "chip active" : "chip"}
+                    onClick={() => setReminderScopeMode("all")}
+                  >
+                    All notes
+                  </button>
+                  <button
+                    type="button"
+                    className={reminderScopeMode === "current-note" ? "chip active" : "chip"}
+                    onClick={() => setReminderScopeMode("current-note")}
+                    disabled={!activeNote}
+                  >
+                    Current note
+                  </button>
                   <button
                     type="button"
                     className={reminderDueFilter === "all" ? "chip active" : "chip"}

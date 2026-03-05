@@ -877,6 +877,38 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("sets reminders scope from command palette actions", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set reminders scope current note" }
+    });
+    fireEvent.click(screen.getByText("Set reminders scope: Current note"));
+
+    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("blocks current-note reminders scope action for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set reminders scope current note" }
+    });
+    fireEvent.click(screen.getByText("Set reminders scope: Current note"));
+
+    expect(screen.getByText("Select one note first")).toBeInTheDocument();
+  });
+
   it("opens templates from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

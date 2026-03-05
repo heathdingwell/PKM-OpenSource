@@ -781,9 +781,9 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "duplicate", label: "Duplicate", shortcut: "cmd+alt+d" },
   { id: "edit-tags", label: "Edit tags", shortcut: "cmd+alt+t" },
   { id: "divider-2", label: "", divider: true },
-  { id: "add-shortcuts", label: "Add to Shortcuts" },
-  { id: "pin-notebook", label: "Pin to Notebook" },
-  { id: "pin-home", label: "Pin to Home" },
+  { id: "add-shortcuts", label: "Add to Shortcuts", shortcut: "cmd+alt+6" },
+  { id: "pin-notebook", label: "Pin to Notebook", shortcut: "cmd+alt+8" },
+  { id: "pin-home", label: "Pin to Home", shortcut: "cmd+alt+7" },
   { id: "toggle-collapsible-sections", label: "Collapsible sections" },
   { id: "divider-3", label: "", divider: true },
   { id: "find", label: "Find in note", shortcut: "cmd+f" },
@@ -792,7 +792,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "open-calendar", label: "Open calendar", shortcut: "cmd+alt+c" },
   { id: "open-reminders", label: "Open reminders", shortcut: "cmd+alt+u" },
   { id: "note-info", label: "Note info", shortcut: "cmd+shift+i" },
-  { id: "toggle-template", label: "Set as template" },
+  { id: "toggle-template", label: "Set as template", shortcut: "cmd+alt+5" },
   { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
   { id: "divider-4", label: "", divider: true },
   { id: "export", label: "Export" },
@@ -4720,8 +4720,10 @@ export default function App() {
 
       if (!searchOpen && activeNote && (event.metaKey || event.ctrlKey)) {
         const key = event.key.toLowerCase();
-        const selectedKeyboardNoteIds = selectedVisibleNoteIds.length ? selectedVisibleNoteIds : [activeNote.id];
+        const selectedKeyboardNoteIds = selectedVisibleNoteIds.length > 1 ? selectedVisibleNoteIds : [activeNote.id];
         const selectedKeyboardNotes = notes.filter((note) => selectedKeyboardNoteIds.includes(note.id));
+        const matchesMetaAltDigit = (digit: string): boolean =>
+          event.altKey && !event.shiftKey && (event.key === digit || event.code === `Digit${digit}`);
         const matchesMetaLetter = (letter: string): boolean =>
           !event.altKey &&
           !event.shiftKey &&
@@ -4864,6 +4866,66 @@ export default function App() {
             return;
           }
           void duplicateNotes(duplicateIds);
+          return;
+        }
+
+        if (matchesMetaAltDigit("5")) {
+          event.preventDefault();
+          const { marked, unmarked } = toggleTemplateNotes(selectedKeyboardNoteIds);
+          if (marked && unmarked) {
+            setToastMessage(`Templates updated (+${marked}/-${unmarked})`);
+          } else if (marked) {
+            setToastMessage(`${marked} marked as template`);
+          } else if (unmarked) {
+            setToastMessage(`${unmarked} removed from templates`);
+          } else {
+            setToastMessage("No template changes");
+          }
+          return;
+        }
+
+        if (matchesMetaAltDigit("6")) {
+          event.preventDefault();
+          const { added, removed } = toggleShortcutNotes(selectedKeyboardNoteIds);
+          if (added && removed) {
+            setToastMessage(`Shortcuts updated (+${added}/-${removed})`);
+          } else if (added) {
+            setToastMessage(`${added} added to shortcuts`);
+          } else if (removed) {
+            setToastMessage(`${removed} removed from shortcuts`);
+          } else {
+            setToastMessage("No shortcut changes");
+          }
+          return;
+        }
+
+        if (matchesMetaAltDigit("7")) {
+          event.preventDefault();
+          const { pinned, unpinned } = togglePinnedNotes(selectedKeyboardNoteIds, "home");
+          if (pinned && unpinned) {
+            setToastMessage(`Home pins updated (+${pinned}/-${unpinned})`);
+          } else if (pinned) {
+            setToastMessage(`${pinned} pinned to Home`);
+          } else if (unpinned) {
+            setToastMessage(`${unpinned} unpinned from Home`);
+          } else {
+            setToastMessage("No pin changes");
+          }
+          return;
+        }
+
+        if (matchesMetaAltDigit("8")) {
+          event.preventDefault();
+          const { pinned, unpinned } = togglePinnedNotes(selectedKeyboardNoteIds, "notebook");
+          if (pinned && unpinned) {
+            setToastMessage(`Notebook pins updated (+${pinned}/-${unpinned})`);
+          } else if (pinned) {
+            setToastMessage(`${pinned} pinned to notebook`);
+          } else if (unpinned) {
+            setToastMessage(`${unpinned} unpinned from notebook`);
+          } else {
+            setToastMessage("No pin changes");
+          }
           return;
         }
 

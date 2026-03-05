@@ -1009,6 +1009,113 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Lite" })).not.toHaveClass("active");
   });
 
+  it("toggles the active note template with keyboard shortcut", async () => {
+    render(<App />);
+    expect(screen.getByText('You are editing your "Agenda" template')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "5", metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect(screen.queryByText('You are editing your "Agenda" template')).not.toBeInTheDocument();
+    });
+
+    fireEvent.keyDown(window, { key: "5", metaKey: true, altKey: true });
+    expect(await screen.findByText('You are editing your "Agenda" template')).toBeInTheDocument();
+  });
+
+  it("toggles the active note template using Digit5 code with keyboard shortcut", async () => {
+    render(<App />);
+    expect(screen.getByText('You are editing your "Agenda" template')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "[", code: "Digit5", metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect(screen.queryByText('You are editing your "Agenda" template')).not.toBeInTheDocument();
+    });
+  });
+
+  it("toggles selected note shortcuts with keyboard shortcut", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "6", metaKey: true, altKey: true });
+    await waitFor(() => {
+      const shortcutsButton = screen.getByRole("button", { name: "Shortcuts" });
+      expect(within(shortcutsButton).getByText("2")).toBeInTheDocument();
+    });
+  });
+
+  it("toggles selected note shortcuts using Digit6 code with keyboard shortcut", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "^", code: "Digit6", metaKey: true, altKey: true });
+    await waitFor(() => {
+      const shortcutsButton = screen.getByRole("button", { name: "Shortcuts" });
+      expect(within(shortcutsButton).getByText("2")).toBeInTheDocument();
+    });
+  });
+
+  it("toggles the active note home pin with keyboard shortcut", async () => {
+    render(<App />);
+    const wasPinned = Boolean(screen.queryByLabelText("Unpin from home Agenda"));
+
+    fireEvent.keyDown(window, { key: "7", metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect(Boolean(screen.queryByLabelText("Unpin from home Agenda"))).toBe(!wasPinned);
+    });
+
+    fireEvent.keyDown(window, { key: "7", metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect(Boolean(screen.queryByLabelText("Unpin from home Agenda"))).toBe(wasPinned);
+    });
+  });
+
+  it("toggles the active note home pin using Digit7 code with keyboard shortcut", async () => {
+    render(<App />);
+    const wasPinned = Boolean(screen.queryByLabelText("Unpin from home Agenda"));
+
+    fireEvent.keyDown(window, { key: "&", code: "Digit7", metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect(Boolean(screen.queryByLabelText("Unpin from home Agenda"))).toBe(!wasPinned);
+    });
+  });
+
+  it("toggles the active note notebook pin with keyboard shortcut", async () => {
+    render(<App />);
+    const wasPinned = Boolean(screen.queryByLabelText("Unpin from notebook Agenda"));
+
+    fireEvent.keyDown(window, { key: "8", metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect(Boolean(screen.queryByLabelText("Unpin from notebook Agenda"))).toBe(!wasPinned);
+    });
+
+    fireEvent.keyDown(window, { key: "8", metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect(Boolean(screen.queryByLabelText("Unpin from notebook Agenda"))).toBe(wasPinned);
+    });
+  });
+
+  it("toggles the active note notebook pin using Digit8 code with keyboard shortcut", async () => {
+    render(<App />);
+    const wasPinned = Boolean(screen.queryByLabelText("Unpin from notebook Agenda"));
+
+    fireEvent.keyDown(window, { key: "*", code: "Digit8", metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect(Boolean(screen.queryByLabelText("Unpin from notebook Agenda"))).toBe(!wasPinned);
+    });
+  });
+
   it("blocks opening note in full editor with keyboard shortcut for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

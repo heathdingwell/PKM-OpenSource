@@ -5033,14 +5033,24 @@ export default function App() {
         }
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "k") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        !event.altKey &&
+        (event.key.toLowerCase() === "k" || event.code === "KeyK")
+      ) {
         event.preventDefault();
         setFindInNoteOpen(false);
         openCommandPalette();
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "d") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        !event.altKey &&
+        (event.key.toLowerCase() === "d" || event.code === "KeyD")
+      ) {
         event.preventDefault();
         void openTodayNote();
         return;
@@ -5106,13 +5116,23 @@ export default function App() {
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "b") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        !event.altKey &&
+        (event.key.toLowerCase() === "b" || event.code === "KeyB")
+      ) {
         event.preventDefault();
         setBacklinksPaneOpen((previous) => !previous);
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === "\\") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        !event.altKey &&
+        (event.key === "\\" || event.code === "Backslash")
+      ) {
         event.preventDefault();
         setFocusMode((previous) => !previous);
         return;
@@ -5281,20 +5301,36 @@ export default function App() {
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f" && activeNote) {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        !event.altKey &&
+        (event.key.toLowerCase() === "f" || event.code === "KeyF") &&
+        activeNote
+      ) {
         event.preventDefault();
         openFindInNote();
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && ["k", "p"].includes(event.key.toLowerCase())) {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        !event.altKey &&
+        (["k", "p"].includes(event.key.toLowerCase()) || ["KeyK", "KeyP"].includes(event.code))
+      ) {
         event.preventDefault();
         setFindInNoteOpen(false);
         setSearchOpen(true);
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        !event.altKey &&
+        (event.key.toLowerCase() === "s" || event.code === "KeyS")
+      ) {
         event.preventDefault();
         flushActiveDraft();
         return;

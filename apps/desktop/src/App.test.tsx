@@ -308,6 +308,17 @@ describe("App", () => {
     expect(shell).not.toHaveClass("focus-mode");
   });
 
+  it("toggles focus mode using Backslash keyboard code", () => {
+    render(<App />);
+    const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });
+
+    fireEvent.keyDown(window, { key: "|", code: "Backslash", metaKey: true, shiftKey: true });
+    expect(shell).toHaveClass("focus-mode");
+
+    fireEvent.keyDown(window, { key: "|", code: "Backslash", metaKey: true, shiftKey: true });
+    expect(shell).not.toHaveClass("focus-mode");
+  });
+
   it("toggles backlinks pane with keyboard shortcut", () => {
     render(<App />);
     expect(screen.getByLabelText("Backlinks dock")).toBeInTheDocument();
@@ -316,6 +327,17 @@ describe("App", () => {
     expect(screen.queryByLabelText("Backlinks dock")).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "b", metaKey: true, shiftKey: true });
+    expect(screen.getByLabelText("Backlinks dock")).toBeInTheDocument();
+  });
+
+  it("toggles backlinks pane using KeyB keyboard code", () => {
+    render(<App />);
+    expect(screen.getByLabelText("Backlinks dock")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "∫", code: "KeyB", metaKey: true, shiftKey: true });
+    expect(screen.queryByLabelText("Backlinks dock")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "∫", code: "KeyB", metaKey: true, shiftKey: true });
     expect(screen.getByLabelText("Backlinks dock")).toBeInTheDocument();
   });
 
@@ -1579,6 +1601,20 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     expect(screen.getByRole("heading", { name: "Command palette", level: 4 })).toBeInTheDocument();
+  });
+
+  it("opens command palette using KeyK keyboard code", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "˚", code: "KeyK", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("heading", { name: "Command palette", level: 4 })).toBeInTheDocument();
+  });
+
+  it("opens quick search using KeyP keyboard code", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "π", code: "KeyP", metaKey: true });
+    expect(screen.getByPlaceholderText("Search or ask a question")).toBeInTheDocument();
   });
 
   it("opens reminders from command palette", () => {
@@ -4616,6 +4652,15 @@ describe("App", () => {
     const todayTitle = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
     fireEvent.keyDown(window, { key: "D", metaKey: true, shiftKey: true });
+    expect(await screen.findByRole("heading", { name: todayTitle, level: 2 })).toBeInTheDocument();
+  });
+
+  it("opens or creates today's note using KeyD keyboard code", async () => {
+    render(<App />);
+    const now = new Date();
+    const todayTitle = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    fireEvent.keyDown(window, { key: "Î", code: "KeyD", metaKey: true, shiftKey: true });
     expect(await screen.findByRole("heading", { name: todayTitle, level: 2 })).toBeInTheDocument();
   });
 
@@ -8350,6 +8395,14 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Previous match" }));
     expect(screen.getByText("1 of 2")).toBeInTheDocument();
+  });
+
+  it("opens find in note using KeyF keyboard code", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.keyDown(window, { key: "ƒ", code: "KeyF", metaKey: true });
+    expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
   });
 
   it("opens find in note from note context menu", () => {

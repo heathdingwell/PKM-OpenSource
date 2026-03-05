@@ -6573,6 +6573,41 @@ describe("App", () => {
     expect(screen.getByText("3 selected")).toBeInTheDocument();
   });
 
+  it("supports shift+end range selection from keyboard note navigation", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(3);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+
+    fireEvent.keyDown(window, { key: "End", shiftKey: true });
+    const selectedCount = Number.parseInt(screen.getByText(/selected$/i).textContent?.split(" ")[0] ?? "0", 10);
+    expect(selectedCount).toBeGreaterThanOrEqual(3);
+  });
+
+  it("supports home/end navigation without shift from keyboard note navigation", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(3);
+    const firstTitle = cards[0]?.querySelector("strong")?.textContent?.trim() ?? "";
+    const lastTitle = cards[cards.length - 1]?.querySelector("strong")?.textContent?.trim() ?? "";
+    expect(firstTitle).not.toHaveLength(0);
+    expect(lastTitle).not.toHaveLength(0);
+
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.keyDown(window, { key: "End" });
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    expect(editor?.value).toContain(`# ${lastTitle}`);
+
+    fireEvent.keyDown(window, { key: "Home" });
+    expect(editor?.value).toContain(`# ${firstTitle}`);
+  });
+
   it("collapses keyboard range selection when moving without shift", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

@@ -54,7 +54,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Open actions for a single note (`⌘O`, `⌥⌘O`, local graph, and current-note tasks/files/calendar commands) now show clear guard messages when multiple notes are selected.
 - Keyboard tag editor shortcut (`⌥⌘T`) opens bulk tag editing when multiple notes are selected.
 - Command palette export actions for Markdown/HTML/Text now apply to selected notes when multiple cards are selected.
-- Note card multi-select supports toggle selection (`⌘`/`Ctrl` click), shift-click range selection, and keyboard range selection with `Shift+↑/↓`.
+- Note card multi-select supports toggle selection (`⌘`/`Ctrl` click), shift-click range selection, and keyboard range selection with `Shift+↑/↓/Home/End`.
 - Notebook tree keyboard navigation supports arrow keys and Home/End for traversal, stack collapse/expand, and nested notebook focus.
 - Backlinks dock in notes view.
 - Backlinks dock can be toggled with command palette (`Toggle backlinks pane`) and keyboard shortcut (`⇧⌘B`).

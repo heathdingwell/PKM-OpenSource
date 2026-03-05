@@ -4509,6 +4509,15 @@ export default function App() {
           return;
         }
 
+        if (event.key === "Home" || event.key === "End") {
+          event.preventDefault();
+          const current = visibleNotes.find((note) => note.id === activeId) ?? visibleNotes[0];
+          if (current) {
+            focusVisibleBoundary(event.key === "Home" ? "start" : "end", event.shiftKey, current.id);
+          }
+          return;
+        }
+
         if (event.key === "Enter" && activeId) {
           event.preventDefault();
           openFocusedEditor(activeId);
@@ -12118,12 +12127,17 @@ a{color:#1d4ed8}
     focusNoteCard(next.id);
   }
 
-  function focusVisibleBoundary(edge: "start" | "end"): void {
+  function focusVisibleBoundary(edge: "start" | "end", extendRange = false, fromNoteId?: string): void {
     const target = edge === "start" ? visibleNotes[0] : visibleNotes[visibleNotes.length - 1];
     if (!target) {
       return;
     }
-    focusNote(target.id);
+    if (extendRange && fromNoteId) {
+      const anchorId = lastSelectedId ?? fromNoteId;
+      extendNoteSelection(anchorId, target.id);
+    } else {
+      focusNote(target.id);
+    }
     focusNoteCard(target.id);
   }
 
@@ -13417,12 +13431,12 @@ a{color:#1d4ed8}
                               }
                               if (event.key === "Home") {
                                 event.preventDefault();
-                                focusVisibleBoundary("start");
+                                focusVisibleBoundary("start", event.shiftKey, note.id);
                                 return;
                               }
                               if (event.key === "End") {
                                 event.preventDefault();
-                                focusVisibleBoundary("end");
+                                focusVisibleBoundary("end", event.shiftKey, note.id);
                                 return;
                               }
                               if (event.key === "Enter") {

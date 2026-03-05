@@ -3216,6 +3216,36 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("opens shortcut note from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const toDoCard = screen.getAllByText("To-do list")[0].closest("button");
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(toDoCard).toBeTruthy();
+    expect(agendaCard).toBeTruthy();
+
+    fireEvent.click(toDoCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">toggle active note shortcut" }
+    });
+    fireEvent.click(screen.getByText("Toggle active note shortcut"));
+
+    fireEvent.click(agendaCard as HTMLButtonElement);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open shortcut note to-do list" }
+    });
+    fireEvent.click(screen.getByText("Open shortcut note: To-do list"));
+
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    expect(editor?.value).toContain("# To-do list");
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("creates and edits a saved search via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

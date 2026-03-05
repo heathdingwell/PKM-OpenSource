@@ -540,6 +540,7 @@ const REMOVE_SAVED_SEARCH_ACTION_PREFIX = "remove-saved-search:";
 const OPEN_NOTEBOOK_ACTION_PREFIX = "open-notebook:";
 const OPEN_TAG_ACTION_PREFIX = "open-tag:";
 const OPEN_RECENT_NOTE_ACTION_PREFIX = "open-recent-note:";
+const OPEN_SHORTCUT_NOTE_ACTION_PREFIX = "open-shortcut-note:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3305,15 +3306,25 @@ export default function App() {
       })),
     [recentNotes]
   );
+  const shortcutNotePaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      shortcutNotes.map((note) => ({
+        id: `${OPEN_SHORTCUT_NOTE_ACTION_PREFIX}${note.id}`,
+        label: `Open shortcut note: ${note.title}`,
+        keywords: ["shortcut", "note", "open", note.title, note.notebook]
+      })),
+    [shortcutNotes]
+  );
   const allPaletteActions = useMemo<CommandPaletteAction[]>(
     () => [
       ...commandPaletteActions,
+      ...shortcutNotePaletteActions,
       ...recentNotePaletteActions,
       ...notebookPaletteActions,
       ...tagPaletteActions,
       ...savedSearchPaletteActions
     ],
-    [recentNotePaletteActions, notebookPaletteActions, tagPaletteActions, savedSearchPaletteActions]
+    [shortcutNotePaletteActions, recentNotePaletteActions, notebookPaletteActions, tagPaletteActions, savedSearchPaletteActions]
   );
   const paletteResults = useMemo(() => {
     if (!commandMode) {
@@ -7620,6 +7631,26 @@ export default function App() {
       const target = notes.find((note) => note.id === noteId && !note.trashedAt);
       if (!target) {
         setToastMessage("Recent note no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setSelectedNotebook(target.notebook);
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      focusNote(target.id);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(OPEN_SHORTCUT_NOTE_ACTION_PREFIX)) {
+      const noteId = actionId.slice(OPEN_SHORTCUT_NOTE_ACTION_PREFIX.length);
+      const target = notes.find((note) => note.id === noteId && !note.trashedAt);
+      if (!target) {
+        setToastMessage("Shortcut note no longer exists");
         setSearchOpen(false);
         return;
       }

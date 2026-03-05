@@ -824,6 +824,37 @@ describe("App", () => {
     expect(screen.getByText("Select one note to open in Lite edit mode")).toBeInTheDocument();
   });
 
+  it("opens note in full editor with keyboard shortcut", () => {
+    render(<App />);
+    fireEvent.keyDown(window, { key: "o", metaKey: true, altKey: true });
+    expect(screen.getByRole("button", { name: "Lite" })).toHaveClass("active");
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("button", { name: "Lite" })).not.toHaveClass("active");
+    expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens note in full editor using KeyO code with keyboard shortcut", () => {
+    render(<App />);
+    fireEvent.keyDown(window, { key: "o", metaKey: true, altKey: true });
+    expect(screen.getByRole("button", { name: "Lite" })).toHaveClass("active");
+
+    fireEvent.keyDown(window, { key: "ø", code: "KeyO", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("button", { name: "Lite" })).not.toHaveClass("active");
+  });
+
+  it("blocks opening note in full editor with keyboard shortcut for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true, shiftKey: true });
+    expect(screen.getByText("Select one note to open in full editor")).toBeInTheDocument();
+  });
+
   it("opens notes from graph node clicks", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));

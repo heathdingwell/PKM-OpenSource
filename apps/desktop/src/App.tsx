@@ -4889,6 +4889,21 @@ export default function App() {
         return;
       }
 
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        !event.altKey &&
+        (event.key.toLowerCase() === "o" || event.code === "KeyO")
+      ) {
+        event.preventDefault();
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note to open in full editor");
+          return;
+        }
+        openNoteInFullEditor();
+        return;
+      }
+
       if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "i") {
         event.preventDefault();
         if (selectedVisibleNoteIds.length > 1) {

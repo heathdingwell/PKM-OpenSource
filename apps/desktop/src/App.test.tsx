@@ -162,6 +162,15 @@ describe("App", () => {
     expect(screen.getByText("No recent notes yet")).toBeInTheDocument();
   });
 
+  it("shows guard toast when clearing recent notes from command palette with none saved", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">clear recent notes" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+    expect(screen.getByText("Recent notes are already empty")).toBeInTheDocument();
+  });
+
   it("moves edited notes to the top of recent notes", async () => {
     render(<App />);
     const notesList = screen.getByLabelText("Notes list");

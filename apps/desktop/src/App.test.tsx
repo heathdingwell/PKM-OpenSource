@@ -3871,6 +3871,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.click(screen.getByRole("button", { name: "Clear recent searches" }));
 
+    expect(screen.getByText("Cleared recent searches")).toBeInTheDocument();
     expect(screen.getByText("No recent searches")).toBeInTheDocument();
     expect(screen.queryByText("agenda")).not.toBeInTheDocument();
     expect(screen.queryByText("journal")).not.toBeInTheDocument();
@@ -4548,8 +4549,20 @@ describe("App", () => {
     fireEvent.change(searchInput, { target: { value: ">clear recent searches" } });
     fireEvent.keyDown(searchInput, { key: "Enter" });
 
+    expect(screen.getByText("Cleared recent searches")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     expect(screen.getByText("No recent searches")).toBeInTheDocument();
+  });
+
+  it("shows guard toast when clearing recent searches from command palette with none saved", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">clear recent searches" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    expect(screen.getByText("Recent searches are already empty")).toBeInTheDocument();
   });
 
   it("supports has:due search filter", () => {

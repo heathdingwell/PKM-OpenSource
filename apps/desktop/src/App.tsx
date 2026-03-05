@@ -6099,7 +6099,12 @@ export default function App() {
   }
 
   function clearRecentSearches(): void {
+    if (!recentSearches.length) {
+      setToastMessage("Recent searches are already empty");
+      return;
+    }
     setRecentSearches([]);
+    setToastMessage("Cleared recent searches");
   }
 
   function exportVaultSnapshot(): void {

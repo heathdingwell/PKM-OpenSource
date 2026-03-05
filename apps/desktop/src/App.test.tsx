@@ -614,6 +614,49 @@ describe("App", () => {
     expect(within(copyModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
   });
 
+  it("duplicates the active note with keyboard shortcut", async () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "d", metaKey: true, altKey: true });
+    expect(await screen.findByRole("heading", { name: "Agenda copy", level: 2 })).toBeInTheDocument();
+  });
+
+  it("duplicates the active note using KeyD code with keyboard shortcut", async () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "∂", code: "KeyD", metaKey: true, altKey: true });
+    expect(await screen.findByRole("heading", { name: "Agenda copy", level: 2 })).toBeInTheDocument();
+  });
+
+  it("duplicates selected notes with keyboard shortcut", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "d", metaKey: true, altKey: true });
+    expect(await screen.findByRole("heading", { name: "Agenda copy", level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /To-do list copy/i })).toBeInTheDocument();
+  });
+
+  it("blocks duplicate keyboard shortcut for trashed notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.keyDown(window, { key: "Backspace", metaKey: true });
+    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    const trashedAgenda = screen.getByRole("button", { name: /Agenda/ });
+    fireEvent.click(trashedAgenda);
+
+    fireEvent.keyDown(window, { key: "d", metaKey: true, altKey: true });
+    expect(screen.getByText("Restore note from Trash before duplicating")).toBeInTheDocument();
+  });
+
   it("copies note html with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

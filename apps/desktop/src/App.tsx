@@ -778,7 +778,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "divider-1", label: "", divider: true },
   { id: "move", label: "Move", shortcut: "cmd+shift+m" },
   { id: "copy-to", label: "Copy to", shortcut: "cmd+alt+y" },
-  { id: "duplicate", label: "Duplicate" },
+  { id: "duplicate", label: "Duplicate", shortcut: "cmd+alt+d" },
   { id: "edit-tags", label: "Edit tags", shortcut: "cmd+alt+t" },
   { id: "divider-2", label: "", divider: true },
   { id: "add-shortcuts", label: "Add to Shortcuts" },
@@ -4848,6 +4848,21 @@ export default function App() {
         if (matchesMetaAltLetter("y")) {
           event.preventDefault();
           openMoveDialogForNotes(selectedKeyboardNoteIds, "copy");
+          return;
+        }
+
+        if (matchesMetaAltLetter("d")) {
+          event.preventDefault();
+          if (selectedKeyboardNotes.every((note) => Boolean(note.trashedAt))) {
+            setToastMessage("Restore note from Trash before duplicating");
+            return;
+          }
+          const duplicateIds = selectedKeyboardNotes.filter((note) => !note.trashedAt).map((note) => note.id);
+          if (!duplicateIds.length) {
+            setToastMessage("Restore note from Trash before duplicating");
+            return;
+          }
+          void duplicateNotes(duplicateIds);
           return;
         }
 

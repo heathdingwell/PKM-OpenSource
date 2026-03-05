@@ -601,6 +601,11 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-reminders-filter-today", label: "Set reminders filter: Today", keywords: ["reminders", "filter", "today"] },
   { id: "set-reminders-filter-upcoming", label: "Set reminders filter: Upcoming", keywords: ["reminders", "filter", "upcoming"] },
   { id: "open-tasks", label: "Open tasks", keywords: ["tasks", "todos"] },
+  { id: "set-tasks-filter-all", label: "Set tasks filter: All", keywords: ["tasks", "filter", "all"] },
+  { id: "set-tasks-filter-overdue", label: "Set tasks filter: Overdue", keywords: ["tasks", "filter", "overdue"] },
+  { id: "set-tasks-filter-today", label: "Set tasks filter: Today", keywords: ["tasks", "filter", "today"] },
+  { id: "set-tasks-filter-upcoming", label: "Set tasks filter: Upcoming", keywords: ["tasks", "filter", "upcoming"] },
+  { id: "set-tasks-filter-undated", label: "Set tasks filter: No due", keywords: ["tasks", "filter", "no due", "undated"] },
   { id: "open-tasks-current-note", label: "Open tasks for current note", keywords: ["tasks", "todos", "note", "current"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
   { id: "open-files-current-note", label: "Open files for current note", keywords: ["attachments", "files", "note", "current"] },
@@ -8761,6 +8766,29 @@ export default function App() {
 
     if (actionId === "open-tasks") {
       openTasksPanel();
+      setAiPanelOpen(false);
+      return;
+    }
+
+    if (
+      actionId === "set-tasks-filter-all" ||
+      actionId === "set-tasks-filter-overdue" ||
+      actionId === "set-tasks-filter-today" ||
+      actionId === "set-tasks-filter-upcoming" ||
+      actionId === "set-tasks-filter-undated"
+    ) {
+      const filter: TaskDueFilter =
+        actionId === "set-tasks-filter-overdue"
+          ? "overdue"
+          : actionId === "set-tasks-filter-today"
+            ? "today"
+            : actionId === "set-tasks-filter-upcoming"
+              ? "upcoming"
+              : actionId === "set-tasks-filter-undated"
+                ? "undated"
+                : "all";
+      openTasksPanel("all");
+      setTaskDueFilter(filter);
       setAiPanelOpen(false);
       return;
     }

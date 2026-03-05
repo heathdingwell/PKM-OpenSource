@@ -147,6 +147,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Set density: Comfortable|Compact`
 - Reminder filtering actions via command palette:
   - `Set reminders filter: All|Overdue|Today|Upcoming`
+- Task filtering actions via command palette:
+  - `Set tasks filter: All|Overdue|Today|Upcoming|No due`
 - Explicit grouping actions via command palette:
   - `Set grouping: Off|Updated|Notebook|Tag`
 - Explicit editor font actions via command palette:

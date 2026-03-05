@@ -1070,6 +1070,28 @@ describe("App", () => {
     expect(within(tasksModal as HTMLElement).getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
+  it("sets task due filter from command palette actions", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set tasks filter upcoming" }
+    });
+    fireEvent.click(screen.getByText("Set tasks filter: Upcoming"));
+
+    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Upcoming \(/ })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set tasks filter all" }
+    });
+    fireEvent.click(screen.getByText("Set tasks filter: All"));
+
+    expect(screen.getByRole("button", { name: /^All \(/ })).toHaveClass("active");
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("blocks current-note tasks action from command palette for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

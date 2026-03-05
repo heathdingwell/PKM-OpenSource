@@ -766,6 +766,7 @@ const seedCalendarEvents: Array<Pick<CalendarEvent, "title" | "startAt" | "endAt
 const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
   { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
   { id: "open-lite-edit", label: "Open in Lite edit mode", shortcut: "alt+cmd+o" },
+  { id: "open-full-edit", label: "Open in full editor", shortcut: "shift+cmd+o" },
   { id: "open-local-graph", label: "Open local graph" },
   { id: "share", label: "Share", shortcut: "cmd+alt+s" },
   { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
@@ -11285,6 +11286,12 @@ a{color:#1d4ed8}
       return;
     }
 
+    if (action === "open-full-edit") {
+      openNoteInFullEditor(targetId);
+      setContextMenu(null);
+      return;
+    }
+
     if (action === "open-local-graph") {
       if (targetId && targetId !== activeId) {
         focusNote(targetId);
@@ -11536,10 +11543,6 @@ a{color:#1d4ed8}
     }
     if (action === "toggle-template") {
       return allTemplates ? "Remove from Templates" : "Set as template";
-    }
-    if (action === "open-lite-edit") {
-      const targetIsActive = contextMenu.noteIds.length === 1 && contextMenu.noteIds[0] === activeId;
-      return liteEditMode && targetIsActive ? "Open full editor" : "Open in Lite edit mode";
     }
     if (action === "move-trash") {
       return allTrashed ? "Delete permanently" : "Move to Trash";

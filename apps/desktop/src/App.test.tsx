@@ -6808,6 +6808,22 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
   });
 
+  it("opens a note in full editor from context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Open in Lite edit mode/i }));
+    expect(screen.getByRole("button", { name: "Lite" })).toHaveClass("active");
+
+    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: /Open in full editor/i }));
+    expect(screen.getByRole("button", { name: "Lite" })).not.toHaveClass("active");
+    expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
+  });
+
   it("opens local graph scope from note context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

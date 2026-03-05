@@ -795,10 +795,10 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "toggle-template", label: "Set as template", shortcut: "cmd+alt+5" },
   { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
   { id: "divider-4", label: "", divider: true },
-  { id: "export", label: "Export" },
-  { id: "export-text", label: "Export as Text" },
-  { id: "export-html", label: "Export as HTML" },
-  { id: "export-pdf", label: "Export as PDF" },
+  { id: "export", label: "Export", shortcut: "cmd+alt+1" },
+  { id: "export-text", label: "Export as Text", shortcut: "cmd+alt+3" },
+  { id: "export-html", label: "Export as HTML", shortcut: "cmd+alt+2" },
+  { id: "export-pdf", label: "Export as PDF", shortcut: "cmd+alt+4" },
   { id: "print", label: "Print", shortcut: "cmd+alt+p" },
   { id: "divider-5", label: "", divider: true },
   { id: "restore-trash", label: "Restore from Trash", shortcut: "cmd+alt+z" },
@@ -4925,6 +4925,69 @@ export default function App() {
             setToastMessage(`${unpinned} unpinned from notebook`);
           } else {
             setToastMessage("No pin changes");
+          }
+          return;
+        }
+
+        if (matchesMetaAltDigit("1")) {
+          event.preventDefault();
+          if (selectedKeyboardNoteIds.length > 1) {
+            const exported = selectedKeyboardNoteIds.filter((noteId) => exportNote(noteId, false)).length;
+            if (exported > 0) {
+              setToastMessage(`Exported Markdown for ${exported} notes`);
+            } else {
+              setToastMessage("Open a note before exporting");
+            }
+          } else if (activeNote) {
+            exportNote(activeNote.id);
+          } else {
+            setToastMessage("Open a note before exporting");
+          }
+          return;
+        }
+
+        if (matchesMetaAltDigit("2")) {
+          event.preventDefault();
+          if (selectedKeyboardNoteIds.length > 1) {
+            const exported = selectedKeyboardNoteIds.filter((noteId) => exportNoteHtml(noteId, false)).length;
+            if (exported > 0) {
+              setToastMessage(`Exported HTML for ${exported} notes`);
+            } else {
+              setToastMessage("Open a note before exporting");
+            }
+          } else if (activeNote) {
+            exportNoteHtml(activeNote.id);
+          } else {
+            setToastMessage("Open a note before exporting");
+          }
+          return;
+        }
+
+        if (matchesMetaAltDigit("3")) {
+          event.preventDefault();
+          if (selectedKeyboardNoteIds.length > 1) {
+            const exported = selectedKeyboardNoteIds.filter((noteId) => exportNoteText(noteId, false)).length;
+            if (exported > 0) {
+              setToastMessage(`Exported text for ${exported} notes`);
+            } else {
+              setToastMessage("Open a note before exporting");
+            }
+          } else if (activeNote) {
+            exportNoteText(activeNote.id);
+          } else {
+            setToastMessage("Open a note before exporting");
+          }
+          return;
+        }
+
+        if (matchesMetaAltDigit("4")) {
+          event.preventDefault();
+          if (selectedKeyboardNoteIds.length > 1) {
+            setToastMessage("Select one note to export PDF");
+          } else if (activeNote) {
+            void exportNotePdf(activeNote.id);
+          } else {
+            setToastMessage("Open a note before exporting");
           }
           return;
         }

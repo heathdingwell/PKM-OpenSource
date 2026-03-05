@@ -1116,6 +1116,106 @@ describe("App", () => {
     });
   });
 
+  it("exports the active note as markdown with keyboard shortcut", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.keyDown(window, { key: "1", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
+  it("exports the active note as markdown using Digit1 code with keyboard shortcut", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-code");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.keyDown(window, { key: "¡", code: "Digit1", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
+  it("exports selected notes as HTML with keyboard shortcut", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-html");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "2", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(2);
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Exported HTML for 2 notes")).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
+  it("exports selected notes as text with keyboard shortcut", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-text");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "3", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(2);
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Exported text for 2 notes")).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
+  it("exports the active note as PDF with keyboard shortcut", async () => {
+    const exportNotePdf = vi.fn().mockResolvedValue({ ok: true, path: "/tmp/Agenda.pdf" });
+    (window as unknown as { pkmShell?: { exportNotePdf: typeof exportNotePdf } }).pkmShell = { exportNotePdf };
+
+    render(<App />);
+    fireEvent.keyDown(window, { key: "4", metaKey: true, altKey: true });
+
+    await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
+    expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
+    expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+  });
+
+  it("blocks PDF export keyboard shortcut for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "4", metaKey: true, altKey: true });
+    expect(screen.getByText("Select one note to export PDF")).toBeInTheDocument();
+  });
+
   it("blocks opening note in full editor with keyboard shortcut for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -7178,7 +7278,7 @@ describe("App", () => {
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Export as PDF" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Export as PDF/i }));
 
     await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
     expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
@@ -7199,7 +7299,7 @@ describe("App", () => {
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Export as HTML" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Export as HTML/i }));
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
@@ -7220,7 +7320,7 @@ describe("App", () => {
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Export as Text" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Export as Text/i }));
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
@@ -7237,7 +7337,7 @@ describe("App", () => {
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Export as PDF" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Export as PDF/i }));
 
     expect(printSpy).toHaveBeenCalledTimes(1);
     printSpy.mockRestore();

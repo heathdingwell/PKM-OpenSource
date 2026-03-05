@@ -3499,6 +3499,21 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("unsets template note from command palette", () => {
+    render(<App />);
+    expect(screen.getByText('You are editing your "Agenda" template')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">unset template agenda" }
+    });
+    fireEvent.click(screen.getByText("Unset template: Agenda"));
+
+    expect(screen.queryByText('You are editing your "Agenda" template')).not.toBeInTheDocument();
+    expect(screen.getByText('Removed template "Agenda"')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("toggles stack collapse from command palette", () => {
     render(<App />);
     const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];

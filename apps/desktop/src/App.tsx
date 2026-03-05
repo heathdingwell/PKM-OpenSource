@@ -548,6 +548,7 @@ const REMOVE_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX = "remove-notebook-pin-note:";
 const OPEN_SHORTCUT_NOTEBOOK_ACTION_PREFIX = "open-shortcut-notebook:";
 const OPEN_SHORTCUT_TAG_ACTION_PREFIX = "open-shortcut-tag:";
 const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
+const REMOVE_TEMPLATE_NOTE_ACTION_PREFIX = "remove-template-note:";
 const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
 const OPEN_RECENT_SEARCH_ACTION_PREFIX = "open-recent-search:";
 const REMOVE_SHORTCUT_NOTE_ACTION_PREFIX = "remove-shortcut-note:";
@@ -3415,11 +3416,18 @@ export default function App() {
   );
   const templatePaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
-      templateNotes.map((note) => ({
-        id: `${OPEN_TEMPLATE_NOTE_ACTION_PREFIX}${note.id}`,
-        label: `Open template: ${note.title}`,
-        keywords: ["template", "note", "open", note.title, note.notebook]
-      })),
+      templateNotes.flatMap((note) => [
+        {
+          id: `${OPEN_TEMPLATE_NOTE_ACTION_PREFIX}${note.id}`,
+          label: `Open template: ${note.title}`,
+          keywords: ["template", "note", "open", note.title, note.notebook]
+        },
+        {
+          id: `${REMOVE_TEMPLATE_NOTE_ACTION_PREFIX}${note.id}`,
+          label: `Unset template: ${note.title}`,
+          keywords: ["template", "note", "unset", "remove", "delete", note.title, note.notebook]
+        }
+      ]),
     [templateNotes]
   );
   const stackPaletteActions = useMemo<CommandPaletteAction[]>(
@@ -7963,6 +7971,30 @@ export default function App() {
       setAiPanelOpen(false);
       focusNote(target.id);
       setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(REMOVE_TEMPLATE_NOTE_ACTION_PREFIX)) {
+      const noteId = actionId.slice(REMOVE_TEMPLATE_NOTE_ACTION_PREFIX.length);
+      const target = templateNotes.find((note) => note.id === noteId);
+      if (!target) {
+        setToastMessage("Template no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setNotes((previous) =>
+        previous.map((note) => {
+          if (note.id !== noteId || !note.isTemplate) {
+            return note;
+          }
+          return {
+            ...note,
+            isTemplate: false
+          };
+        })
+      );
+      setSearchOpen(false);
+      setToastMessage(`Removed template "${target.title}"`);
       return;
     }
 

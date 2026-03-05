@@ -538,6 +538,7 @@ const OPEN_SAVED_SEARCH_ACTION_PREFIX = "open-saved-search:";
 const EDIT_SAVED_SEARCH_ACTION_PREFIX = "edit-saved-search:";
 const REMOVE_SAVED_SEARCH_ACTION_PREFIX = "remove-saved-search:";
 const OPEN_NOTEBOOK_ACTION_PREFIX = "open-notebook:";
+const OPEN_TAG_ACTION_PREFIX = "open-tag:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3285,9 +3286,18 @@ export default function App() {
         })),
     [notebookList]
   );
+  const tagPaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      allTags.map((tag) => ({
+        id: `${OPEN_TAG_ACTION_PREFIX}${encodeURIComponent(tag)}`,
+        label: `Open tag: #${tag}`,
+        keywords: ["tag", "open", tag]
+      })),
+    [allTags]
+  );
   const allPaletteActions = useMemo<CommandPaletteAction[]>(
-    () => [...commandPaletteActions, ...notebookPaletteActions, ...savedSearchPaletteActions],
-    [notebookPaletteActions, savedSearchPaletteActions]
+    () => [...commandPaletteActions, ...notebookPaletteActions, ...tagPaletteActions, ...savedSearchPaletteActions],
+    [notebookPaletteActions, tagPaletteActions, savedSearchPaletteActions]
   );
   const paletteResults = useMemo(() => {
     if (!commandMode) {
@@ -7560,6 +7570,27 @@ export default function App() {
       setSidebarView("notes");
       setBrowseMode("all");
       setSelectedNotebook(notebook);
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(OPEN_TAG_ACTION_PREFIX)) {
+      const tagId = actionId.slice(OPEN_TAG_ACTION_PREFIX.length);
+      const tag = decodeURIComponent(tagId);
+      if (!allTags.includes(tag)) {
+        setToastMessage("Tag no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setSelectedNotebook("All Notes");
+      setTagFilters([tag]);
+      setSearchScope("everywhere");
       setTasksDialogOpen(false);
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);

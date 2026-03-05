@@ -3178,6 +3178,24 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("opens tag filter from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    fireEvent.change(document.getElementById("tag-input") as HTMLInputElement, { target: { value: "focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open tag focus" }
+    });
+    fireEvent.click(screen.getByText("Open tag: #focus"));
+
+    expect(screen.getByRole("heading", { name: "All Notes", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "#focus ×" })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("creates and edits a saved search via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

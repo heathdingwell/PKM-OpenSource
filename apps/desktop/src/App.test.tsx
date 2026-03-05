@@ -3182,6 +3182,17 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
+  it("opens selected search result reminders with alt+cmd+u in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "u", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
+  });
+
   it("toggles selected search result template with alt+cmd+5 in search modal", async () => {
     render(<App />);
     const hadTemplateBanner = Boolean(screen.queryByText('You are editing your "Agenda" template'));
@@ -5044,6 +5055,19 @@ describe("App", () => {
     fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Open calendar/i }));
     expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
+  it("opens selected quick search result reminders from footer action", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Open reminders/i }));
+    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
   });
 
   it("duplicates selected quick search result from footer action", async () => {

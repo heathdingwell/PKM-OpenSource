@@ -7236,6 +7236,7 @@ export default function App() {
       | "open-note-tasks"
       | "open-note-files"
       | "open-note-calendar"
+      | "open-note-reminders"
       | "toggle-note-template"
       | "toggle-note-shortcut"
       | "toggle-note-pin-home"
@@ -7333,6 +7334,20 @@ export default function App() {
     if (mode === "open-note-calendar") {
       focusNote(note.id);
       openCalendarPanel("current-note");
+      return;
+    }
+
+    if (mode === "open-note-reminders") {
+      focusNote(note.id);
+      setSidebarView("notes");
+      setBrowseMode("reminders");
+      setSelectedNotebook("All Notes");
+      setReminderScopeMode("current-note");
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      setSearchOpen(false);
       return;
     }
 
@@ -15969,6 +15984,12 @@ a{color:#1d4ed8}
                   return;
                 }
 
+                if (matchesMetaAltLetter("u") && selectedNote) {
+                  event.preventDefault();
+                  openSearchResult(selectedNote, "open-note-reminders");
+                  return;
+                }
+
                 if (matchesMetaAltDigit("5") && selectedNote) {
                   event.preventDefault();
                   openSearchResult(selectedNote, "toggle-note-template");
@@ -16653,6 +16674,17 @@ a{color:#1d4ed8}
                     }}
                   >
                     Open calendar <kbd>⌥⌘C</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSearchResult}
+                    onClick={() => {
+                      if (selectedSearchResult) {
+                        openSearchResult(selectedSearchResult, "open-note-reminders");
+                      }
+                    }}
+                  >
+                    Open reminders <kbd>⌥⌘U</kbd>
                   </button>
                   <button
                     type="button"

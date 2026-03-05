@@ -112,6 +112,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Open tasks` for selected result (button or `⌥⌘J`)
   - `Open files` for selected result (button or `⌥⌘F`)
   - `Open calendar` for selected result (button or `⌥⌘C`)
+  - `Open reminders` for selected result (button or `⌥⌘U`)
   - `Set as template` for selected result (button or `⌥⌘5`)
   - `Add to shortcuts` for selected result (button or `⌥⌘6`)
   - `Pin to Home` for selected result (button or `⌥⌘7`)

@@ -539,6 +539,7 @@ const EDIT_SAVED_SEARCH_ACTION_PREFIX = "edit-saved-search:";
 const REMOVE_SAVED_SEARCH_ACTION_PREFIX = "remove-saved-search:";
 const OPEN_NOTEBOOK_ACTION_PREFIX = "open-notebook:";
 const OPEN_TAG_ACTION_PREFIX = "open-tag:";
+const OPEN_RECENT_NOTE_ACTION_PREFIX = "open-recent-note:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3295,9 +3296,24 @@ export default function App() {
       })),
     [allTags]
   );
+  const recentNotePaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      recentNotes.map((note) => ({
+        id: `${OPEN_RECENT_NOTE_ACTION_PREFIX}${note.id}`,
+        label: `Open recent note: ${note.title}`,
+        keywords: ["recent", "note", "open", note.title, note.notebook]
+      })),
+    [recentNotes]
+  );
   const allPaletteActions = useMemo<CommandPaletteAction[]>(
-    () => [...commandPaletteActions, ...notebookPaletteActions, ...tagPaletteActions, ...savedSearchPaletteActions],
-    [notebookPaletteActions, tagPaletteActions, savedSearchPaletteActions]
+    () => [
+      ...commandPaletteActions,
+      ...recentNotePaletteActions,
+      ...notebookPaletteActions,
+      ...tagPaletteActions,
+      ...savedSearchPaletteActions
+    ],
+    [recentNotePaletteActions, notebookPaletteActions, tagPaletteActions, savedSearchPaletteActions]
   );
   const paletteResults = useMemo(() => {
     if (!commandMode) {
@@ -7595,6 +7611,26 @@ export default function App() {
       setFilesDialogOpen(false);
       setCalendarDialogOpen(false);
       setAiPanelOpen(false);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(OPEN_RECENT_NOTE_ACTION_PREFIX)) {
+      const noteId = actionId.slice(OPEN_RECENT_NOTE_ACTION_PREFIX.length);
+      const target = notes.find((note) => note.id === noteId && !note.trashedAt);
+      if (!target) {
+        setToastMessage("Recent note no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSidebarView("notes");
+      setBrowseMode("all");
+      setSelectedNotebook(target.notebook);
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+      setAiPanelOpen(false);
+      focusNote(target.id);
       setSearchOpen(false);
       return;
     }

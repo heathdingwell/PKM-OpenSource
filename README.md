@@ -154,6 +154,10 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Files scope/sort actions via command palette:
   - `Set files scope: All notes|Current note`
   - `Set files sort: Recent|Name (A-Z)|Name (Z-A)`
+- Calendar scope/sort/filter actions via command palette:
+  - `Set calendar scope: All notes|Current note`
+  - `Set calendar sort: Soonest|Latest`
+  - `Set calendar filter: All calendars|<calendar name>`
 - Explicit grouping actions via command palette:
   - `Set grouping: Off|Updated|Notebook|Tag`
 - Explicit editor font actions via command palette:

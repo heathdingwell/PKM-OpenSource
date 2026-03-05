@@ -554,6 +554,7 @@ const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
 const RENAME_STACK_ACTION_PREFIX = "rename-stack:";
 const REMOVE_STACK_ACTION_PREFIX = "remove-stack:";
 const MOVE_CURRENT_NOTEBOOK_TO_STACK_ACTION_PREFIX = "move-current-notebook-to-stack:";
+const SET_CALENDAR_FILTER_ACTION_PREFIX = "set-calendar-filter:";
 const OPEN_RECENT_SEARCH_ACTION_PREFIX = "open-recent-search:";
 const REMOVE_RECENT_SEARCH_ACTION_PREFIX = "remove-recent-search:";
 const REMOVE_SHORTCUT_NOTE_ACTION_PREFIX = "remove-shortcut-note:";
@@ -625,6 +626,15 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-files-sort-name-desc", label: "Set files sort: Name (Z-A)", keywords: ["files", "attachments", "sort", "name", "z-a"] },
   { id: "open-files-current-note", label: "Open files for current note", keywords: ["attachments", "files", "note", "current"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
+  { id: "set-calendar-scope-all", label: "Set calendar scope: All notes", keywords: ["calendar", "scope", "all"] },
+  {
+    id: "set-calendar-scope-current-note",
+    label: "Set calendar scope: Current note",
+    keywords: ["calendar", "scope", "current", "note"]
+  },
+  { id: "set-calendar-sort-soonest", label: "Set calendar sort: Soonest", keywords: ["calendar", "sort", "soonest"] },
+  { id: "set-calendar-sort-latest", label: "Set calendar sort: Latest", keywords: ["calendar", "sort", "latest"] },
+  { id: "set-calendar-filter-all", label: "Set calendar filter: All calendars", keywords: ["calendar", "filter", "all"] },
   { id: "open-calendar-current-note", label: "Open calendar for current note", keywords: ["events", "calendar", "note", "current"] },
   { id: "open-graph", label: "Open graph", keywords: ["graph", "links", "network"] },
   { id: "open-active-local-graph", label: "Open active note local graph", keywords: ["graph", "local", "active", "note"] },
@@ -3502,10 +3512,28 @@ export default function App() {
       ]),
     [stackNames]
   );
+  const calendarFilterPaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      Array.from(
+        new Set(
+          calendarEvents
+            .map((event) => event.calendar.trim())
+            .filter((name) => name.length > 0)
+        )
+      )
+        .sort((left, right) => left.localeCompare(right))
+        .map((calendarName) => ({
+          id: `${SET_CALENDAR_FILTER_ACTION_PREFIX}${encodeURIComponent(calendarName)}`,
+          label: `Set calendar filter: ${calendarName}`,
+          keywords: ["calendar", "filter", calendarName]
+        })),
+    [calendarEvents]
+  );
   const allPaletteActions = useMemo<CommandPaletteAction[]>(
     () => [
       ...commandPaletteActions,
       ...stackPaletteActions,
+      ...calendarFilterPaletteActions,
       ...recentSearchPaletteActions,
       ...templatePaletteActions,
       ...homePinnedPaletteActions,
@@ -3520,6 +3548,7 @@ export default function App() {
     ],
     [
       stackPaletteActions,
+      calendarFilterPaletteActions,
       recentSearchPaletteActions,
       homePinnedPaletteActions,
       notebookPinnedPaletteActions,
@@ -8909,6 +8938,55 @@ export default function App() {
 
     if (actionId === "open-calendar") {
       openCalendarPanel("all");
+      return;
+    }
+
+    if (actionId === "set-calendar-scope-all" || actionId === "set-calendar-scope-current-note") {
+      if (actionId === "set-calendar-scope-current-note") {
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note first");
+          setSearchOpen(false);
+          return;
+        }
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          setSearchOpen(false);
+          return;
+        }
+        openCalendarPanel("current-note");
+      } else {
+        openCalendarPanel("all");
+      }
+      setAiPanelOpen(false);
+      return;
+    }
+
+    if (actionId === "set-calendar-sort-soonest" || actionId === "set-calendar-sort-latest") {
+      openCalendarPanel("all");
+      setCalendarSortMode(actionId === "set-calendar-sort-latest" ? "latest" : "soonest");
+      setAiPanelOpen(false);
+      return;
+    }
+
+    if (actionId === "set-calendar-filter-all") {
+      openCalendarPanel("all");
+      setCalendarFilter("all");
+      setAiPanelOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(SET_CALENDAR_FILTER_ACTION_PREFIX)) {
+      const calendarId = actionId.slice(SET_CALENDAR_FILTER_ACTION_PREFIX.length);
+      const calendarName = decodeURIComponent(calendarId);
+      const exists = calendarEvents.some((event) => event.calendar === calendarName);
+      if (!exists) {
+        setToastMessage("Calendar filter no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      openCalendarPanel("all");
+      setCalendarFilter(calendarName);
+      setAiPanelOpen(false);
       return;
     }
 

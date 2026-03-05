@@ -1255,6 +1255,34 @@ describe("App", () => {
     );
   });
 
+  it("sets calendar sort from command palette actions", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set calendar sort latest" }
+    });
+    fireEvent.click(screen.getByText("Set calendar sort: Latest"));
+
+    expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Latest" })).toHaveClass("active");
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("sets calendar filter from command palette actions", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">set calendar filter events" }
+    });
+    fireEvent.click(screen.getByText("Set calendar filter: Events"));
+
+    expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Events \(/ })).toHaveClass("active");
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("blocks current-note calendar action from command palette for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

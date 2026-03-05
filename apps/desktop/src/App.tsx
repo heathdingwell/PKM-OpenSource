@@ -4926,7 +4926,12 @@ export default function App() {
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.altKey && event.key.toLowerCase() === "u") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.altKey &&
+        !event.shiftKey &&
+        (event.key.toLowerCase() === "u" || event.code === "KeyU")
+      ) {
         event.preventDefault();
         if (selectedVisibleNoteIds.length > 1) {
           setToastMessage("Select one note first");

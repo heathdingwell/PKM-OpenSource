@@ -386,6 +386,14 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
   });
 
+  it("opens reminders scoped to current note using KeyU keyboard code", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "¨", code: "KeyU", metaKey: true, altKey: true });
+    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
+  });
+
   it("opens bulk tags editor with keyboard shortcut for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -3209,6 +3217,17 @@ describe("App", () => {
     const searchInput = screen.getByPlaceholderText("Search or ask a question");
     fireEvent.change(searchInput, { target: { value: "agenda" } });
     fireEvent.keyDown(searchInput, { key: "u", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
+  });
+
+  it("opens selected search result reminders using KeyU code in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "¨", code: "KeyU", metaKey: true, altKey: true });
 
     expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");

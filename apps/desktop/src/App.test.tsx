@@ -3712,6 +3712,23 @@ describe("App", () => {
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
 
+  it("copies selected search result link using KeyL code in search modal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "¬", code: "KeyL", metaKey: true });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note link copied")).toBeInTheDocument();
+  });
+
   it("copies selected search result path with alt+cmd+l in search modal", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -3730,6 +3747,24 @@ describe("App", () => {
     expect(screen.getByText("Note path copied")).toBeInTheDocument();
   });
 
+  it("copies selected search result path using KeyL code in search modal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "¬", code: "KeyL", metaKey: true, altKey: true });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
+    expect(screen.getByText("Note path copied")).toBeInTheDocument();
+  });
+
   it("opens selected search result in new window with cmd+o in search modal", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     render(<App />);
@@ -3737,6 +3772,18 @@ describe("App", () => {
     const searchInput = screen.getByPlaceholderText("Search or ask a question");
     fireEvent.change(searchInput, { target: { value: "agenda" } });
     fireEvent.keyDown(searchInput, { key: "o", metaKey: true });
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    openSpy.mockRestore();
+  });
+
+  it("opens selected search result in new window using KeyO code in search modal", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "ø", code: "KeyO", metaKey: true });
 
     expect(openSpy).toHaveBeenCalledTimes(1);
     openSpy.mockRestore();
@@ -3759,12 +3806,40 @@ describe("App", () => {
     expect(screen.getByText("Share link copied")).toBeInTheDocument();
   });
 
+  it("shares selected search result link using KeyS code in search modal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "ß", code: "KeyS", metaKey: true, altKey: true });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Share link copied")).toBeInTheDocument();
+  });
+
   it("opens selected search result in lite edit mode with alt+cmd+o in search modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     const searchInput = screen.getByPlaceholderText("Search or ask a question");
     fireEvent.change(searchInput, { target: { value: "agenda" } });
     fireEvent.keyDown(searchInput, { key: "o", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
+  });
+
+  it("opens selected search result in lite edit mode using KeyO code in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "ø", code: "KeyO", metaKey: true, altKey: true });
 
     expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
@@ -3779,6 +3854,19 @@ describe("App", () => {
     const searchInput = screen.getByPlaceholderText("Search or ask a question");
     fireEvent.change(searchInput, { target: { value: "agenda" } });
     fireEvent.keyDown(searchInput, { key: "o", metaKey: true, shiftKey: true });
+
+    expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens selected search result in full editor using KeyO code in search modal", () => {
+    render(<App />);
+    fireEvent.keyDown(window, { key: "o", metaKey: true, altKey: true });
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "ø", code: "KeyO", metaKey: true, shiftKey: true });
 
     expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
   });
@@ -3804,12 +3892,32 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
   });
 
+  it("opens selected search result note info using KeyI code in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "ˆ", code: "KeyI", metaKey: true, shiftKey: true });
+
+    expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
+  });
+
   it("opens selected search result note history with alt+cmd+h in search modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     const searchInput = screen.getByPlaceholderText("Search or ask a question");
     fireEvent.change(searchInput, { target: { value: "agenda" } });
     fireEvent.keyDown(searchInput, { key: "h", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens selected search result note history using KeyH code in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "˙", code: "KeyH", metaKey: true, altKey: true });
 
     expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
   });
@@ -3825,12 +3933,33 @@ describe("App", () => {
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
+  it("opens selected search result tag editor using KeyT code in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "†", code: "KeyT", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
+  });
+
   it("opens selected search result move dialog with alt+cmd+m in search modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     const searchInput = screen.getByPlaceholderText("Search or ask a question");
     fireEvent.change(searchInput, { target: { value: "agenda" } });
     fireEvent.keyDown(searchInput, { key: "m", metaKey: true, altKey: true });
+
+    expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens selected search result move dialog using KeyM code in search modal", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "µ", code: "KeyM", metaKey: true, altKey: true });
 
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
@@ -4065,6 +4194,25 @@ describe("App", () => {
     clickSpy.mockRestore();
   });
 
+  it("exports selected search result HTML using Digit2 code in search modal", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-html-code");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "@", code: "Digit2", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Exported HTML "Agenda"')).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
   it("exports selected search result text with alt+cmd+3 in search modal", () => {
     const createObjectURL = vi.fn(() => "blob:pkm-note-text");
     const revokeObjectURL = vi.fn();
@@ -4077,6 +4225,25 @@ describe("App", () => {
     const searchInput = screen.getByPlaceholderText("Search or ask a question");
     fireEvent.change(searchInput, { target: { value: "agenda" } });
     fireEvent.keyDown(searchInput, { key: "3", metaKey: true, altKey: true });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Exported text "Agenda"')).toBeInTheDocument();
+    clickSpy.mockRestore();
+  });
+
+  it("exports selected search result text using Digit3 code in search modal", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-text-code");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "#", code: "Digit3", metaKey: true, altKey: true });
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
@@ -4097,6 +4264,21 @@ describe("App", () => {
     await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
     expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
     expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+  });
+
+  it("exports selected search result PDF using Digit4 code in search modal", async () => {
+    const exportNotePdf = vi.fn().mockResolvedValue({ ok: true, path: "/tmp/Agenda-code.pdf" });
+    (window as unknown as { pkmShell?: { exportNotePdf: typeof exportNotePdf } }).pkmShell = { exportNotePdf };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "$", code: "Digit4", metaKey: true, altKey: true });
+
+    await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
+    expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
+    expect(screen.getByText("Exported PDF to /tmp/Agenda-code.pdf")).toBeInTheDocument();
   });
 
   it("prints selected search result with alt+cmd+p in search modal", () => {

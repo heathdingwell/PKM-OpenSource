@@ -801,7 +801,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "export-pdf", label: "Export as PDF" },
   { id: "print", label: "Print", shortcut: "cmd+alt+p" },
   { id: "divider-5", label: "", divider: true },
-  { id: "restore-trash", label: "Restore from Trash" },
+  { id: "restore-trash", label: "Restore from Trash", shortcut: "cmd+alt+z" },
   { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace" }
 ];
 
@@ -4623,6 +4623,7 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const eventTarget = event.target;
+      const isSearchModalTarget = eventTarget instanceof HTMLElement && Boolean(eventTarget.closest(".search-modal"));
       const isTextEntryTarget =
         eventTarget instanceof HTMLInputElement ||
         eventTarget instanceof HTMLTextAreaElement ||
@@ -4910,6 +4911,10 @@ export default function App() {
         return;
       }
 
+      if (searchOpen && isSearchModalTarget) {
+        return;
+      }
+
       if (
         (event.metaKey || event.ctrlKey) &&
         event.shiftKey &&
@@ -4971,12 +4976,39 @@ export default function App() {
         (event.metaKey || event.ctrlKey) &&
         event.altKey &&
         !event.shiftKey &&
+        (event.key.toLowerCase() === "z" || event.code === "KeyZ")
+      ) {
+        event.preventDefault();
+        const targetNotes = selectedVisibleNoteIds.length
+          ? notes.filter((note) => selectedVisibleNoteIds.includes(note.id))
+          : activeNote
+            ? [activeNote]
+            : [];
+        if (!targetNotes.length) {
+          setToastMessage("Open a note before restoring");
+          return;
+        }
+        const trashedTargets = targetNotes.filter((note) => Boolean(note.trashedAt));
+        if (!trashedTargets.length) {
+          setToastMessage("Open a trashed note before restoring");
+          return;
+        }
+        const restored = restoreNotesFromTrash(trashedTargets.map((note) => note.id));
+        if (restored > 0) {
+          setToastMessage(
+            restored === 1 ? `"${trashedTargets[0]?.title ?? "Note"}" restored from Trash` : `${restored} notes restored from Trash`
+          );
+        }
+        return;
+      }
+
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.altKey &&
+        !event.shiftKey &&
         (event.key.toLowerCase() === "p" || event.code === "KeyP")
       ) {
         event.preventDefault();
-        if (searchOpen) {
-          return;
-        }
         if (selectedVisibleNoteIds.length > 1) {
           setToastMessage("Select one note to print");
           return;

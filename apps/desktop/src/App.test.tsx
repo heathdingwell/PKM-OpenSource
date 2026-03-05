@@ -657,6 +657,63 @@ describe("App", () => {
     expect(screen.getByText("Restore note from Trash before duplicating")).toBeInTheDocument();
   });
 
+  it("restores the active trashed note with keyboard shortcut", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.keyDown(window, { key: "Backspace", metaKey: true });
+    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    const trashedAgenda = screen.getByRole("button", { name: /Agenda/ });
+    fireEvent.click(trashedAgenda);
+
+    fireEvent.keyDown(window, { key: "z", metaKey: true, altKey: true });
+    expect(screen.getByText('"Agenda" restored from Trash')).toBeInTheDocument();
+  });
+
+  it("restores the active trashed note using KeyZ code with keyboard shortcut", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.keyDown(window, { key: "Backspace", metaKey: true });
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    const trashedAgenda = screen.getByRole("button", { name: /Agenda/ });
+    fireEvent.click(trashedAgenda);
+
+    fireEvent.keyDown(window, { key: "Ω", code: "KeyZ", metaKey: true, altKey: true });
+    expect(screen.getByText('"Agenda" restored from Trash')).toBeInTheDocument();
+  });
+
+  it("restores selected trashed notes with keyboard shortcut", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "Backspace", metaKey: true });
+    expect(screen.getByText("2 notes moved to Trash")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    const trashedCards = document.querySelectorAll(".note-grid .note-card");
+    expect(trashedCards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(trashedCards[0] as HTMLButtonElement);
+    fireEvent.click(trashedCards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "z", metaKey: true, altKey: true });
+    expect(screen.getByText("2 notes restored from Trash")).toBeInTheDocument();
+  });
+
+  it("blocks restore keyboard shortcut for non-trashed notes", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "z", metaKey: true, altKey: true });
+    expect(screen.getByText("Open a trashed note before restoring")).toBeInTheDocument();
+  });
+
   it("copies note html with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

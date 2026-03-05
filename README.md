@@ -32,6 +32,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Trash mode with restore/permanent delete and empty trash actions.
 - Command palette action: `Restore note from Trash`.
 - Command palette action: `Delete note permanently`.
+- Command palette dynamically includes `Open saved search: ...` actions for all saved searches.
 - Command palette trash/restore/delete actions now apply to selected notes when multiple cards are selected.
 - Command palette duplicate action now applies to selected notes when multiple cards are selected.
 - Command palette `Move note`, `Copy note to notebook`, and `Edit note tags` now apply to selected notes when multiple cards are selected.

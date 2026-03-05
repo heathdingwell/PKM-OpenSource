@@ -534,6 +534,7 @@ const seedNotes: SeedNote[] = [
 ];
 
 const sidePinned = ["Home", "Shortcuts", "Notes", "Reminders", "Trash", "Tasks", "Files", "Calendar", "Graph", "Templates"];
+const OPEN_SAVED_SEARCH_ACTION_PREFIX = "open-saved-search:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3240,21 +3241,44 @@ export default function App() {
 
   const commandMode = quickQuery.trim().startsWith(">");
   const commandQuery = commandMode ? quickQuery.trim().slice(1).trim().toLowerCase() : "";
+  const savedSearchPaletteActions = useMemo<CommandPaletteAction[]>(
+    () =>
+      savedSearches
+        .slice()
+        .sort((left, right) => left.label.localeCompare(right.label))
+        .map((saved) => ({
+          id: `${OPEN_SAVED_SEARCH_ACTION_PREFIX}${saved.id}`,
+          label: `Open saved search: ${saved.label}`,
+          keywords: [
+            "saved",
+            "search",
+            saved.label,
+            saved.scope,
+            saved.notebook ?? "",
+            saved.query
+          ]
+        })),
+    [savedSearches]
+  );
+  const allPaletteActions = useMemo<CommandPaletteAction[]>(
+    () => [...commandPaletteActions, ...savedSearchPaletteActions],
+    [savedSearchPaletteActions]
+  );
   const paletteResults = useMemo(() => {
     if (!commandMode) {
       return [];
     }
 
     if (!commandQuery) {
-      return commandPaletteActions;
+      return allPaletteActions;
     }
 
     const terms = commandQuery.split(/\s+/).filter((term) => term.length > 0);
-    return commandPaletteActions.filter((action) => {
+    return allPaletteActions.filter((action) => {
       const haystack = `${action.label} ${action.keywords.join(" ")}`.toLowerCase();
       return terms.every((term) => haystack.includes(term));
     });
-  }, [commandMode, commandQuery]);
+  }, [allPaletteActions, commandMode, commandQuery]);
 
   const parsedQuickQuery = useMemo(() => parseSearchQuery(quickQuery), [quickQuery]);
   const updatedSearchPreset = useMemo(() => detectUpdatedSearchPreset(quickQuery), [quickQuery]);
@@ -7461,6 +7485,18 @@ export default function App() {
   }
 
   function runPaletteAction(actionId: string): void {
+    if (actionId.startsWith(OPEN_SAVED_SEARCH_ACTION_PREFIX)) {
+      const savedSearchId = actionId.slice(OPEN_SAVED_SEARCH_ACTION_PREFIX.length);
+      const saved = savedSearches.find((entry) => entry.id === savedSearchId);
+      if (!saved) {
+        setToastMessage("Saved search no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      openSavedSearch(saved);
+      return;
+    }
+
     if (actionId === "new-note") {
       setSearchOpen(false);
       createNewNote();

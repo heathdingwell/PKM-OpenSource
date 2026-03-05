@@ -3245,6 +3245,34 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
   });
 
+  it("opens a saved search from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "agenda" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Daily scoped" } });
+    fireEvent.change(screen.getByLabelText("Scope"), { target: { value: "current" } });
+    fireEvent.change(screen.getByLabelText("Notebook"), { target: { value: "Daily Notes" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const notebookItems = Array.from(document.querySelectorAll(".notebook-item"));
+    const alternateNotebook = notebookItems.find((entry) => !entry.textContent?.includes("Daily Notes"));
+    expect(alternateNotebook).toBeTruthy();
+    fireEvent.click(alternateNotebook as HTMLButtonElement);
+    expect(screen.queryByRole("heading", { name: "Daily Notes", level: 1 })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open saved search daily scoped" }
+    });
+    fireEvent.click(screen.getByText("Open saved search: Daily scoped"));
+
+    expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
+    expect((screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement).value).toBe("agenda");
+  });
+
   it("persists chip filters when saving and reopening a saved search", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));

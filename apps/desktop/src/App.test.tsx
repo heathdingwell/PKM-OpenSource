@@ -3374,6 +3374,25 @@ describe("App", () => {
     expect(screen.getByText("Results")).toBeInTheDocument();
   });
 
+  it("removes recent search from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    let searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: "agenda" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">remove recent search agenda" } });
+    fireEvent.click(screen.getByText("Remove recent search: agenda"));
+
+    expect(screen.getByText('Removed recent search "agenda"')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    expect(screen.queryByRole("button", { name: "Remove recent search agenda" })).not.toBeInTheDocument();
+  });
+
   it("opens home pinned note from command palette", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

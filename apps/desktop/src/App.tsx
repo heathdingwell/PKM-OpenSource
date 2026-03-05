@@ -551,6 +551,7 @@ const OPEN_TEMPLATE_NOTE_ACTION_PREFIX = "open-template-note:";
 const REMOVE_TEMPLATE_NOTE_ACTION_PREFIX = "remove-template-note:";
 const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
 const OPEN_RECENT_SEARCH_ACTION_PREFIX = "open-recent-search:";
+const REMOVE_RECENT_SEARCH_ACTION_PREFIX = "remove-recent-search:";
 const REMOVE_SHORTCUT_NOTE_ACTION_PREFIX = "remove-shortcut-note:";
 const REMOVE_SHORTCUT_NOTEBOOK_ACTION_PREFIX = "remove-shortcut-notebook:";
 const REMOVE_SHORTCUT_TAG_ACTION_PREFIX = "remove-shortcut-tag:";
@@ -3359,11 +3360,18 @@ export default function App() {
   );
   const recentSearchPaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
-      recentSearches.map((query) => ({
-        id: `${OPEN_RECENT_SEARCH_ACTION_PREFIX}${encodeURIComponent(query)}`,
-        label: `Open recent search: ${query}`,
-        keywords: ["recent", "search", "open", query]
-      })),
+      recentSearches.flatMap((query) => [
+        {
+          id: `${OPEN_RECENT_SEARCH_ACTION_PREFIX}${encodeURIComponent(query)}`,
+          label: `Open recent search: ${query}`,
+          keywords: ["recent", "search", "open", query]
+        },
+        {
+          id: `${REMOVE_RECENT_SEARCH_ACTION_PREFIX}${encodeURIComponent(query)}`,
+          label: `Remove recent search: ${query}`,
+          keywords: ["recent", "search", "remove", "delete", query]
+        }
+      ]),
     [recentSearches]
   );
   const shortcutNotePaletteActions = useMemo<CommandPaletteAction[]>(
@@ -7938,6 +7946,20 @@ export default function App() {
       setQuickQuery(query);
       setSearchSelected(0);
       setSearchScope("everywhere");
+      return;
+    }
+
+    if (actionId.startsWith(REMOVE_RECENT_SEARCH_ACTION_PREFIX)) {
+      const encodedQuery = actionId.slice(REMOVE_RECENT_SEARCH_ACTION_PREFIX.length);
+      const query = decodeURIComponent(encodedQuery);
+      if (!recentSearches.includes(query)) {
+        setToastMessage("Recent search no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      removeRecentSearch(query);
+      setSearchOpen(false);
+      setToastMessage(`Removed recent search "${query}"`);
       return;
     }
 

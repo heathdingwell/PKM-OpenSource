@@ -535,6 +535,8 @@ const seedNotes: SeedNote[] = [
 
 const sidePinned = ["Home", "Shortcuts", "Notes", "Reminders", "Trash", "Tasks", "Files", "Calendar", "Graph", "Templates"];
 const OPEN_SAVED_SEARCH_ACTION_PREFIX = "open-saved-search:";
+const EDIT_SAVED_SEARCH_ACTION_PREFIX = "edit-saved-search:";
+const REMOVE_SAVED_SEARCH_ACTION_PREFIX = "remove-saved-search:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
@@ -3249,15 +3251,25 @@ export default function App() {
         .map((saved) => ({
           id: `${OPEN_SAVED_SEARCH_ACTION_PREFIX}${saved.id}`,
           label: `Open saved search: ${saved.label}`,
-          keywords: [
-            "saved",
-            "search",
-            saved.label,
-            saved.scope,
-            saved.notebook ?? "",
-            saved.query
-          ]
-        })),
+          keywords: ["saved", "search", "open", saved.label, saved.scope, saved.notebook ?? "", saved.query]
+        }))
+        .flatMap((action) => {
+          const savedId = action.id.slice(OPEN_SAVED_SEARCH_ACTION_PREFIX.length);
+          const label = action.label.replace(/^Open saved search:\s*/, "");
+          return [
+            action,
+            {
+              id: `${EDIT_SAVED_SEARCH_ACTION_PREFIX}${savedId}`,
+              label: `Edit saved search: ${label}`,
+              keywords: ["saved", "search", "edit", label]
+            },
+            {
+              id: `${REMOVE_SAVED_SEARCH_ACTION_PREFIX}${savedId}`,
+              label: `Remove saved search: ${label}`,
+              keywords: ["saved", "search", "remove", "delete", label]
+            }
+          ];
+        }),
     [savedSearches]
   );
   const allPaletteActions = useMemo<CommandPaletteAction[]>(
@@ -7494,6 +7506,33 @@ export default function App() {
         return;
       }
       openSavedSearch(saved);
+      return;
+    }
+
+    if (actionId.startsWith(EDIT_SAVED_SEARCH_ACTION_PREFIX)) {
+      const savedSearchId = actionId.slice(EDIT_SAVED_SEARCH_ACTION_PREFIX.length);
+      const saved = savedSearches.find((entry) => entry.id === savedSearchId);
+      if (!saved) {
+        setToastMessage("Saved search no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      setSearchOpen(false);
+      editSavedSearch(saved.id);
+      return;
+    }
+
+    if (actionId.startsWith(REMOVE_SAVED_SEARCH_ACTION_PREFIX)) {
+      const savedSearchId = actionId.slice(REMOVE_SAVED_SEARCH_ACTION_PREFIX.length);
+      const saved = savedSearches.find((entry) => entry.id === savedSearchId);
+      if (!saved) {
+        setToastMessage("Saved search no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      removeSavedSearch(saved.id);
+      setSearchOpen(false);
+      setToastMessage(`Removed saved search "${saved.label}"`);
       return;
     }
 

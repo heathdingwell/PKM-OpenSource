@@ -3273,6 +3273,45 @@ describe("App", () => {
     expect((screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement).value).toBe("agenda");
   });
 
+  it("opens saved search edit dialog from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "agenda" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Daily scoped" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">edit saved search daily scoped" }
+    });
+    fireEvent.click(screen.getByText("Edit saved search: Daily scoped"));
+
+    expect(screen.getByRole("heading", { name: "Edit saved search", level: 3 })).toBeInTheDocument();
+  });
+
+  it("removes a saved search from command palette", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: "agenda" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Daily scoped" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">remove saved search daily scoped" }
+    });
+    fireEvent.click(screen.getByText("Remove saved search: Daily scoped"));
+
+    expect(screen.queryByRole("button", { name: /^Daily scoped/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Removed saved search "Daily scoped"')).toBeInTheDocument();
+  });
+
   it("persists chip filters when saving and reopening a saved search", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));

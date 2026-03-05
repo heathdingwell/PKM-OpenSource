@@ -3665,6 +3665,59 @@ describe("App", () => {
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
   });
 
+  it("moves current notebook to an existing stack from command palette", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+    const inboxNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Inbox"));
+    const stackedNotebook = (name: string) =>
+      (Array.from(document.querySelectorAll(".stack-group .notebook-item")) as HTMLButtonElement[]).find((entry) =>
+        entry.textContent?.includes(name)
+      );
+
+    expect(dailyNotebook()).toBeTruthy();
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Move to stack..." }));
+    fireEvent.change(screen.getByPlaceholderText("New stack name"), { target: { value: "Ops" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(stackedNotebook("Daily Notes")).toBeTruthy();
+
+    expect(inboxNotebook()).toBeTruthy();
+    fireEvent.click(inboxNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">move current notebook to stack ops" }
+    });
+    fireEvent.click(screen.getByText("Move current notebook to stack: Ops"));
+
+    expect(screen.getByText('Moved "Inbox" to stack "Ops"')).toBeInTheDocument();
+    expect(stackedNotebook("Inbox")).toBeTruthy();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("guards dynamic stack assignment when all notes is selected", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll(".notebook-item")) as HTMLButtonElement[];
+    const dailyNotebook = () => notebookItems().find((entry) => entry.textContent?.includes("Daily Notes"));
+
+    expect(dailyNotebook()).toBeTruthy();
+    fireEvent.contextMenu(dailyNotebook() as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Move to stack..." }));
+    fireEvent.change(screen.getByPlaceholderText("New stack name"), { target: { value: "Ops" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">move current notebook to stack ops" }
+    });
+    fireEvent.click(screen.getByText("Move current notebook to stack: Ops"));
+
+    expect(screen.getByText("Select a notebook first")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
   it("creates and edits a saved search via modal", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

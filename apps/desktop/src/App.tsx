@@ -553,6 +553,7 @@ const REMOVE_TEMPLATE_NOTE_ACTION_PREFIX = "remove-template-note:";
 const TOGGLE_STACK_ACTION_PREFIX = "toggle-stack:";
 const RENAME_STACK_ACTION_PREFIX = "rename-stack:";
 const REMOVE_STACK_ACTION_PREFIX = "remove-stack:";
+const MOVE_CURRENT_NOTEBOOK_TO_STACK_ACTION_PREFIX = "move-current-notebook-to-stack:";
 const OPEN_RECENT_SEARCH_ACTION_PREFIX = "open-recent-search:";
 const REMOVE_RECENT_SEARCH_ACTION_PREFIX = "remove-recent-search:";
 const REMOVE_SHORTCUT_NOTE_ACTION_PREFIX = "remove-shortcut-note:";
@@ -3451,6 +3452,11 @@ export default function App() {
   const stackPaletteActions = useMemo<CommandPaletteAction[]>(
     () =>
       stackNames.flatMap((stack) => [
+        {
+          id: `${MOVE_CURRENT_NOTEBOOK_TO_STACK_ACTION_PREFIX}${encodeURIComponent(stack)}`,
+          label: `Move current notebook to stack: ${stack}`,
+          keywords: ["stack", "move", "assign", "current", "notebook", stack]
+        },
         {
           id: `${TOGGLE_STACK_ACTION_PREFIX}${encodeURIComponent(stack)}`,
           label: `Toggle stack: ${stack}`,
@@ -8017,6 +8023,24 @@ export default function App() {
         return;
       }
       toggleStackCollapsed(stack);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId.startsWith(MOVE_CURRENT_NOTEBOOK_TO_STACK_ACTION_PREFIX)) {
+      const stackId = actionId.slice(MOVE_CURRENT_NOTEBOOK_TO_STACK_ACTION_PREFIX.length);
+      const stack = decodeURIComponent(stackId);
+      if (!stackNames.includes(stack)) {
+        setToastMessage("Stack no longer exists");
+        setSearchOpen(false);
+        return;
+      }
+      if (selectedNotebook === "All Notes") {
+        setToastMessage("Select a notebook first");
+        setSearchOpen(false);
+        return;
+      }
+      assignNotebookToStack(selectedNotebook, stack);
       setSearchOpen(false);
       return;
     }

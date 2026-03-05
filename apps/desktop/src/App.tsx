@@ -608,6 +608,12 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-tasks-filter-undated", label: "Set tasks filter: No due", keywords: ["tasks", "filter", "no due", "undated"] },
   { id: "open-tasks-current-note", label: "Open tasks for current note", keywords: ["tasks", "todos", "note", "current"] },
   { id: "open-files", label: "Open files", keywords: ["attachments", "files"] },
+  { id: "set-files-filter-all", label: "Set files filter: All", keywords: ["files", "attachments", "filter", "all"] },
+  { id: "set-files-filter-images", label: "Set files filter: Images", keywords: ["files", "attachments", "filter", "images"] },
+  { id: "set-files-filter-pdfs", label: "Set files filter: PDFs", keywords: ["files", "attachments", "filter", "pdf"] },
+  { id: "set-files-filter-videos", label: "Set files filter: Videos", keywords: ["files", "attachments", "filter", "video"] },
+  { id: "set-files-filter-audio", label: "Set files filter: Audio", keywords: ["files", "attachments", "filter", "audio"] },
+  { id: "set-files-filter-other", label: "Set files filter: Other", keywords: ["files", "attachments", "filter", "other"] },
   { id: "open-files-current-note", label: "Open files for current note", keywords: ["attachments", "files", "note", "current"] },
   { id: "open-calendar", label: "Open calendar", keywords: ["events", "calendar"] },
   { id: "open-calendar-current-note", label: "Open calendar for current note", keywords: ["events", "calendar", "note", "current"] },
@@ -8811,6 +8817,32 @@ export default function App() {
 
     if (actionId === "open-files") {
       openFilesPanel("all");
+      return;
+    }
+
+    if (
+      actionId === "set-files-filter-all" ||
+      actionId === "set-files-filter-images" ||
+      actionId === "set-files-filter-pdfs" ||
+      actionId === "set-files-filter-videos" ||
+      actionId === "set-files-filter-audio" ||
+      actionId === "set-files-filter-other"
+    ) {
+      const filter: "all" | AttachmentKind =
+        actionId === "set-files-filter-images"
+          ? "image"
+          : actionId === "set-files-filter-pdfs"
+            ? "pdf"
+            : actionId === "set-files-filter-videos"
+              ? "video"
+              : actionId === "set-files-filter-audio"
+                ? "audio"
+                : actionId === "set-files-filter-other"
+                  ? "other"
+                  : "all";
+      openFilesPanel("all");
+      setFilesFilterKind(filter);
+      setAiPanelOpen(false);
       return;
     }
 

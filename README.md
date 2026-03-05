@@ -149,6 +149,8 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
   - `Set reminders filter: All|Overdue|Today|Upcoming`
 - Task filtering actions via command palette:
   - `Set tasks filter: All|Overdue|Today|Upcoming|No due`
+- File filtering actions via command palette:
+  - `Set files filter: All|Images|PDFs|Videos|Audio|Other`
 - Explicit grouping actions via command palette:
   - `Set grouping: Off|Updated|Notebook|Tag`
 - Explicit editor font actions via command palette:

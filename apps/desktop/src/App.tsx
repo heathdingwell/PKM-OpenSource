@@ -767,7 +767,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
   { id: "open-lite-edit", label: "Open in Lite edit mode", shortcut: "alt+cmd+o" },
   { id: "open-full-edit", label: "Open in full editor", shortcut: "shift+cmd+o" },
-  { id: "open-local-graph", label: "Open local graph" },
+  { id: "open-local-graph", label: "Open local graph", shortcut: "shift+cmd+g" },
   { id: "share", label: "Share", shortcut: "cmd+alt+s" },
   { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
   { id: "copy-path", label: "Copy path", shortcut: "cmd+alt+l" },
@@ -776,7 +776,7 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "copy-text", label: "Copy text", shortcut: "cmd+shift+t" },
   { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
   { id: "divider-1", label: "", divider: true },
-  { id: "move", label: "Move", shortcut: "cmd+shift+m" },
+  { id: "move", label: "Move", shortcut: "cmd+alt+m" },
   { id: "copy-to", label: "Copy to", shortcut: "cmd+alt+y" },
   { id: "duplicate", label: "Duplicate", shortcut: "cmd+alt+d" },
   { id: "edit-tags", label: "Edit tags", shortcut: "cmd+alt+t" },
@@ -4774,6 +4774,16 @@ export default function App() {
 
         if (matchesMetaShiftLetter("m")) {
           event.preventDefault();
+          if (selectedKeyboardNoteIds.length > 1) {
+            void copyNotesMarkdown(selectedKeyboardNoteIds);
+          } else {
+            void copyNoteMarkdown(activeNote.id);
+          }
+          return;
+        }
+
+        if (matchesMetaAltLetter("m")) {
+          event.preventDefault();
           openMoveDialogForNotes(selectedKeyboardNoteIds, "move");
           return;
         }
@@ -5052,6 +5062,32 @@ export default function App() {
           return;
         }
         openNoteInFullEditor();
+        return;
+      }
+
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        !event.altKey &&
+        (event.key.toLowerCase() === "g" || event.code === "KeyG")
+      ) {
+        event.preventDefault();
+        if (selectedVisibleNoteIds.length > 1) {
+          setToastMessage("Select one note to open local graph");
+          return;
+        }
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          return;
+        }
+        setSidebarView("notes");
+        setBrowseMode("graph");
+        setGraphScope("local");
+        setTasksDialogOpen(false);
+        setFilesDialogOpen(false);
+        setCalendarDialogOpen(false);
+        setAiPanelOpen(false);
+        setSearchOpen(false);
         return;
       }
 

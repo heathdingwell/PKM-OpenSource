@@ -566,7 +566,7 @@ describe("App", () => {
   it("opens move note dialog with keyboard shortcut", () => {
     render(<App />);
 
-    fireEvent.keyDown(window, { key: "m", metaKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: "m", metaKey: true, altKey: true });
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
@@ -579,10 +579,59 @@ describe("App", () => {
     fireEvent.click(cards[0] as HTMLButtonElement);
     fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
 
-    fireEvent.keyDown(window, { key: "m", metaKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: "m", metaKey: true, altKey: true });
     const moveModal = screen.getByRole("heading", { name: "Move", level: 3 }).closest("section");
     expect(moveModal).toBeTruthy();
     expect(within(moveModal as HTMLElement).getByText("2 selected")).toBeInTheDocument();
+  });
+
+  it("copies note markdown with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "m", metaKey: true, shiftKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("# Agenda");
+    expect(screen.getByText("Note markdown copied")).toBeInTheDocument();
+  });
+
+  it("copies selected note markdown with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "m", metaKey: true, shiftKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("\n---\n\n# To-do list");
+    expect(screen.getByText("Markdown copied for 2 notes")).toBeInTheDocument();
+  });
+
+  it("copies note markdown using KeyM code with keyboard shortcut", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "µ", code: "KeyM", metaKey: true, shiftKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note markdown copied")).toBeInTheDocument();
   });
 
   it("opens copy dialog with keyboard shortcut", () => {
@@ -1007,6 +1056,34 @@ describe("App", () => {
 
     fireEvent.keyDown(window, { key: "ø", code: "KeyO", metaKey: true, shiftKey: true });
     expect(screen.getByRole("button", { name: "Lite" })).not.toHaveClass("active");
+  });
+
+  it("opens local graph with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "g", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+  });
+
+  it("opens local graph using KeyG code with keyboard shortcut", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "©", code: "KeyG", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+  });
+
+  it("blocks local graph keyboard shortcut for multi-selected notes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const cards = document.querySelectorAll(".note-grid .note-card");
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(cards[0] as HTMLButtonElement);
+    fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
+
+    fireEvent.keyDown(window, { key: "g", metaKey: true, shiftKey: true });
+    expect(screen.getByText("Select one note to open local graph")).toBeInTheDocument();
   });
 
   it("toggles the active note template with keyboard shortcut", async () => {
@@ -7235,7 +7312,7 @@ describe("App", () => {
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Open local graph" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Open local graph/i }));
 
     expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");

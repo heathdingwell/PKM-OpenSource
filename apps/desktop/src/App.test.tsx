@@ -588,6 +588,24 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: /^History/i, level: 3 })).toBeInTheDocument();
   });
 
+  it("opens backlinks and current-note calendar from metadata counts", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Backlinks" }));
+    expect(screen.queryByLabelText("Backlinks dock")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Open metadata backlinks" }));
+    expect(screen.getByLabelText("Backlinks dock")).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Open metadata events" }));
+    expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
+  });
+
   it("opens a tag filter from metadata tags", () => {
     render(<App />);
 
@@ -602,7 +620,7 @@ describe("App", () => {
     const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
     expect(metadataPanel).toBeTruthy();
 
-    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "#focus" }));
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Filter metadata tag focus" }));
     expect(screen.getByRole("heading", { name: "All Notes", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "#focus ×" })).toBeInTheDocument();
   });

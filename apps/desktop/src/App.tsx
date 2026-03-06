@@ -13376,9 +13376,6 @@ a{color:#1d4ed8}
         setDraggingNotebook(null);
         setStackDropTarget(null);
         setUnstackDropTarget(false);
-        setFilesDialogOpen(false);
-        setCalendarDialogOpen(false);
-        setEventDialog(null);
         setAttachmentDropTarget(null);
         setSlashInputDialog(null);
         setMediaInsertDialog(null);
@@ -16036,11 +16033,29 @@ a{color:#1d4ed8}
                     </div>
                     <div>
                       <dt>Backlinks</dt>
-                      <dd>{backlinks.length}</dd>
+                      <dd>
+                        <button
+                          type="button"
+                          className="preview-meta-action"
+                          aria-label="Open metadata backlinks"
+                          onClick={() => setBacklinksPaneOpen(true)}
+                        >
+                          {backlinks.length}
+                        </button>
+                      </dd>
                     </div>
                     <div>
                       <dt>Events</dt>
-                      <dd>{eventReferences.length}</dd>
+                      <dd>
+                        <button
+                          type="button"
+                          className="preview-meta-action"
+                          aria-label="Open metadata events"
+                          onClick={() => openCalendarPanel("current-note")}
+                        >
+                          {eventReferences.length}
+                        </button>
+                      </dd>
                     </div>
                     <div>
                       <dt>Tags</dt>
@@ -16052,6 +16067,7 @@ a{color:#1d4ed8}
                                 key={tag}
                                 type="button"
                                 className={tagFilters.includes(tag) ? "tag-chip active" : "tag-chip"}
+                                aria-label={`Filter metadata tag ${tag}`}
                                 onClick={() => openAllNotesWithTag(tag)}
                               >
                                 #{tag}

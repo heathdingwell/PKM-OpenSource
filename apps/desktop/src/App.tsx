@@ -14872,8 +14872,21 @@ a{color:#1d4ed8}
           <>
             <header className="editor-topbar">
               <div className="crumbs">
-                <span>{activeNote.notebook}</span>
-                <span>{draftPreview.title}</span>
+                <button
+                  type="button"
+                  className="crumb-link"
+                  onClick={() => {
+                    setSidebarView("notes");
+                    setSelectedNotebook(activeNote.notebook);
+                    setBrowseMode(activeNote.trashedAt ? "trash" : "all");
+                    setTasksDialogOpen(false);
+                    setFilesDialogOpen(false);
+                    setCalendarDialogOpen(false);
+                  }}
+                >
+                  {activeNote.notebook}
+                </button>
+                <span aria-current="page">{draftPreview.title}</span>
               </div>
               <div className="editor-top-actions">
                 <button

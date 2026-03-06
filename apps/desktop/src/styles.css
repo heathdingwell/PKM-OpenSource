@@ -1334,15 +1334,29 @@ body.is-resizing {
   font-size: 14px;
 }
 
-.crumbs span::after {
+.crumbs > *::after {
   content: ">";
   margin-left: 8px;
   color: #8aa2c8;
 }
 
-.crumbs span:last-child::after {
+.crumbs > *:last-child::after {
   content: "";
   margin: 0;
+}
+
+.crumb-link {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.crumb-link:hover {
+  color: #1e4fa6;
+  text-decoration: underline;
 }
 
 .editor-top-actions {

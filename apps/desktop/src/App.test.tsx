@@ -436,6 +436,18 @@ describe("App", () => {
     expect(shell).not.toHaveClass("focus-mode");
   });
 
+  it("opens the current notebook from the editor breadcrumb", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    expect(screen.getByRole("heading", { name: "Home", level: 1 })).toBeInTheDocument();
+
+    const crumbs = document.querySelector(".editor-topbar .crumbs");
+    expect(crumbs).toBeTruthy();
+
+    fireEvent.click(within(crumbs as HTMLElement).getByRole("button", { name: "Daily Notes" }));
+    expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
+  });
+
   it("toggles focus mode with keyboard shortcut", () => {
     render(<App />);
     const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });

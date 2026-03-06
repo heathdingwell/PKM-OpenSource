@@ -14991,6 +14991,14 @@ a{color:#1d4ed8}
                 <button
                   type="button"
                   className="link-btn"
+                  title="Copy note to notebook"
+                  onClick={() => openMoveDialogForNotes([activeNote.id], "copy")}
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  className="link-btn"
                   title="Open note in new window"
                   onClick={() => openNoteInNewWindow(activeNote.id)}
                 >

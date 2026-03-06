@@ -1547,6 +1547,15 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
+  it("opens copy dialog from note header action", () => {
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Copy" }));
+    expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
+  });
+
   it("opens note in new window from note header action", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     render(<App />);
@@ -9367,7 +9376,8 @@ describe("App", () => {
     fireEvent.click(cards[0] as HTMLButtonElement);
     fireEvent.click(cards[1] as HTMLButtonElement, { metaKey: true });
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    const bulkActions = screen.getByRole("toolbar", { name: "Bulk note actions" });
+    fireEvent.click(within(bulkActions).getByRole("button", { name: "Copy" }));
     const moveModal = screen.getByRole("heading", { name: "Copy to", level: 3 }).closest("section");
     expect(moveModal).toBeTruthy();
     fireEvent.click(within(moveModal as HTMLElement).getByRole("button", { name: "Inbox" }));

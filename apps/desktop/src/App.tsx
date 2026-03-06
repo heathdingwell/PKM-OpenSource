@@ -15473,6 +15473,7 @@ a{color:#1d4ed8}
                                 <li key={`${entry.title}-${index}`}>
                                   <button
                                     type="button"
+                                    aria-label={`Open preview outgoing link ${entry.title}`}
                                     onClick={() => {
                                       if (entry.target) {
                                         openLinkedNote(entry.target);
@@ -15496,7 +15497,11 @@ a{color:#1d4ed8}
                             {backlinks.length ? (
                               backlinks.map((entry) => (
                                 <li key={entry.note.id}>
-                                  <button type="button" onClick={() => openLinkedNote(entry.note)}>
+                                  <button
+                                    type="button"
+                                    aria-label={`Open preview backlink ${entry.note.title}`}
+                                    onClick={() => openLinkedNote(entry.note)}
+                                  >
                                     {entry.note.title}
                                   </button>
                                   {entry.context ? <small className="link-context">{entry.context}</small> : null}
@@ -15515,6 +15520,7 @@ a{color:#1d4ed8}
                                 <li key={`${entry.id}-${index}`}>
                                   <button
                                     type="button"
+                                    aria-label={`Open preview event ${entry.event?.title ?? entry.title}`}
                                     onClick={() => {
                                       if (entry.event) {
                                         openEditEventDialog(entry.event.id);

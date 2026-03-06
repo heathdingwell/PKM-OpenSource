@@ -7741,7 +7741,9 @@ describe("App", () => {
     const previewPane = screen.getByRole("region", { name: "Rendered preview" });
     const linkedEventsSection = within(previewPane).getByRole("heading", { name: "Linked events", level: 5 }).closest("section");
     expect(linkedEventsSection).toBeTruthy();
-    expect(within(linkedEventsSection as HTMLElement).getByRole("button", { name: "Weekly planning" })).toBeInTheDocument();
+    expect(
+      within(linkedEventsSection as HTMLElement).getByRole("button", { name: "Open preview event Weekly planning" })
+    ).toBeInTheDocument();
     expect(within(linkedEventsSection as HTMLElement).getByText(/^Events · /i)).toBeInTheDocument();
   });
 
@@ -9237,12 +9239,16 @@ describe("App", () => {
 
     const sourceOutgoingSection = screen.getByRole("heading", { name: "Outgoing links", level: 5 }).closest("section");
     expect(sourceOutgoingSection).toBeTruthy();
-    fireEvent.click(within(sourceOutgoingSection as HTMLElement).getByRole("button", { name: "Daily Journal" }));
+    fireEvent.click(
+      within(sourceOutgoingSection as HTMLElement).getByRole("button", { name: "Open preview outgoing link Daily Journal" })
+    );
 
     expect(screen.getByRole("heading", { name: "Daily Journal", level: 2 })).toBeInTheDocument();
     const targetOutgoingSection = screen.getByRole("heading", { name: "Outgoing links", level: 5 }).closest("section");
     expect(targetOutgoingSection).toBeTruthy();
-    expect(within(targetOutgoingSection as HTMLElement).getByRole("button", { name: "Agenda" })).toBeInTheDocument();
+    expect(
+      within(targetOutgoingSection as HTMLElement).getByRole("button", { name: "Open preview outgoing link Agenda" })
+    ).toBeInTheDocument();
   });
 
   it("toggles auto reciprocal links from the editor header", () => {

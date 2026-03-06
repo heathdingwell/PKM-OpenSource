@@ -577,6 +577,35 @@ describe("App", () => {
     await waitFor(() => expect(writeText).toHaveBeenLastCalledWith("Daily Notes/Agenda.md"));
   });
 
+  it("copies markdown, html, and text from the metadata panel", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Copy markdown" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(String(writeText.mock.calls.at(-1)?.[0] ?? "")).toContain("# Agenda");
+    expect(screen.getByText("Note markdown copied")).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Copy HTML" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    expect(String(writeText.mock.calls.at(-1)?.[0] ?? "")).toContain("<h1>Agenda</h1>");
+    expect(screen.getByText("Note HTML copied")).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Copy text" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(3));
+    expect(String(writeText.mock.calls.at(-1)?.[0] ?? "")).toContain("Priority 1");
+    expect(screen.getByText("Note text copied")).toBeInTheDocument();
+  });
+
   it("opens notebook and history from the metadata panel", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Home" }));

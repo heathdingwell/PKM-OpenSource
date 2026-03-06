@@ -16168,6 +16168,15 @@ a{color:#1d4ed8}
                     <button type="button" onClick={() => void copyNotePath(activeNote.id)}>
                       Copy path
                     </button>
+                    <button type="button" onClick={() => void copyNotesMarkdown([activeNote.id])}>
+                      Copy markdown
+                    </button>
+                    <button type="button" onClick={() => void copyNotesHtml([activeNote.id])}>
+                      Copy HTML
+                    </button>
+                    <button type="button" onClick={() => void copyNotesText([activeNote.id])}>
+                      Copy text
+                    </button>
                     <button type="button" onClick={() => openTagEditor(activeNote.id)}>
                       Edit tags
                     </button>

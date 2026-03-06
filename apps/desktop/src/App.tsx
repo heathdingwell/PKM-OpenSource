@@ -14888,10 +14888,20 @@ a{color:#1d4ed8}
                 >
                   Info
                 </button>
-                <button type="button" className="share-btn" title="Share note">
+                <button
+                  type="button"
+                  className="share-btn"
+                  title="Share note"
+                  onClick={() => void copyNoteLink(activeNote.id, "Share link copied")}
+                >
                   Share
                 </button>
-                <button type="button" className="link-btn" title="Copy note link">
+                <button
+                  type="button"
+                  className="link-btn"
+                  title="Copy note link"
+                  onClick={() => void copyNoteLink(activeNote.id)}
+                >
                   Link
                 </button>
                 <button

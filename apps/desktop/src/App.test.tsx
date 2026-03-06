@@ -1106,6 +1106,22 @@ describe("App", () => {
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
 
+  it("copies note link from note header action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Link" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note link copied")).toBeInTheDocument();
+  });
+
   it("copies note link using KeyL code with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -1244,6 +1260,22 @@ describe("App", () => {
     render(<App />);
 
     fireEvent.keyDown(window, { key: "s", metaKey: true, altKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Share link copied")).toBeInTheDocument();
+  });
+
+  it("shares note link from note header action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Share" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Share link copied")).toBeInTheDocument();
   });

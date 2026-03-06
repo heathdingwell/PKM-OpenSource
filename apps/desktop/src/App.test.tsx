@@ -332,7 +332,8 @@ describe("App", () => {
     expect(recentTitles()[0]).toBe("Agenda");
 
     fireEvent.contextMenu(todoCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Rename/i }));
+    const noteActionsMenu = screen.getByRole("menu", { name: "Note actions" });
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Rename/i }));
 
     const renameModal = screen.getByRole("heading", { name: "Rename note" }).closest("section");
     expect(renameModal).toBeTruthy();
@@ -1389,6 +1390,26 @@ describe("App", () => {
     fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Path" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("Daily Notes/Agenda.md"));
     expect(screen.getByText("Note path copied")).toBeInTheDocument();
+  });
+
+  it("opens rename note dialog from note header action", () => {
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Rename" }));
+    expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
+  });
+
+  it("opens note in new window from note header action", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Window" }));
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    openSpy.mockRestore();
   });
 
   it("copies note link using KeyL code with keyboard shortcut", async () => {

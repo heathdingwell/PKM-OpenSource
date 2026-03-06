@@ -14950,6 +14950,22 @@ a{color:#1d4ed8}
                 </button>
                 <button
                   type="button"
+                  className="link-btn"
+                  title="Rename note"
+                  onClick={() => openNoteRename(activeNote.id)}
+                >
+                  Rename
+                </button>
+                <button
+                  type="button"
+                  className="link-btn"
+                  title="Open note in new window"
+                  onClick={() => openNoteInNewWindow(activeNote.id)}
+                >
+                  Window
+                </button>
+                <button
+                  type="button"
                   className={liteEditMode ? "link-btn active" : "link-btn"}
                   aria-pressed={liteEditMode}
                   title="Toggle lite edit mode"

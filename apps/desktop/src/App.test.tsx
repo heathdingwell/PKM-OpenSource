@@ -628,6 +628,21 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
+  it("opens rename and copy dialogs from the metadata panel", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Rename" }));
+    expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Copy to" }));
+    expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
+  });
+
   it("opens tasks and reminders from the metadata panel", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Info" }));

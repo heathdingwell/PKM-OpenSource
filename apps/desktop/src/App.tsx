@@ -16155,6 +16155,9 @@ a{color:#1d4ed8}
                     <button type="button" onClick={() => openTagEditor(activeNote.id)}>
                       Edit tags
                     </button>
+                    <button type="button" onClick={() => openNoteRename(activeNote.id)}>
+                      Rename
+                    </button>
                     <button type="button" onClick={() => openNoteHistory(activeNote.id)}>
                       History
                     </button>
@@ -16254,6 +16257,13 @@ a{color:#1d4ed8}
                       onClick={() => openMoveDialogForNotes([activeNote.id], "move")}
                     >
                       Move
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => openMoveDialogForNotes([activeNote.id], "copy")}
+                    >
+                      Copy to
                     </button>
                     <button type="button" onClick={() => openNoteInNewWindow(activeNote.id)}>
                       Open in new window

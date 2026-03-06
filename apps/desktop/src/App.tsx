@@ -16001,6 +16001,12 @@ a{color:#1d4ed8}
                     </button>
                   </div>
                   <div className="metadata-actions">
+                    <button type="button" onClick={() => void copyNoteLink(activeNote.id)}>
+                      Copy link
+                    </button>
+                    <button type="button" onClick={() => void copyNotePath(activeNote.id)}>
+                      Copy path
+                    </button>
                     {activeNote.trashedAt ? (
                       <>
                         <button

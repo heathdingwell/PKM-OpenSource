@@ -1921,6 +1921,7 @@ body.is-resizing {
 
 .metadata-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 0 10px 10px;
 }

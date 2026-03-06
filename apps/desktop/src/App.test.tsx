@@ -544,6 +544,28 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
   });
 
+  it("copies note link and path from the metadata panel", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Copy link" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("pkm-os://note/Daily%20Notes%2FAgenda.md"));
+    expect(screen.getByText("Note link copied")).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Copy path" }));
+    await waitFor(() => expect(writeText).toHaveBeenLastCalledWith("Daily Notes/Agenda.md"));
+    expect(screen.getByText("Note path copied")).toBeInTheDocument();
+  });
+
   it("blocks note metadata keyboard shortcut for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

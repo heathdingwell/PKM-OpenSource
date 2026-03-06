@@ -564,6 +564,9 @@ describe("App", () => {
     fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Copy path" }));
     await waitFor(() => expect(writeText).toHaveBeenLastCalledWith("Daily Notes/Agenda.md"));
     expect(screen.getByText("Note path copied")).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Copy metadata path Daily Notes/Agenda.md" }));
+    await waitFor(() => expect(writeText).toHaveBeenLastCalledWith("Daily Notes/Agenda.md"));
   });
 
   it("opens notebook and history from the metadata panel", async () => {
@@ -575,7 +578,7 @@ describe("App", () => {
     const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
     expect(metadataPanel).toBeTruthy();
 
-    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Open notebook" }));
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Open metadata notebook Daily Notes" }));
     expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
 
     const refreshedMetadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");

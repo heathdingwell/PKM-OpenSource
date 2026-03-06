@@ -15974,11 +15974,29 @@ a{color:#1d4ed8}
                     </div>
                     <div>
                       <dt>Notebook</dt>
-                      <dd>{activeNote.notebook}</dd>
+                      <dd>
+                        <button
+                          type="button"
+                          className="preview-meta-action"
+                          aria-label={`Open metadata notebook ${activeNote.notebook}`}
+                          onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
+                        >
+                          {activeNote.notebook}
+                        </button>
+                      </dd>
                     </div>
                     <div>
                       <dt>Path</dt>
-                      <dd>{activeNote.path}</dd>
+                      <dd>
+                        <button
+                          type="button"
+                          className="preview-meta-action"
+                          aria-label={`Copy metadata path ${activeNote.path}`}
+                          onClick={() => void copyNotePath(activeNote.id)}
+                        >
+                          {activeNote.path}
+                        </button>
+                      </dd>
                     </div>
                     <div>
                       <dt>Created</dt>

@@ -28,6 +28,7 @@ describe("App", () => {
 
     const markdownButton = screen.getByRole("button", { name: "Markdown" });
     const richButton = screen.getByRole("button", { name: "Rich" });
+    const insertButton = screen.getByRole("button", { name: "Insert" });
     const liteButton = screen.getByRole("button", { name: "Lite" });
     const focusButton = screen.getByRole("button", { name: "Focus" });
     const aiButton = screen.getByRole("button", { name: "AI" });
@@ -35,6 +36,8 @@ describe("App", () => {
 
     expect(markdownButton).toHaveAttribute("aria-pressed", "true");
     expect(richButton).toHaveAttribute("aria-pressed", "false");
+    expect(insertButton).toHaveAttribute("aria-haspopup", "listbox");
+    expect(insertButton).toHaveAttribute("aria-expanded", "false");
     expect(liteButton).toHaveAttribute("aria-pressed", "false");
     expect(focusButton).toHaveAttribute("aria-pressed", "false");
     expect(aiButton).toHaveAttribute("aria-pressed", "false");
@@ -43,6 +46,11 @@ describe("App", () => {
     fireEvent.click(richButton);
     expect(markdownButton).toHaveAttribute("aria-pressed", "false");
     expect(richButton).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(insertButton);
+    expect(insertButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("listbox", { name: "Insert block menu" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Transcribe media" })).toHaveAttribute("aria-selected", "true");
 
     fireEvent.click(liteButton);
     expect(liteButton).toHaveAttribute("aria-pressed", "true");
@@ -7017,7 +7025,7 @@ describe("App", () => {
 
     const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
     expect(slashMenu).toBeTruthy();
-    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Link to note" }));
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("option", { name: "Link to note" }));
 
     expect(screen.getByRole("heading", { name: "Link to note", level: 3 })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "Roadmap Hub" } });
@@ -7072,7 +7080,7 @@ describe("App", () => {
 
     const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
     expect(slashMenu).toBeTruthy();
-    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Image" }));
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("option", { name: "Image" }));
 
     expect(screen.getByRole("heading", { name: "Insert image", level: 3 })).toBeInTheDocument();
     const imageModal = screen.getByRole("heading", { name: "Insert image", level: 3 }).closest("section");
@@ -7102,7 +7110,7 @@ describe("App", () => {
 
     const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
     expect(slashMenu).toBeTruthy();
-    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Sketch" }));
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("option", { name: "Sketch" }));
 
     expect(screen.getByRole("heading", { name: "Insert sketch", level: 3 })).toBeInTheDocument();
     const sketchModal = screen.getByRole("heading", { name: "Insert sketch", level: 3 }).closest("section");
@@ -7130,7 +7138,7 @@ describe("App", () => {
 
     const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
     expect(slashMenu).toBeTruthy();
-    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Google Drive" }));
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("option", { name: "Google Drive" }));
 
     const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(updatedEditor?.value).toContain("[Google Drive](https://drive.google.com/)");
@@ -7145,7 +7153,7 @@ describe("App", () => {
 
     const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
     expect(slashMenu).toBeTruthy();
-    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Table" }));
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("option", { name: "Table" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Markdown" }));
     await waitFor(() => {
@@ -7168,7 +7176,7 @@ describe("App", () => {
 
     const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
     expect(slashMenu).toBeTruthy();
-    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Align center" }));
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("option", { name: "Align center" }));
 
     const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(updatedEditor?.value).toContain('<div align="center">aligned text</div>');
@@ -7246,7 +7254,7 @@ describe("App", () => {
 
     const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
     expect(slashMenu).toBeTruthy();
-    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("button", { name: "Table of contents" }));
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("option", { name: "Table of contents" }));
 
     const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(updatedEditor?.value).toContain("## Table of contents");

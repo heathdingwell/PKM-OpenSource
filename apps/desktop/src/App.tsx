@@ -13271,6 +13271,7 @@ a{color:#1d4ed8}
   }
 
   const activeEditorFont = editorFontFamilies.find((entry) => entry.id === editorFontFamily)?.value ?? editorFontFamilies[0].value;
+  const insertSlashMenuOpen = slashMenu?.source === "insert";
   const visibleEditorContextRows = useMemo(() => {
     return editorContextRows.filter((row, index) => {
       if (!row.divider) {
@@ -14974,6 +14975,9 @@ a{color:#1d4ed8}
               <span className="toolbar-divider" />
               <button
                 type="button"
+                aria-haspopup="listbox"
+                aria-expanded={insertSlashMenuOpen}
+                aria-controls={insertSlashMenuOpen ? "insert-slash-menu" : undefined}
                 title="Insert block"
                 onClick={(event) => {
                   event.stopPropagation();
@@ -15528,7 +15532,13 @@ a{color:#1d4ed8}
               </div>
 
               {slashMenu ? (
-                <section className="slash-menu" onMouseDown={(event) => event.preventDefault()}>
+                <section
+                  id="insert-slash-menu"
+                  className="slash-menu"
+                  role="listbox"
+                  aria-label="Insert block menu"
+                  onMouseDown={(event) => event.preventDefault()}
+                >
                   <header>
                     <span>/ {slashMenu.query || "commands"}</span>
                     <small>{slashResults.length} results</small>
@@ -15544,6 +15554,8 @@ a{color:#1d4ed8}
                               <button
                                 key={command.id}
                                 type="button"
+                                role="option"
+                                aria-selected={slashMenu.selected === globalIndex}
                                 className={slashMenu.selected === globalIndex ? "active" : ""}
                                 onMouseDown={(event) => {
                                   event.preventDefault();

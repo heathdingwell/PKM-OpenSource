@@ -10259,6 +10259,21 @@ export default function App() {
     toggleTagFilter(tag);
   }
 
+  function openLocalGraphForActiveNote(): void {
+    if (!activeNote) {
+      return;
+    }
+
+    setSidebarView("notes");
+    setBrowseMode("graph");
+    setGraphScope("local");
+    setTasksDialogOpen(false);
+    setFilesDialogOpen(false);
+    setCalendarDialogOpen(false);
+    setAiPanelOpen(false);
+    setSearchOpen(false);
+  }
+
   function toggleSearchFilter(kind: SearchFilterKind): void {
     setSearchFilters((previous) => {
       if (previous.includes(kind)) {
@@ -16029,7 +16044,16 @@ a{color:#1d4ed8}
                     </div>
                     <div>
                       <dt>Outgoing</dt>
-                      <dd>{outgoingLinks.length}</dd>
+                      <dd>
+                        <button
+                          type="button"
+                          className="preview-meta-action"
+                          aria-label="Open metadata outgoing links"
+                          onClick={openLocalGraphForActiveNote}
+                        >
+                          {outgoingLinks.length}
+                        </button>
+                      </dd>
                     </div>
                     <div>
                       <dt>Backlinks</dt>

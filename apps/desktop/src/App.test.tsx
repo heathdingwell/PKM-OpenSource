@@ -606,6 +606,18 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
+  it("opens local graph from metadata outgoing count", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Open metadata outgoing links" }));
+    expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+  });
+
   it("opens a tag filter from metadata tags", () => {
     render(<App />);
 

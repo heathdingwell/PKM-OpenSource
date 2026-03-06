@@ -7754,6 +7754,19 @@ describe("App", () => {
     expect(within(metadataSection as HTMLElement).getByText("Daily Notes/Agenda.md")).toBeInTheDocument();
   });
 
+  it("opens the notebook from preview metadata", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    expect(screen.getByRole("heading", { name: "Home", level: 1 })).toBeInTheDocument();
+
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" });
+    const metadataSection = within(previewPane).getByRole("heading", { name: "Metadata", level: 5 }).closest("section");
+    expect(metadataSection).toBeTruthy();
+
+    fireEvent.click(within(metadataSection as HTMLElement).getByRole("button", { name: "Daily Notes" }));
+    expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
+  });
+
   it("opens a tag filter from preview metadata tags", () => {
     render(<App />);
 

@@ -125,6 +125,18 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Shortcuts", level: 1 })).toBeInTheDocument();
   });
 
+  it("exposes grouped footer actions in search modal", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(screen.getByRole("toolbar", { name: "Search result actions" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">open templates" }
+    });
+    expect(screen.getByRole("toolbar", { name: "Command palette actions" })).toBeInTheDocument();
+  });
+
   it("opens reminders browse mode from the sidebar", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Info" }));

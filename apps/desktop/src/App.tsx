@@ -16963,7 +16963,11 @@ a{color:#1d4ed8}
                 </>
               )}
             </div>
-            <footer className="search-actions">
+            <footer
+              className="search-actions"
+              role="toolbar"
+              aria-label={commandMode ? "Command palette actions" : "Search result actions"}
+            >
               {commandMode ? (
                 <button
                   type="button"

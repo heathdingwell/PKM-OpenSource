@@ -69,6 +69,41 @@ describe("App", () => {
     expect(screen.getByPlaceholderText("new-tag")).toHaveAttribute("id", "tag-input");
   });
 
+  it("exposes note list menu buttons with menu state", () => {
+    render(<App />);
+
+    const layoutButton = screen.getByRole("button", { name: "Cards" });
+    const densityButton = screen.getByRole("button", { name: "Comfortable" });
+    const groupButton = screen.getByRole("button", { name: "Group: Off" });
+    const backlinksButton = screen.getByRole("button", { name: "Backlinks" });
+    const sortButton = screen.getByRole("button", { name: "Sort" });
+    const filterButton = screen.getByRole("button", { name: "Filter" });
+
+    expect(layoutButton).toHaveAttribute("title", "Toggle note list layout");
+    expect(densityButton).toHaveAttribute("title", "Toggle note density");
+    expect(backlinksButton).toHaveAttribute("aria-pressed", "true");
+    expect(groupButton).toHaveAttribute("aria-haspopup", "menu");
+    expect(groupButton).toHaveAttribute("aria-expanded", "false");
+    expect(sortButton).toHaveAttribute("aria-haspopup", "menu");
+    expect(sortButton).toHaveAttribute("aria-expanded", "false");
+    expect(filterButton).toHaveAttribute("aria-haspopup", "menu");
+    expect(filterButton).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(sortButton);
+    expect(sortButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("menu", { name: "Sort notes menu" })).toBeInTheDocument();
+
+    fireEvent.click(groupButton);
+    expect(groupButton).toHaveAttribute("aria-expanded", "true");
+    expect(sortButton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("menu", { name: "Group notes menu" })).toBeInTheDocument();
+
+    fireEvent.click(filterButton);
+    expect(filterButton).toHaveAttribute("aria-expanded", "true");
+    expect(groupButton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("menu", { name: "Filter notes menu" })).toBeInTheDocument();
+  });
+
   it("opens shortcuts browse mode from the sidebar", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));

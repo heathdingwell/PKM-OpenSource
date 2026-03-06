@@ -14080,6 +14080,7 @@ a{color:#1d4ed8}
               <button
                 type="button"
                 className={viewMode === "list" ? "active" : ""}
+                title="Toggle note list layout"
                 onClick={() => setViewMode((previous) => (previous === "cards" ? "list" : "cards"))}
               >
                 {viewMode === "cards" ? "Cards" : "List"}
@@ -14087,6 +14088,7 @@ a{color:#1d4ed8}
               <button
                 type="button"
                 className={noteDensity === "compact" ? "active" : ""}
+                title="Toggle note density"
                 onClick={() => setNoteDensity((previous) => (previous === "comfortable" ? "compact" : "comfortable"))}
               >
                 {noteDensity === "comfortable" ? "Comfortable" : "Compact"}
@@ -14094,6 +14096,9 @@ a{color:#1d4ed8}
               <button
                 type="button"
                 className={noteGroupMode !== "none" ? "active" : ""}
+                aria-haspopup="menu"
+                aria-expanded={noteListMenu?.kind === "group"}
+                title="Open grouping options"
                 onClick={(event) => {
                   event.stopPropagation();
                   const rect = event.currentTarget.getBoundingClientRect();
@@ -14105,12 +14110,16 @@ a{color:#1d4ed8}
               <button
                 type="button"
                 className={backlinksPaneOpen ? "active" : ""}
+                aria-pressed={backlinksPaneOpen}
                 onClick={() => setBacklinksPaneOpen((previous) => !previous)}
               >
                 Backlinks
               </button>
               <button
                 type="button"
+                aria-haspopup="menu"
+                aria-expanded={noteListMenu?.kind === "sort"}
+                title="Open sorting options"
                 onClick={(event) => {
                   event.stopPropagation();
                   const rect = event.currentTarget.getBoundingClientRect();
@@ -14122,6 +14131,9 @@ a{color:#1d4ed8}
               <button
                 type="button"
                 className={tagFilters.length ? "active" : ""}
+                aria-haspopup="menu"
+                aria-expanded={noteListMenu?.kind === "filter"}
+                title="Open note filters"
                 onClick={(event) => {
                   event.stopPropagation();
                   const rect = event.currentTarget.getBoundingClientRect();

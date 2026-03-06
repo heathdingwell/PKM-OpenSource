@@ -1529,6 +1529,15 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
   });
 
+  it("opens find in note from note header action", () => {
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Find" }));
+    expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
+  });
+
   it("opens note in new window from note header action", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     render(<App />);

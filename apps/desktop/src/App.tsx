@@ -14975,6 +14975,14 @@ a{color:#1d4ed8}
                 <button
                   type="button"
                   className="link-btn"
+                  title="Find in note"
+                  onClick={openFindInNote}
+                >
+                  Find
+                </button>
+                <button
+                  type="button"
+                  className="link-btn"
                   title="Open note in new window"
                   onClick={() => openNoteInNewWindow(activeNote.id)}
                 >

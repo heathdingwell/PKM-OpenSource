@@ -15546,6 +15546,7 @@ a{color:#1d4ed8}
                                 <button
                                   type="button"
                                   className="preview-meta-action"
+                                  aria-label={`Open preview notebook ${activeNote.notebook}`}
                                   onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
                                 >
                                   {activeNote.notebook}
@@ -15554,7 +15555,16 @@ a{color:#1d4ed8}
                             </div>
                             <div>
                               <dt>Path</dt>
-                              <dd>{activeNote.path}</dd>
+                              <dd>
+                                <button
+                                  type="button"
+                                  className="preview-meta-action"
+                                  aria-label={`Copy preview path ${activeNote.path}`}
+                                  onClick={() => void copyNotePath(activeNote.id)}
+                                >
+                                  {activeNote.path}
+                                </button>
+                              </dd>
                             </div>
                             <div>
                               <dt>Updated</dt>
@@ -15578,6 +15588,7 @@ a{color:#1d4ed8}
                                         key={tag}
                                         type="button"
                                         className={tagFilters.includes(tag) ? "tag-chip active" : "tag-chip"}
+                                        aria-label={`Filter preview tag ${tag}`}
                                         onClick={() => openAllNotesWithTag(tag)}
                                       >
                                         #{tag}

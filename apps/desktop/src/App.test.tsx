@@ -1002,7 +1002,7 @@ describe("App", () => {
     expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Trash" }));
-    const trashedAgenda = screen.getByRole("button", { name: /Agenda/ });
+    const trashedAgenda = within(screen.getByLabelText("Notes list")).getByRole("button", { name: /Agenda/ });
     fireEvent.click(trashedAgenda);
 
     fireEvent.keyDown(window, { key: "d", metaKey: true, altKey: true });
@@ -1017,7 +1017,7 @@ describe("App", () => {
     expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Trash" }));
-    const trashedAgenda = screen.getByRole("button", { name: /Agenda/ });
+    const trashedAgenda = within(screen.getByLabelText("Notes list")).getByRole("button", { name: /Agenda/ });
     fireEvent.click(trashedAgenda);
 
     fireEvent.keyDown(window, { key: "z", metaKey: true, altKey: true });
@@ -1030,7 +1030,7 @@ describe("App", () => {
 
     fireEvent.keyDown(window, { key: "Backspace", metaKey: true });
     fireEvent.click(screen.getByRole("button", { name: "Trash" }));
-    const trashedAgenda = screen.getByRole("button", { name: /Agenda/ });
+    const trashedAgenda = within(screen.getByLabelText("Notes list")).getByRole("button", { name: /Agenda/ });
     fireEvent.click(trashedAgenda);
 
     fireEvent.keyDown(window, { key: "Ω", code: "KeyZ", metaKey: true, altKey: true });
@@ -4634,7 +4634,7 @@ describe("App", () => {
 
     expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Trash" }));
-    expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Notes list")).getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
   });
 
   it("restores trashed search result with alt+cmd+z in search modal", () => {
@@ -4759,7 +4759,7 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Trash" }));
     expect(screen.getByRole("heading", { name: "Trash", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Notes list")).getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
   });
 
   it("moves selected notes to trash from command palette", () => {
@@ -7763,7 +7763,7 @@ describe("App", () => {
     const metadataSection = within(previewPane).getByRole("heading", { name: "Metadata", level: 5 }).closest("section");
     expect(metadataSection).toBeTruthy();
 
-    fireEvent.click(within(metadataSection as HTMLElement).getByRole("button", { name: "Daily Notes" }));
+    fireEvent.click(within(metadataSection as HTMLElement).getByRole("button", { name: "Open preview notebook Daily Notes" }));
     expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
   });
 
@@ -7781,9 +7781,27 @@ describe("App", () => {
     const metadataSection = within(previewPane).getByRole("heading", { name: "Metadata", level: 5 }).closest("section");
     expect(metadataSection).toBeTruthy();
 
-    fireEvent.click(within(metadataSection as HTMLElement).getByRole("button", { name: "#focus" }));
+    fireEvent.click(within(metadataSection as HTMLElement).getByRole("button", { name: "Filter preview tag focus" }));
     expect(screen.getByRole("heading", { name: "All Notes", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "#focus ×" })).toBeInTheDocument();
+  });
+
+  it("copies the note path from preview metadata", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" });
+    const metadataSection = within(previewPane).getByRole("heading", { name: "Metadata", level: 5 }).closest("section");
+    expect(metadataSection).toBeTruthy();
+
+    fireEvent.click(within(metadataSection as HTMLElement).getByRole("button", { name: "Copy preview path Daily Notes/Agenda.md" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("Daily Notes/Agenda.md"));
+    expect(screen.getByText("Note path copied")).toBeInTheDocument();
   });
 
   it("prevents duplicate event references from calendar modal", () => {
@@ -8367,7 +8385,7 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Remove notebook shortcut Daily Notes" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));
-    expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Notes list")).getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
   });
 
   it("keeps notebook references in shortcuts and saved searches after notebook rename", () => {
@@ -9134,7 +9152,7 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Trash" }));
     expect(screen.getByRole("heading", { name: "Trash", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Notes list")).getByRole("button", { name: /Agenda/ })).toBeInTheDocument();
   });
 
   it("moves selected notes to trash with cmd+backspace", () => {

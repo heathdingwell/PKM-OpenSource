@@ -1510,6 +1510,25 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
   });
 
+  it("opens tag editor from note header action", () => {
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Tags" }));
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
+  });
+
+  it("opens note history from note header action", () => {
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "History" }));
+    expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
+  });
+
   it("opens note in new window from note header action", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     render(<App />);

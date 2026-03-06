@@ -14959,6 +14959,22 @@ a{color:#1d4ed8}
                 <button
                   type="button"
                   className="link-btn"
+                  title="Edit note tags"
+                  onClick={() => openTagEditor(activeNote.id)}
+                >
+                  Tags
+                </button>
+                <button
+                  type="button"
+                  className="link-btn"
+                  title="Open note history"
+                  onClick={() => openNoteHistory(activeNote.id)}
+                >
+                  History
+                </button>
+                <button
+                  type="button"
+                  className="link-btn"
                   title="Open note in new window"
                   onClick={() => openNoteInNewWindow(activeNote.id)}
                 >

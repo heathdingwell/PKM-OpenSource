@@ -1299,6 +1299,22 @@ describe("App", () => {
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
 
+  it("copies note path from note header action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Path" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("Daily Notes/Agenda.md"));
+    expect(screen.getByText("Note path copied")).toBeInTheDocument();
+  });
+
   it("copies note link using KeyL code with keyboard shortcut", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

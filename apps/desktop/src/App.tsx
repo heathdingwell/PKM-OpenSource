@@ -14942,6 +14942,14 @@ a{color:#1d4ed8}
                 </button>
                 <button
                   type="button"
+                  className="link-btn"
+                  title="Copy note path"
+                  onClick={() => void copyNotePath(activeNote.id)}
+                >
+                  Path
+                </button>
+                <button
+                  type="button"
                   className={liteEditMode ? "link-btn active" : "link-btn"}
                   aria-pressed={liteEditMode}
                   title="Toggle lite edit mode"

@@ -588,6 +588,39 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: /^History/i, level: 3 })).toBeInTheDocument();
   });
 
+  it("shares and duplicates the active note from the metadata panel", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Share" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("pkm-os://note/Daily%20Notes%2FAgenda.md"));
+    expect(screen.getByText("Share link copied")).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Duplicate" }));
+    expect(await screen.findByText("1 duplicated")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Agenda copy" })).toBeInTheDocument();
+  });
+
+  it("opens move dialog from the metadata panel", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Move" }));
+    expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
+  });
+
   it("opens backlinks and current-note calendar from metadata counts", () => {
     render(<App />);
 

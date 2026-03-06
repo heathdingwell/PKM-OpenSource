@@ -16130,6 +16130,9 @@ a{color:#1d4ed8}
                     >
                       Open notebook
                     </button>
+                    <button type="button" onClick={() => void copyNoteLink(activeNote.id, "Share link copied")}>
+                      Share
+                    </button>
                     <button type="button" onClick={() => void copyNoteLink(activeNote.id)}>
                       Copy link
                     </button>
@@ -16141,6 +16144,22 @@ a{color:#1d4ed8}
                     </button>
                     <button type="button" onClick={() => openNoteHistory(activeNote.id)}>
                       History
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => {
+                        void duplicateNotes([activeNote.id]);
+                      }}
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => openMoveDialogForNotes([activeNote.id], "move")}
+                    >
+                      Move
                     </button>
                     {activeNote.trashedAt ? (
                       <>

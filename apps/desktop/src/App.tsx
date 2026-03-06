@@ -16255,6 +16255,15 @@ a{color:#1d4ed8}
                     >
                       Move
                     </button>
+                    <button type="button" onClick={() => openNoteInNewWindow(activeNote.id)}>
+                      Open in new window
+                    </button>
+                    <button type="button" onClick={() => openNoteInLiteEdit(activeNote.id)}>
+                      Open in Lite edit mode
+                    </button>
+                    <button type="button" onClick={() => openNoteInFullEditor(activeNote.id)}>
+                      Open in full editor
+                    </button>
                     {activeNote.trashedAt ? (
                       <>
                         <button

@@ -688,6 +688,39 @@ describe("App", () => {
     expect(within(metadataPanel as HTMLElement).getByRole("button", { name: "Unpin from notebook" })).toBeInTheDocument();
   });
 
+  it("opens the active note in a new window from the metadata panel", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Open in new window" }));
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    openSpy.mockRestore();
+  });
+
+  it("opens lite and full editor modes from the metadata panel", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Open in Lite edit mode" }));
+    expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    const refreshedMetadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(refreshedMetadataPanel).toBeTruthy();
+
+    fireEvent.click(within(refreshedMetadataPanel as HTMLElement).getByRole("button", { name: "Open in full editor" }));
+    expect(screen.getByRole("button", { name: "Lite" })).not.toHaveClass("active");
+    expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
+  });
+
   it("opens backlinks and current-note calendar from metadata counts", () => {
     render(<App />);
 

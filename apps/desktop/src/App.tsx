@@ -535,7 +535,8 @@ const seedNotes: SeedNote[] = [
   }
 ];
 
-const sidePinned = ["Home", "Shortcuts", "Notes", "Reminders", "Trash", "Tasks", "Files", "Calendar", "Graph", "Templates"];
+const sidePinned = ["Home", "Shortcuts", "Notes", "Reminders", "Trash", "Tasks", "Files", "Calendar", "Graph", "Templates"] as const;
+type SidebarPinnedItem = (typeof sidePinned)[number];
 const OPEN_SAVED_SEARCH_ACTION_PREFIX = "open-saved-search:";
 const EDIT_SAVED_SEARCH_ACTION_PREFIX = "edit-saved-search:";
 const REMOVE_SAVED_SEARCH_ACTION_PREFIX = "remove-saved-search:";
@@ -546,6 +547,10 @@ const REMOVE_RECENT_NOTE_ACTION_PREFIX = "remove-recent-note:";
 const OPEN_SHORTCUT_NOTE_ACTION_PREFIX = "open-shortcut-note:";
 const OPEN_HOME_PINNED_NOTE_ACTION_PREFIX = "open-home-pin-note:";
 const OPEN_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX = "open-notebook-pin-note:";
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled value: ${String(value)}`);
+}
 const REMOVE_HOME_PINNED_NOTE_ACTION_PREFIX = "remove-home-pin-note:";
 const REMOVE_NOTEBOOK_PINNED_NOTE_ACTION_PREFIX = "remove-notebook-pin-note:";
 const OPEN_SHORTCUT_NOTEBOOK_ACTION_PREFIX = "open-shortcut-notebook:";
@@ -13409,7 +13414,7 @@ a{color:#1d4ed8}
         </div>
 
         <nav className="sidebar-nav">
-          {sidePinned.map((item) => {
+          {sidePinned.map((item: SidebarPinnedItem) => {
             let badge: string | null = null;
             let badgeTone: "default" | "alert" = "default";
             if (item === "Notes" && activeNotes.length) {
@@ -13569,7 +13574,7 @@ a{color:#1d4ed8}
                   setCalendarDialogOpen(false);
                   return;
                 }
-                setToastMessage(`"${item}" is planned`);
+                assertNever(item);
               }}
             >
               <span>{item}</span>

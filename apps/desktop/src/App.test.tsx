@@ -8038,6 +8038,7 @@ describe("App", () => {
     expect(noteCard).toBeTruthy();
     fireEvent.keyDown(noteCard as HTMLButtonElement, { key: "ContextMenu" });
 
+    expect(screen.getByRole("menu", { name: "Note actions" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Open in new window/i })).toBeInTheDocument();
   });
 
@@ -8047,6 +8048,7 @@ describe("App", () => {
     expect(notebookItem).toBeTruthy();
 
     fireEvent.keyDown(notebookItem as HTMLButtonElement, { key: "ContextMenu" });
+    expect(screen.getByRole("menu", { name: /Notebook actions for/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Rename notebook" })).toBeInTheDocument();
   });
 
@@ -8058,6 +8060,7 @@ describe("App", () => {
 
     const stackHeader = screen.getByRole("button", { name: /Planning/i });
     fireEvent.keyDown(stackHeader, { key: "ContextMenu" });
+    expect(screen.getByRole("menu", { name: /Stack actions for Planning/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Rename stack" })).toBeInTheDocument();
   });
 
@@ -8314,6 +8317,7 @@ describe("App", () => {
     fireEvent.keyDown(editor as HTMLTextAreaElement, { key: "ContextMenu" });
     const menu = document.querySelector(".editor-context-menu") as HTMLElement | null;
     expect(menu).toBeTruthy();
+    expect(screen.getByRole("menu", { name: "Editor context menu" })).toBeInTheDocument();
     expect(within(menu as HTMLElement).getByRole("button", { name: "Bold" })).toBeInTheDocument();
     expect(within(menu as HTMLElement).getByRole("button", { name: "Align center" })).toBeInTheDocument();
   });

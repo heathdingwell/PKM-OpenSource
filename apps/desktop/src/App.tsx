@@ -16148,6 +16148,8 @@ a{color:#1d4ed8}
       {contextMenu ? (
         <div
           className="context-menu"
+          role="menu"
+          aria-label="Note actions"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(event) => event.stopPropagation()}
         >
@@ -16160,7 +16162,7 @@ a{color:#1d4ed8}
               return null;
             }
             return row.divider ? (
-              <div key={row.id} className="context-divider" />
+              <div key={row.id} className="context-divider" role="separator" />
             ) : (
               <button key={row.id} type="button" onClick={() => handleMenuAction(row.id)}>
                 <span>{getContextMenuLabel(row.id, row.label)}</span>
@@ -16174,6 +16176,14 @@ a{color:#1d4ed8}
       {noteListMenu ? (
         <div
           className="context-menu note-list-menu"
+          role="menu"
+          aria-label={
+            noteListMenu.kind === "sort"
+              ? "Sort notes menu"
+              : noteListMenu.kind === "group"
+                ? "Group notes menu"
+                : "Filter notes menu"
+          }
           style={{ left: noteListMenu.x, top: noteListMenu.y }}
           onClick={(event) => event.stopPropagation()}
         >
@@ -16227,7 +16237,7 @@ a{color:#1d4ed8}
               ) : (
                 <div className="context-empty">No tags found</div>
               )}
-              <div className="context-divider" />
+              <div className="context-divider" role="separator" />
               <button
                 type="button"
                 onClick={() => {
@@ -16245,12 +16255,14 @@ a{color:#1d4ed8}
       {editorContextMenu ? (
         <div
           className="context-menu editor-context-menu"
+          role="menu"
+          aria-label="Editor context menu"
           style={{ left: editorContextMenu.x, top: editorContextMenu.y }}
           onClick={(event) => event.stopPropagation()}
         >
           {visibleEditorContextRows.map((row) =>
             row.divider ? (
-              <div key={row.id} className="context-divider" />
+              <div key={row.id} className="context-divider" role="separator" />
             ) : (
               <button key={row.id} type="button" onClick={() => handleEditorContextAction(row.id)}>
                 <span>{row.label}</span>
@@ -16263,6 +16275,8 @@ a{color:#1d4ed8}
       {notebookMenu ? (
         <div
           className="context-menu notebook-menu"
+          role="menu"
+          aria-label={`Notebook actions for ${notebookMenu.notebook}`}
           style={{ left: notebookMenu.x, top: notebookMenu.y }}
           onClick={(event) => event.stopPropagation()}
         >
@@ -16299,7 +16313,7 @@ a{color:#1d4ed8}
           >
             <span>{shortcutNotebookSet.has(notebookMenu.notebook) ? "Remove notebook shortcut" : "Add notebook shortcut"}</span>
           </button>
-          <div className="context-divider" />
+          <div className="context-divider" role="separator" />
           <button
             type="button"
             onClick={() => {
@@ -16330,6 +16344,8 @@ a{color:#1d4ed8}
       {stackMenu ? (
         <div
           className="context-menu notebook-menu"
+          role="menu"
+          aria-label={`Stack actions for ${stackMenu.stack}`}
           style={{ left: stackMenu.x, top: stackMenu.y }}
           onClick={(event) => event.stopPropagation()}
         >

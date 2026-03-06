@@ -660,6 +660,34 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
   });
 
+  it("toggles template and shortcuts from the metadata panel", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Remove from Templates" }));
+    expect(within(metadataPanel as HTMLElement).getByRole("button", { name: "Set as template" })).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Add to shortcuts" }));
+    expect(within(metadataPanel as HTMLElement).getByRole("button", { name: "Remove from shortcuts" })).toBeInTheDocument();
+  });
+
+  it("toggles home and notebook pins from the metadata panel", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Pin to Home" }));
+    expect(within(metadataPanel as HTMLElement).getByRole("button", { name: "Unpin from Home" })).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Pin to notebook" }));
+    expect(within(metadataPanel as HTMLElement).getByRole("button", { name: "Unpin from notebook" })).toBeInTheDocument();
+  });
+
   it("opens backlinks and current-note calendar from metadata counts", () => {
     render(<App />);
 

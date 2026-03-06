@@ -16187,6 +16187,62 @@ a{color:#1d4ed8}
                       type="button"
                       disabled={Boolean(activeNote.trashedAt)}
                       onClick={() => {
+                        const { marked, unmarked } = toggleTemplateNotes([activeNote.id]);
+                        if (marked > 0) {
+                          setToastMessage(`${marked} marked as template`);
+                        } else if (unmarked > 0) {
+                          setToastMessage(`${unmarked} removed from templates`);
+                        }
+                      }}
+                    >
+                      {activeNote.isTemplate ? "Remove from Templates" : "Set as template"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => {
+                        const { added, removed } = toggleShortcutNotes([activeNote.id]);
+                        if (added > 0) {
+                          setToastMessage(`${added} added to shortcuts`);
+                        } else if (removed > 0) {
+                          setToastMessage(`${removed} removed from shortcuts`);
+                        }
+                      }}
+                    >
+                      {shortcutSet.has(activeNote.id) ? "Remove from shortcuts" : "Add to shortcuts"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => {
+                        const { pinned, unpinned } = togglePinnedNotes([activeNote.id], "home");
+                        if (pinned > 0) {
+                          setToastMessage(`${pinned} pinned to Home`);
+                        } else if (unpinned > 0) {
+                          setToastMessage(`${unpinned} unpinned from Home`);
+                        }
+                      }}
+                    >
+                      {homePinnedSet.has(activeNote.id) ? "Unpin from Home" : "Pin to Home"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => {
+                        const { pinned, unpinned } = togglePinnedNotes([activeNote.id], "notebook");
+                        if (pinned > 0) {
+                          setToastMessage(`${pinned} pinned to notebook`);
+                        } else if (unpinned > 0) {
+                          setToastMessage(`${unpinned} unpinned from notebook`);
+                        }
+                      }}
+                    >
+                      {notebookPinnedSet.has(activeNote.id) ? "Unpin from notebook" : "Pin to notebook"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => {
                         void duplicateNotes([activeNote.id]);
                       }}
                     >

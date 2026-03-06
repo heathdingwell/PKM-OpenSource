@@ -1556,6 +1556,16 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
   });
 
+  it("duplicates note from note header action", async () => {
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Duplicate" }));
+    expect(await screen.findByText("1 duplicated")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Agenda copy" })).toBeInTheDocument();
+  });
+
   it("opens note in new window from note header action", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     render(<App />);

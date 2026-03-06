@@ -448,6 +448,13 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
   });
 
+  it("opens note history from the edited header action", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Edited /i }));
+    expect(await screen.findByRole("heading", { name: /^History/i, level: 3 })).toBeInTheDocument();
+  });
+
   it("toggles focus mode with keyboard shortcut", () => {
     render(<App />);
     const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });

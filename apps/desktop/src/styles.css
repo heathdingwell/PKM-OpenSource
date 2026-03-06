@@ -1317,7 +1317,7 @@ body.is-resizing {
 }
 
 .editor-topbar {
-  height: 54px;
+  min-height: 54px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1325,6 +1325,13 @@ body.is-resizing {
   padding: 0 18px;
   border-bottom: 1px solid var(--border);
   background: #ffffff;
+}
+
+.editor-top-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .crumbs {
@@ -1355,6 +1362,22 @@ body.is-resizing {
 }
 
 .crumb-link:hover {
+  color: #1e4fa6;
+  text-decoration: underline;
+}
+
+.editor-edited {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  color: #7a90b5;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.editor-edited:hover {
   color: #1e4fa6;
   text-decoration: underline;
 }

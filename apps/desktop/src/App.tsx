@@ -14896,15 +14896,20 @@ a{color:#1d4ed8}
         {activeNote ? (
           <>
             <header className="editor-topbar">
-              <div className="crumbs">
-                <button
-                  type="button"
-                  className="crumb-link"
-                  onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
-                >
-                  {activeNote.notebook}
+              <div className="editor-top-meta">
+                <div className="crumbs">
+                  <button
+                    type="button"
+                    className="crumb-link"
+                    onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
+                  >
+                    {activeNote.notebook}
+                  </button>
+                  <span aria-current="page">{draftPreview.title}</span>
+                </div>
+                <button type="button" className="editor-edited" onClick={() => openNoteHistory(activeNote.id)}>
+                  Edited {formatRelativeTime(activeNote.updatedAt)}
                 </button>
-                <span aria-current="page">{draftPreview.title}</span>
               </div>
               <div className="editor-top-actions">
                 <button

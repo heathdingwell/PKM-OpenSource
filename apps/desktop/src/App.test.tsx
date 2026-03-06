@@ -8104,6 +8104,23 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Open in new window/i })).toBeInTheDocument();
   });
 
+  it("exposes note card quick action trigger as a menu button", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
+    expect(noteCard).toBeTruthy();
+    fireEvent.mouseEnter(noteCard as HTMLButtonElement);
+
+    const trigger = screen.getByRole("button", { name: "Note actions" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("menu", { name: "Note actions" })).toBeInTheDocument();
+  });
+
   it("opens notebook context menu from keyboard context-menu key", () => {
     render(<App />);
     const notebookItem = document.querySelector(".notebook-item") as HTMLButtonElement | null;

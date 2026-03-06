@@ -1280,9 +1280,13 @@ body.is-resizing {
   justify-content: center;
   width: 24px;
   height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   border-radius: 6px;
   color: #5f78a6;
   font-size: 12px;
+  cursor: pointer;
 }
 
 .note-card-menu:hover {

@@ -27,6 +27,7 @@ interface ContextMenuState {
   x: number;
   y: number;
   noteIds: string[];
+  source: "card" | "editor";
 }
 
 interface NotebookMenuState {
@@ -10191,7 +10192,7 @@ export default function App() {
       ? [noteId, ...Array.from(selectedIds).filter((selectedId) => selectedId !== noteId)]
       : [noteId];
     const position = clampMenuPosition(clientX, clientY);
-    setContextMenu({ x: position.x, y: position.y, noteIds });
+    setContextMenu({ x: position.x, y: position.y, noteIds, source: "card" });
     setStackMenu(null);
     setEditorContextMenu(null);
   }
@@ -10203,7 +10204,7 @@ export default function App() {
 
     const rect = editorMenuButtonRef.current.getBoundingClientRect();
     const position = clampMenuPosition(rect.left - 210, rect.bottom + 8);
-    setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id] });
+    setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id], source: "editor" });
     setStackMenu(null);
     setEditorContextMenu(null);
   }
@@ -14938,6 +14939,9 @@ a{color:#1d4ed8}
                   type="button"
                   className="link-btn"
                   aria-label="More note actions"
+                  aria-haspopup="menu"
+                  aria-expanded={contextMenu?.source === "editor"}
+                  aria-controls={contextMenu?.source === "editor" ? "note-actions-menu" : undefined}
                   title="More note actions"
                   onClick={(event) => {
                     event.stopPropagation();
@@ -16185,6 +16189,7 @@ a{color:#1d4ed8}
 
       {contextMenu ? (
         <div
+          id="note-actions-menu"
           className="context-menu"
           role="menu"
           aria-label="Note actions"

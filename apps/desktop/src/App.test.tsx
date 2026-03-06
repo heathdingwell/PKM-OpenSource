@@ -29,6 +29,7 @@ describe("App", () => {
     const markdownButton = screen.getByRole("button", { name: "Markdown" });
     const richButton = screen.getByRole("button", { name: "Rich" });
     const insertButton = screen.getByRole("button", { name: "Insert" });
+    const moreActionsButton = screen.getByRole("button", { name: "More note actions" });
     const liteButton = screen.getByRole("button", { name: "Lite" });
     const focusButton = screen.getByRole("button", { name: "Focus" });
     const aiButton = screen.getByRole("button", { name: "AI" });
@@ -38,6 +39,8 @@ describe("App", () => {
     expect(richButton).toHaveAttribute("aria-pressed", "false");
     expect(insertButton).toHaveAttribute("aria-haspopup", "listbox");
     expect(insertButton).toHaveAttribute("aria-expanded", "false");
+    expect(moreActionsButton).toHaveAttribute("aria-haspopup", "menu");
+    expect(moreActionsButton).toHaveAttribute("aria-expanded", "false");
     expect(liteButton).toHaveAttribute("aria-pressed", "false");
     expect(focusButton).toHaveAttribute("aria-pressed", "false");
     expect(aiButton).toHaveAttribute("aria-pressed", "false");
@@ -51,6 +54,10 @@ describe("App", () => {
     expect(insertButton).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("listbox", { name: "Insert block menu" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Transcribe media" })).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(moreActionsButton);
+    expect(moreActionsButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("menu", { name: "Note actions" })).toBeInTheDocument();
 
     fireEvent.click(liteButton);
     expect(liteButton).toHaveAttribute("aria-pressed", "true");

@@ -585,6 +585,25 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: /^History/i, level: 3 })).toBeInTheDocument();
   });
 
+  it("opens a tag filter from metadata tags", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    fireEvent.change(document.getElementById("tag-input") as HTMLInputElement, { target: { value: "focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    expect(screen.getByRole("heading", { name: "Home", level: 1 })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "#focus" }));
+    expect(screen.getByRole("heading", { name: "All Notes", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "#focus ×" })).toBeInTheDocument();
+  });
+
   it("blocks note metadata keyboard shortcut for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

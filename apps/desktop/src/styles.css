@@ -1879,6 +1879,17 @@ body.is-resizing {
   word-break: break-word;
 }
 
+.metadata-tag-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.metadata-tag-strip .tag-chip.active {
+  color: #ffffff;
+  background: var(--blue);
+}
+
 .metadata-reminder {
   display: grid;
   gap: 8px;

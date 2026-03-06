@@ -15977,7 +15977,32 @@ a{color:#1d4ed8}
                     </div>
                     <div>
                       <dt>Tags</dt>
-                      <dd>{activeNote.tags.length ? activeNote.tags.join(", ") : "No tags"}</dd>
+                      <dd>
+                        {activeNote.tags.length ? (
+                          <div className="metadata-tag-strip">
+                            {activeNote.tags.map((tag) => (
+                              <button
+                                key={tag}
+                                type="button"
+                                className={tagFilters.includes(tag) ? "tag-chip active" : "tag-chip"}
+                                onClick={() => {
+                                  setSidebarView("notes");
+                                  setSelectedNotebook("All Notes");
+                                  setBrowseMode("all");
+                                  setTasksDialogOpen(false);
+                                  setFilesDialogOpen(false);
+                                  setCalendarDialogOpen(false);
+                                  toggleTagFilter(tag);
+                                }}
+                              >
+                                #{tag}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          "No tags"
+                        )}
+                      </dd>
                     </div>
                   </dl>
                   <div className="metadata-reminder">

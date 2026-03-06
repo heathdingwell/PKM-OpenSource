@@ -15024,6 +15024,22 @@ a{color:#1d4ed8}
                 </button>
                 <button
                   type="button"
+                  className={shortcutSet.has(activeNote.id) ? "link-btn active" : "link-btn"}
+                  aria-pressed={shortcutSet.has(activeNote.id)}
+                  title={shortcutSet.has(activeNote.id) ? "Remove note from shortcuts" : "Add note to shortcuts"}
+                  onClick={() => {
+                    const { added, removed } = toggleShortcutNotes([activeNote.id]);
+                    if (added > 0) {
+                      setToastMessage(`${added} added to shortcuts`);
+                    } else if (removed > 0) {
+                      setToastMessage(`${removed} removed from shortcuts`);
+                    }
+                  }}
+                >
+                  Shortcut
+                </button>
+                <button
+                  type="button"
                   className="link-btn"
                   title="Open note in new window"
                   onClick={() => openNoteInNewWindow(activeNote.id)}

@@ -1581,6 +1581,21 @@ describe("App", () => {
     );
   });
 
+  it("toggles shortcut state from note header action", () => {
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    const shortcutButton = within(headerActions as HTMLElement).getByRole("button", { name: "Shortcut" });
+    const initialPressed = shortcutButton.getAttribute("aria-pressed");
+
+    fireEvent.click(shortcutButton);
+    expect(within(headerActions as HTMLElement).getByRole("button", { name: "Shortcut" })).toHaveAttribute(
+      "aria-pressed",
+      initialPressed === "true" ? "false" : "true"
+    );
+  });
+
   it("opens note in new window from note header action", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     render(<App />);

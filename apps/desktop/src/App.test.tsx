@@ -57,6 +57,18 @@ describe("App", () => {
     expect(autoLinksButton).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("exposes explicit tag editor controls", () => {
+    render(<App />);
+
+    const addTagButton = screen.getByRole("button", { name: "Add tag" });
+    expect(screen.getByRole("button", { name: "Open tag editor" })).toBeInTheDocument();
+    expect(addTagButton).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(addTagButton);
+    expect(addTagButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByPlaceholderText("new-tag")).toHaveAttribute("id", "tag-input");
+  });
+
   it("opens shortcuts browse mode from the sidebar", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));

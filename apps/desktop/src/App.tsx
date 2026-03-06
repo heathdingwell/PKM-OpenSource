@@ -16012,11 +16012,19 @@ a{color:#1d4ed8}
               />
               <button
                 type="button"
+                aria-label="Open tag editor"
+                title="Open tag editor"
                 onClick={() => openTagEditor()}
               >
                 +
               </button>
-              <button type="button" onClick={() => setTagEditorOpen((previous) => !previous)}>
+              <button
+                type="button"
+                aria-expanded={tagEditorOpen}
+                aria-controls="tag-input-wrap"
+                title={tagEditorOpen ? "Hide tag editor" : "Show tag editor"}
+                onClick={() => setTagEditorOpen((previous) => !previous)}
+              >
                 Add tag
               </button>
               <div className="tag-strip">
@@ -16032,6 +16040,7 @@ a{color:#1d4ed8}
               </div>
               {tagEditorOpen ? (
                 <form
+                  id="tag-input-wrap"
                   className="tag-input-wrap"
                   onSubmit={(event) => {
                     event.preventDefault();

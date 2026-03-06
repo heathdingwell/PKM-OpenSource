@@ -10245,6 +10245,20 @@ export default function App() {
     });
   }
 
+  function openNotebookView(notebook: string, mode: NoteBrowseMode = "all"): void {
+    setSidebarView("notes");
+    setSelectedNotebook(notebook);
+    setBrowseMode(mode);
+    setTasksDialogOpen(false);
+    setFilesDialogOpen(false);
+    setCalendarDialogOpen(false);
+  }
+
+  function openAllNotesWithTag(tag: string): void {
+    openNotebookView("All Notes", "all");
+    toggleTagFilter(tag);
+  }
+
   function toggleSearchFilter(kind: SearchFilterKind): void {
     setSearchFilters((previous) => {
       if (previous.includes(kind)) {
@@ -14874,14 +14888,7 @@ a{color:#1d4ed8}
                 <button
                   type="button"
                   className="crumb-link"
-                  onClick={() => {
-                    setSidebarView("notes");
-                    setSelectedNotebook(activeNote.notebook);
-                    setBrowseMode(activeNote.trashedAt ? "trash" : "all");
-                    setTasksDialogOpen(false);
-                    setFilesDialogOpen(false);
-                    setCalendarDialogOpen(false);
-                  }}
+                  onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
                 >
                   {activeNote.notebook}
                 </button>
@@ -15535,7 +15542,15 @@ a{color:#1d4ed8}
                           <dl className="preview-meta-list">
                             <div>
                               <dt>Notebook</dt>
-                              <dd>{activeNote.notebook}</dd>
+                              <dd>
+                                <button
+                                  type="button"
+                                  className="preview-meta-action"
+                                  onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
+                                >
+                                  {activeNote.notebook}
+                                </button>
+                              </dd>
                             </div>
                             <div>
                               <dt>Path</dt>
@@ -15555,7 +15570,24 @@ a{color:#1d4ed8}
                             </div>
                             <div>
                               <dt>Tags</dt>
-                              <dd>{activeNote.tags.length ? activeNote.tags.join(", ") : "None"}</dd>
+                              <dd>
+                                {activeNote.tags.length ? (
+                                  <div className="preview-meta-tags">
+                                    {activeNote.tags.map((tag) => (
+                                      <button
+                                        key={tag}
+                                        type="button"
+                                        className={tagFilters.includes(tag) ? "tag-chip active" : "tag-chip"}
+                                        onClick={() => openAllNotesWithTag(tag)}
+                                      >
+                                        #{tag}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  "None"
+                                )}
+                              </dd>
                             </div>
                           </dl>
                         </section>
@@ -15985,15 +16017,7 @@ a{color:#1d4ed8}
                                 key={tag}
                                 type="button"
                                 className={tagFilters.includes(tag) ? "tag-chip active" : "tag-chip"}
-                                onClick={() => {
-                                  setSidebarView("notes");
-                                  setSelectedNotebook("All Notes");
-                                  setBrowseMode("all");
-                                  setTasksDialogOpen(false);
-                                  setFilesDialogOpen(false);
-                                  setCalendarDialogOpen(false);
-                                  toggleTagFilter(tag);
-                                }}
+                                onClick={() => openAllNotesWithTag(tag)}
                               >
                                 #{tag}
                               </button>
@@ -16027,14 +16051,7 @@ a{color:#1d4ed8}
                   <div className="metadata-actions">
                     <button
                       type="button"
-                      onClick={() => {
-                        setSidebarView("notes");
-                        setSelectedNotebook(activeNote.notebook);
-                        setBrowseMode(activeNote.trashedAt ? "trash" : "all");
-                        setTasksDialogOpen(false);
-                        setFilesDialogOpen(false);
-                        setCalendarDialogOpen(false);
-                      }}
+                      onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
                     >
                       Open notebook
                     </button>

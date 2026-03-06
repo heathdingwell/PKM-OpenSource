@@ -7754,6 +7754,25 @@ describe("App", () => {
     expect(within(metadataSection as HTMLElement).getByText("Daily Notes/Agenda.md")).toBeInTheDocument();
   });
 
+  it("opens a tag filter from preview metadata tags", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    fireEvent.change(document.getElementById("tag-input") as HTMLInputElement, { target: { value: "focus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    expect(screen.getByRole("heading", { name: "Home", level: 1 })).toBeInTheDocument();
+
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" });
+    const metadataSection = within(previewPane).getByRole("heading", { name: "Metadata", level: 5 }).closest("section");
+    expect(metadataSection).toBeTruthy();
+
+    fireEvent.click(within(metadataSection as HTMLElement).getByRole("button", { name: "#focus" }));
+    expect(screen.getByRole("heading", { name: "All Notes", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "#focus ×" })).toBeInTheDocument();
+  });
+
   it("prevents duplicate event references from calendar modal", () => {
     render(<App />);
 
@@ -9032,10 +9051,13 @@ describe("App", () => {
       screen.getByText((content) => content.includes("#focus") && (content.includes("added to") || content.includes("already")))
     ).toBeInTheDocument();
 
+    const editorFooter = document.querySelector(".editor-footer");
+    expect(editorFooter).toBeTruthy();
+
     fireEvent.click(cards[0] as HTMLButtonElement);
-    expect(screen.getByRole("button", { name: "#focus" })).toBeInTheDocument();
+    expect(within(editorFooter as HTMLElement).getByRole("button", { name: "#focus" })).toBeInTheDocument();
     fireEvent.click(cards[1] as HTMLButtonElement);
-    expect(screen.getByRole("button", { name: "#focus" })).toBeInTheDocument();
+    expect(within(editorFooter as HTMLElement).getByRole("button", { name: "#focus" })).toBeInTheDocument();
   });
 
   it("opens bulk tag editor from note context menu on multi-select", () => {

@@ -2457,6 +2457,32 @@ body.is-resizing {
   word-break: break-word;
 }
 
+.preview-meta-action {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.preview-meta-action:hover {
+  color: #1e4fa6;
+  text-decoration: underline;
+}
+
+.preview-meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preview-meta-tags .tag-chip.active {
+  color: #ffffff;
+  background: var(--blue);
+}
+
 .line-space {
   height: 14px;
 }

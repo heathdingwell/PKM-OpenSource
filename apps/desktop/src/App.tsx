@@ -16145,6 +16145,31 @@ a{color:#1d4ed8}
                     <button type="button" onClick={() => openNoteHistory(activeNote.id)}>
                       History
                     </button>
+                    <button type="button" onClick={() => openTasksPanel("current-note")}>
+                      Open tasks
+                    </button>
+                    <button type="button" onClick={() => openFilesPanel("current-note")}>
+                      Open files
+                    </button>
+                    <button type="button" onClick={() => openCalendarPanel("current-note")}>
+                      Open calendar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSidebarView("notes");
+                        setBrowseMode("reminders");
+                        setSelectedNotebook("All Notes");
+                        setReminderScopeMode("current-note");
+                        setTasksDialogOpen(false);
+                        setFilesDialogOpen(false);
+                        setCalendarDialogOpen(false);
+                        setAiPanelOpen(false);
+                        setSearchOpen(false);
+                      }}
+                    >
+                      Open reminders
+                    </button>
                     <button
                       type="button"
                       disabled={Boolean(activeNote.trashedAt)}

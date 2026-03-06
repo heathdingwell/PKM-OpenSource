@@ -14852,6 +14852,8 @@ a{color:#1d4ed8}
                 <button
                   type="button"
                   className={metadataOpen ? "link-btn active" : "link-btn"}
+                  aria-pressed={metadataOpen}
+                  title="Toggle note info panel"
                   onClick={() => {
                     setMetadataOpen((previous) => !previous);
                     setAiPanelOpen(false);
@@ -14859,15 +14861,17 @@ a{color:#1d4ed8}
                 >
                   Info
                 </button>
-                <button type="button" className="share-btn">
+                <button type="button" className="share-btn" title="Share note">
                   Share
                 </button>
-                <button type="button" className="link-btn">
+                <button type="button" className="link-btn" title="Copy note link">
                   Link
                 </button>
                 <button
                   type="button"
                   className={liteEditMode ? "link-btn active" : "link-btn"}
+                  aria-pressed={liteEditMode}
+                  title="Toggle lite edit mode"
                   onClick={() => {
                     if (liteEditMode) {
                       setLiteEditMode(false);
@@ -14881,26 +14885,42 @@ a{color:#1d4ed8}
                 >
                   Lite
                 </button>
-                <button type="button" className={focusMode ? "link-btn active" : "link-btn"} onClick={() => setFocusMode((previous) => !previous)}>
+                <button
+                  type="button"
+                  className={focusMode ? "link-btn active" : "link-btn"}
+                  aria-pressed={focusMode}
+                  title="Toggle focus mode"
+                  onClick={() => setFocusMode((previous) => !previous)}
+                >
                   Focus
                 </button>
-                <button type="button" className={aiPanelOpen ? "link-btn active" : "link-btn"} onClick={toggleAiPanel}>
+                <button
+                  type="button"
+                  className={aiPanelOpen ? "link-btn active" : "link-btn"}
+                  aria-pressed={aiPanelOpen}
+                  title="Toggle AI panel"
+                  onClick={toggleAiPanel}
+                >
                   AI
                 </button>
                 <button
                   type="button"
                   className={autoReciprocalLinks ? "link-btn active" : "link-btn"}
+                  aria-pressed={autoReciprocalLinks}
+                  title="Toggle automatic reciprocal links"
                   onClick={toggleAutoReciprocalLinks}
                 >
                   Auto links
                 </button>
-                <button type="button" className="link-btn" onClick={cycleTheme}>
+                <button type="button" className="link-btn" title="Cycle theme" onClick={cycleTheme}>
                   Theme
                 </button>
                 <button
                   ref={editorMenuButtonRef}
                   type="button"
                   className="link-btn"
+                  aria-label="More note actions"
+                  title="More note actions"
                   onClick={(event) => {
                     event.stopPropagation();
                     openEditorMenu();
@@ -14915,6 +14935,8 @@ a{color:#1d4ed8}
               <button
                 type="button"
                 className={editorMode === "markdown" ? "active" : ""}
+                aria-pressed={editorMode === "markdown"}
+                title="Switch to Markdown editor"
                 onClick={() => setEditorMode("markdown")}
               >
                 Markdown
@@ -14922,6 +14944,8 @@ a{color:#1d4ed8}
               <button
                 type="button"
                 className={editorMode === "rich" ? "active" : ""}
+                aria-pressed={editorMode === "rich"}
+                title="Switch to rich editor"
                 onClick={() => {
                   setLiteEditMode(false);
                   setEditorMode("rich");
@@ -14933,6 +14957,7 @@ a{color:#1d4ed8}
               <span className="toolbar-divider" />
               <button
                 type="button"
+                title="Insert block"
                 onClick={(event) => {
                   event.stopPropagation();
                   openSlashMenuFromInsert();
@@ -14942,6 +14967,7 @@ a{color:#1d4ed8}
               </button>
               <button
                 type="button"
+                title="Set normal text"
                 onClick={() => {
                   if (editorMode === "rich") {
                     richEditorRef.current?.setParagraph();
@@ -14982,20 +15008,21 @@ a{color:#1d4ed8}
                   </option>
                 ))}
               </select>
-              <button type="button" onClick={() => runRichToolbarAction("bold")}>
+              <button type="button" aria-label="Bold" title="Bold" onClick={() => runRichToolbarAction("bold")}>
                 B
               </button>
-              <button type="button" onClick={() => runRichToolbarAction("italic")}>
+              <button type="button" aria-label="Italic" title="Italic" onClick={() => runRichToolbarAction("italic")}>
                 I
               </button>
-              <button type="button" onClick={() => runRichToolbarAction("underline")}>
+              <button type="button" aria-label="Underline" title="Underline" onClick={() => runRichToolbarAction("underline")}>
                 U
               </button>
-              <button type="button" onClick={() => runRichToolbarAction("bullet")}>
+              <button type="button" aria-label="Bullet list" title="Bullet list" onClick={() => runRichToolbarAction("bullet")}>
                 List
               </button>
               <button
                 type="button"
+                title="Insert link"
                 onClick={(event) => {
                   event.stopPropagation();
                   runRichToolbarAction("link");
@@ -15005,6 +15032,8 @@ a{color:#1d4ed8}
               </button>
               <button
                 type="button"
+                aria-label="Insert code block"
+                title="Insert code block"
                 onClick={() => {
                   if (editorMode === "rich") {
                     richEditorRef.current?.toggleCodeBlock();

@@ -16,6 +16,47 @@ describe("App", () => {
     expect(screen.getByRole("separator", { name: "Resize note list" })).toBeInTheDocument();
   });
 
+  it("exposes clear toolbar labels and pressed states", () => {
+    render(<App />);
+
+    expect(screen.getByRole("button", { name: "More note actions" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bold" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Italic" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Underline" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bullet list" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Insert code block" })).toBeInTheDocument();
+
+    const markdownButton = screen.getByRole("button", { name: "Markdown" });
+    const richButton = screen.getByRole("button", { name: "Rich" });
+    const liteButton = screen.getByRole("button", { name: "Lite" });
+    const focusButton = screen.getByRole("button", { name: "Focus" });
+    const aiButton = screen.getByRole("button", { name: "AI" });
+    const autoLinksButton = screen.getByRole("button", { name: "Auto links" });
+
+    expect(markdownButton).toHaveAttribute("aria-pressed", "true");
+    expect(richButton).toHaveAttribute("aria-pressed", "false");
+    expect(liteButton).toHaveAttribute("aria-pressed", "false");
+    expect(focusButton).toHaveAttribute("aria-pressed", "false");
+    expect(aiButton).toHaveAttribute("aria-pressed", "false");
+    expect(autoLinksButton).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(richButton);
+    expect(markdownButton).toHaveAttribute("aria-pressed", "false");
+    expect(richButton).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(liteButton);
+    expect(liteButton).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(focusButton);
+    expect(focusButton).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(aiButton);
+    expect(aiButton).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(autoLinksButton);
+    expect(autoLinksButton).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("opens shortcuts browse mode from the sidebar", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));
@@ -8271,8 +8312,10 @@ describe("App", () => {
 
     (editor as HTMLTextAreaElement).focus();
     fireEvent.keyDown(editor as HTMLTextAreaElement, { key: "ContextMenu" });
-    expect(screen.getByRole("button", { name: "Bold" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Align center" })).toBeInTheDocument();
+    const menu = document.querySelector(".editor-context-menu") as HTMLElement | null;
+    expect(menu).toBeTruthy();
+    expect(within(menu as HTMLElement).getByRole("button", { name: "Bold" })).toBeInTheDocument();
+    expect(within(menu as HTMLElement).getByRole("button", { name: "Align center" })).toBeInTheDocument();
   });
 
   it("inserts markdown link from editor context menu", () => {

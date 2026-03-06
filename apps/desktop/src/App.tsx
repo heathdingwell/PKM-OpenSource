@@ -14702,7 +14702,6 @@ a{color:#1d4ed8}
                               {showQuickAction ? (
                                 <span
                                   className="note-card-menu"
-                                  aria-label="Note actions"
                                   role="button"
                                   tabIndex={0}
                                   aria-haspopup="menu"
@@ -14712,6 +14711,7 @@ a{color:#1d4ed8}
                                       ? "note-actions-menu"
                                       : undefined
                                   }
+                                  title="Note actions"
                                   onClick={(event) => {
                                     event.stopPropagation();
                                     openCardMenu(note.id, event.clientX, event.clientY);

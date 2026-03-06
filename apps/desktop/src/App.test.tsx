@@ -8112,12 +8112,14 @@ describe("App", () => {
     expect(noteCard).toBeTruthy();
     fireEvent.mouseEnter(noteCard as HTMLButtonElement);
 
-    const trigger = screen.getByRole("button", { name: "Note actions" });
-    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
-    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    const trigger = document.querySelector(".note-card-menu") as HTMLElement | null;
+    expect(trigger).toBeTruthy();
+    expect(trigger as HTMLElement).toHaveAttribute("role", "button");
+    expect(trigger as HTMLElement).toHaveAttribute("aria-haspopup", "menu");
+    expect(trigger as HTMLElement).toHaveAttribute("aria-expanded", "false");
 
-    fireEvent.click(trigger);
-    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(trigger as HTMLElement);
+    expect(trigger as HTMLElement).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("menu", { name: "Note actions" })).toBeInTheDocument();
   });
 

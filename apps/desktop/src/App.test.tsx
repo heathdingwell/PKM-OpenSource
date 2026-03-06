@@ -717,6 +717,71 @@ describe("App", () => {
     openSpy.mockRestore();
   });
 
+  it("exports markdown, html, and text from the metadata panel", async () => {
+    const anchorClick = vi.fn();
+    const originalCreateElement = document.createElement.bind(document);
+    const createObjectURL = vi.fn(() => "blob:pkm-os-test");
+    const revokeObjectURL = vi.fn();
+    const createElementSpy = vi.spyOn(document, "createElement").mockImplementation((
+      (tagName: string, options?: ElementCreationOptions) => {
+      const element = originalCreateElement(tagName, options);
+      if (tagName.toLowerCase() === "a") {
+        Object.defineProperty(element, "click", {
+          value: anchorClick,
+          configurable: true
+        });
+      }
+      return element;
+    }) as typeof document.createElement);
+
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Export as Markdown" }));
+    expect(await screen.findByText('Exported "Agenda"')).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Export as HTML" }));
+    expect(await screen.findByText('Exported HTML "Agenda"')).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Export as Text" }));
+    expect(await screen.findByText('Exported text "Agenda"')).toBeInTheDocument();
+
+    expect(anchorClick).toHaveBeenCalledTimes(3);
+    createElementSpy.mockRestore();
+  });
+
+  it("exports pdf and prints from the metadata panel", async () => {
+    window.pkmShell = {
+      ...window.pkmShell,
+      getPlatform: window.pkmShell?.getPlatform ?? (() => "mac"),
+      exportNotePdf: vi.fn().mockResolvedValue({
+        ok: true,
+        path: "/tmp/Agenda.pdf"
+      })
+    };
+    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Export as PDF" }));
+    expect(await screen.findByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Print" }));
+    expect(printSpy).toHaveBeenCalledTimes(1);
+
+    printSpy.mockRestore();
+  });
+
   it("opens lite and full editor modes from the metadata panel", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Info" }));

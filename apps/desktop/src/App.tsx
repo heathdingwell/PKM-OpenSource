@@ -16290,6 +16290,51 @@ a{color:#1d4ed8}
                     <button type="button" onClick={() => openNoteInFullEditor(activeNote.id)}>
                       Open in full editor
                     </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => {
+                        exportNote(activeNote.id);
+                      }}
+                    >
+                      Export as Markdown
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => {
+                        exportNoteHtml(activeNote.id);
+                      }}
+                    >
+                      Export as HTML
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => {
+                        exportNoteText(activeNote.id);
+                      }}
+                    >
+                      Export as Text
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => {
+                        void exportNotePdf(activeNote.id);
+                      }}
+                    >
+                      Export as PDF
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(activeNote.trashedAt)}
+                      onClick={() => {
+                        window.print();
+                      }}
+                    >
+                      Print
+                    </button>
                     {activeNote.trashedAt ? (
                       <>
                         <button

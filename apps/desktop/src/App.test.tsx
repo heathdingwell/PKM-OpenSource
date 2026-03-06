@@ -7765,6 +7765,29 @@ describe("App", () => {
     expect(within(linkedEventsSection as HTMLElement).getByText(/^Events · /i)).toBeInTheDocument();
   });
 
+  it("opens preview linked event in the event editor", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    const searchInput = screen.getByPlaceholderText("Search or ask a question");
+    fireEvent.change(searchInput, { target: { value: ">open calendar" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Insert event reference for Weekly planning" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" });
+    const linkedEventsSection = within(previewPane).getByRole("heading", { name: "Linked events", level: 5 }).closest("section");
+    expect(linkedEventsSection).toBeTruthy();
+
+    fireEvent.click(
+      within(linkedEventsSection as HTMLElement).getByRole("button", { name: "Open preview event Weekly planning" })
+    );
+
+    expect(screen.getByRole("heading", { name: "Edit event", level: 3 })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Weekly planning")).toBeInTheDocument();
+  });
+
   it("shows note metadata in preview panel", () => {
     render(<App />);
 
@@ -8008,6 +8031,29 @@ describe("App", () => {
 
     const previewPane = screen.getByRole("region", { name: "Rendered preview" });
     expect(within(previewPane).getByText(/Review Agenda before standup/i)).toBeInTheDocument();
+  });
+
+  it("opens a preview backlink target note", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    const sourceEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(sourceEditor).toBeTruthy();
+    fireEvent.change(sourceEditor as HTMLTextAreaElement, {
+      target: { value: "# Link Source\n\n[[Agenda]]" }
+    });
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.click(agendaCard as HTMLButtonElement);
+
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" });
+    const backlinksSection = within(previewPane).getByRole("heading", { name: "Backlinks", level: 5 }).closest("section");
+    expect(backlinksSection).toBeTruthy();
+
+    fireEvent.click(within(backlinksSection as HTMLElement).getByRole("button", { name: "Open preview backlink Link Source" }));
+    expect(screen.getByRole("heading", { name: "Link Source", level: 2 })).toBeInTheDocument();
   });
 
   it("opens a note in lite edit mode from context menu", () => {

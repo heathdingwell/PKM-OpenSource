@@ -16177,6 +16177,12 @@ a{color:#1d4ed8}
                     <button type="button" onClick={() => openNoteHistory(activeNote.id)}>
                       History
                     </button>
+                    <button type="button" onClick={openLocalGraphForActiveNote}>
+                      Open local graph
+                    </button>
+                    <button type="button" onClick={openFindInNote}>
+                      Find in note
+                    </button>
                     <button type="button" onClick={() => openTasksPanel("current-note")}>
                       Open tasks
                     </button>

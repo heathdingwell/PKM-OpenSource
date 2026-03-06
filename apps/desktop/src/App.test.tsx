@@ -660,6 +660,21 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
   });
 
+  it("opens local graph and find-in-note from the metadata panel", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Find in note" }));
+    expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Open local graph" }));
+    expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+  });
+
   it("opens files and calendar from the metadata panel", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Info" }));

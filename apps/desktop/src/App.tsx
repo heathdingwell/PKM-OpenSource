@@ -13362,7 +13362,6 @@ a{color:#1d4ed8}
         setDraggingNotebook(null);
         setStackDropTarget(null);
         setUnstackDropTarget(false);
-        setNoteHistoryDialog(null);
         setFilesDialogOpen(false);
         setCalendarDialogOpen(false);
         setEventDialog(null);
@@ -16001,11 +16000,30 @@ a{color:#1d4ed8}
                     </button>
                   </div>
                   <div className="metadata-actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSidebarView("notes");
+                        setSelectedNotebook(activeNote.notebook);
+                        setBrowseMode(activeNote.trashedAt ? "trash" : "all");
+                        setTasksDialogOpen(false);
+                        setFilesDialogOpen(false);
+                        setCalendarDialogOpen(false);
+                      }}
+                    >
+                      Open notebook
+                    </button>
                     <button type="button" onClick={() => void copyNoteLink(activeNote.id)}>
                       Copy link
                     </button>
                     <button type="button" onClick={() => void copyNotePath(activeNote.id)}>
                       Copy path
+                    </button>
+                    <button type="button" onClick={() => openTagEditor(activeNote.id)}>
+                      Edit tags
+                    </button>
+                    <button type="button" onClick={() => openNoteHistory(activeNote.id)}>
+                      History
                     </button>
                     {activeNote.trashedAt ? (
                       <>

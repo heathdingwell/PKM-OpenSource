@@ -566,6 +566,25 @@ describe("App", () => {
     expect(screen.getByText("Note path copied")).toBeInTheDocument();
   });
 
+  it("opens notebook and history from the metadata panel", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    expect(screen.getByRole("heading", { name: "Home", level: 1 })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Open notebook" }));
+    expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
+
+    const refreshedMetadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(refreshedMetadataPanel).toBeTruthy();
+
+    fireEvent.click(within(refreshedMetadataPanel as HTMLElement).getByRole("button", { name: "History" }));
+    expect(await screen.findByRole("heading", { name: /^History/i, level: 3 })).toBeInTheDocument();
+  });
+
   it("blocks note metadata keyboard shortcut for multi-selected notes", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

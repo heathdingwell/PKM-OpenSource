@@ -15008,6 +15008,22 @@ a{color:#1d4ed8}
                 </button>
                 <button
                   type="button"
+                  className={activeNote.isTemplate ? "link-btn active" : "link-btn"}
+                  aria-pressed={activeNote.isTemplate}
+                  title={activeNote.isTemplate ? "Remove note from templates" : "Mark note as template"}
+                  onClick={() => {
+                    const { marked, unmarked } = toggleTemplateNotes([activeNote.id]);
+                    if (marked > 0) {
+                      setToastMessage(`${marked} marked as template`);
+                    } else if (unmarked > 0) {
+                      setToastMessage(`${unmarked} removed from templates`);
+                    }
+                  }}
+                >
+                  Template
+                </button>
+                <button
+                  type="button"
                   className="link-btn"
                   title="Open note in new window"
                   onClick={() => openNoteInNewWindow(activeNote.id)}

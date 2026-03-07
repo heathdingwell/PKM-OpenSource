@@ -18,6 +18,7 @@ const GIT_BACKUP_MIN_AUTOSAVE_DELAY_MS = 1000;
 const GIT_BACKUP_MAX_AUTOSAVE_DELAY_MS = 120000;
 const GIT_BACKUP_DEFAULT_PUSH_REMOTE = "origin";
 const GIT_BACKUP_DEFAULT_PUSH_BRANCH = "main";
+const APP_ICON_PNG = path.join(__dirname, "../assets/app-icon.png");
 
 function vaultRootPath() {
   return path.join(app.getPath("userData"), VAULT_DIR_NAME);
@@ -1418,6 +1419,7 @@ function createWindow() {
     minWidth: 1080,
     minHeight: 700,
     backgroundColor: "#ffffff",
+    icon: APP_ICON_PNG,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -1434,6 +1436,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === "darwin" && app.dock?.setIcon) {
+    app.dock.setIcon(APP_ICON_PNG);
+  }
+
   ipcMain.handle("vault:load", async () => {
     try {
       return await loadVaultNotes();

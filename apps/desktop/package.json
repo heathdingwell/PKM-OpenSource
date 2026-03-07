@@ -24,9 +24,11 @@
       "package.json"
     ],
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "assets"
     },
     "mac": {
+      "icon": "assets/app-icon.icns",
       "category": "public.app-category.productivity",
       "target": [
         "dmg",
@@ -34,12 +36,14 @@
       ]
     },
     "win": {
+      "icon": "assets/app-icon.png",
       "target": [
         "nsis",
         "zip"
       ]
     },
     "linux": {
+      "icon": "assets/app-icon.png",
       "target": [
         "AppImage",
         "deb"

@@ -2966,6 +2966,7 @@ export default function App() {
   const [lastMove, setLastMove] = useState<LastMoveState | null>(null);
   const [lastTrash, setLastTrash] = useState<LastTrashState | null>(null);
   const [draftMarkdown, setDraftMarkdown] = useState<string>("");
+  const [draftNoteId, setDraftNoteId] = useState<string>("");
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">("saved");
   const [sidebarView, setSidebarView] = useState<SidebarView>("notes");
   const [editorMode, setEditorMode] = useState<EditorMode>("markdown");
@@ -3341,13 +3342,26 @@ export default function App() {
     }));
   }, [pagedVisibleNotes, noteGroupMode]);
 
+  const homePinnedSet = useMemo(() => new Set(homePinnedNoteIds), [homePinnedNoteIds]);
+  const notebookPinnedSet = useMemo(() => new Set(notebookPinnedNoteIds), [notebookPinnedNoteIds]);
+  const shortcutSet = useMemo(() => new Set(shortcutNoteIds), [shortcutNoteIds]);
+  const shortcutNotebookSet = useMemo(() => new Set(shortcutNotebooks), [shortcutNotebooks]);
+  const shortcutTagSet = useMemo(() => new Set(shortcutTags), [shortcutTags]);
+
+  const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
+
+  const activeNote = notes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
+  const noteHistoryNote = noteHistoryDialog ? notes.find((note) => note.id === noteHistoryDialog.noteId) ?? null : null;
+  const noteHistoryEntries = noteHistoryDialog ? noteHistory[noteHistoryDialog.noteId] ?? [] : [];
+  const activeDraftMarkdown = activeNote && draftNoteId === activeNote.id ? draftMarkdown : activeNote?.markdown ?? "";
+
   const graphModel = useMemo(() => {
     const query = graphQuery.trim().toLowerCase();
     const graphSourceNotes = [...visibleNotes];
     const centerIndex = graphSourceNotes.findIndex((note) => note.id === activeId);
     let center = centerIndex >= 0 ? graphSourceNotes[centerIndex] : null;
-    if (center && !center.trashedAt && draftMarkdown !== center.markdown) {
-      center = noteFromMarkdown(center, draftMarkdown, center.updatedAt, { pathOverride: center.path });
+    if (center && !center.trashedAt && draftNoteId === center.id && activeDraftMarkdown !== center.markdown) {
+      center = noteFromMarkdown(center, activeDraftMarkdown, center.updatedAt, { pathOverride: center.path });
       graphSourceNotes[centerIndex] = center;
     }
 
@@ -3418,7 +3432,7 @@ export default function App() {
     });
 
     return { nodes, edges };
-  }, [activeId, draftMarkdown, graphQuery, graphScope, visibleNotes]);
+  }, [activeDraftMarkdown, activeId, draftNoteId, graphQuery, graphScope, visibleNotes]);
 
   const graphNodeById = useMemo(() => new Map(graphModel.nodes.map((node) => [node.note.id, node])), [graphModel.nodes]);
 
@@ -3472,29 +3486,17 @@ export default function App() {
       .slice(0, 16);
   }, [notebookPinnedNoteIds, activeNotes, selectedNotebook]);
 
-  const homePinnedSet = useMemo(() => new Set(homePinnedNoteIds), [homePinnedNoteIds]);
-  const notebookPinnedSet = useMemo(() => new Set(notebookPinnedNoteIds), [notebookPinnedNoteIds]);
-  const shortcutSet = useMemo(() => new Set(shortcutNoteIds), [shortcutNoteIds]);
-  const shortcutNotebookSet = useMemo(() => new Set(shortcutNotebooks), [shortcutNotebooks]);
-  const shortcutTagSet = useMemo(() => new Set(shortcutTags), [shortcutTags]);
-
-  const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
-
-  const activeNote = notes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
-  const noteHistoryNote = noteHistoryDialog ? notes.find((note) => note.id === noteHistoryDialog.noteId) ?? null : null;
-  const noteHistoryEntries = noteHistoryDialog ? noteHistory[noteHistoryDialog.noteId] ?? [] : [];
-
   const draftPreview = useMemo(
-    () => parseForPreview(draftMarkdown || activeNote?.markdown || "# Untitled\n"),
-    [draftMarkdown, activeNote?.markdown]
+    () => parseForPreview(activeDraftMarkdown || "# Untitled\n"),
+    [activeDraftMarkdown]
   );
 
   const liveActiveNote = useMemo(() => {
-    if (!activeNote || activeNote.trashedAt || draftMarkdown === activeNote.markdown) {
+    if (!activeNote || activeNote.trashedAt || draftNoteId !== activeNote.id || activeDraftMarkdown === activeNote.markdown) {
       return activeNote;
     }
-    return noteFromMarkdown(activeNote, draftMarkdown, activeNote.updatedAt);
-  }, [activeNote, draftMarkdown]);
+    return noteFromMarkdown(activeNote, activeDraftMarkdown, activeNote.updatedAt);
+  }, [activeDraftMarkdown, activeNote, draftNoteId]);
 
   const searchIndex = useMemo(() => {
     const index = new SearchIndex();
@@ -4163,11 +4165,11 @@ export default function App() {
       .slice(0, 10);
   }, [activeNotes]);
   const eventReferences = useMemo(() => {
-    return extractEventReferences(draftMarkdown).map((reference) => ({
+    return extractEventReferences(activeDraftMarkdown).map((reference) => ({
       ...reference,
       event: calendarEventsById.get(reference.id) ?? null
     }));
-  }, [draftMarkdown, calendarEventsById]);
+  }, [activeDraftMarkdown, calendarEventsById]);
   const currentAiProviderDefaults = useMemo(() => aiProviderDefaults(aiSettings.provider), [aiSettings.provider]);
   const aiKeyOptional = aiSettings.provider === "ollama" || aiSettings.provider === "openai-compatible";
 
@@ -4250,12 +4252,12 @@ export default function App() {
       return [];
     }
 
-    const parsed = extractWikilinks(draftMarkdown);
+    const parsed = extractWikilinks(activeDraftMarkdown);
     return parsed.map((title) => ({
       title,
       target: activeNotes.find((note) => note.title.toLowerCase() === title.toLowerCase()) ?? null
     }));
-  }, [activeNote, draftMarkdown, activeNotes]);
+  }, [activeDraftMarkdown, activeNote, activeNotes]);
 
   const activeBacklinkLabel = useMemo(() => {
     if (!activeNote) {
@@ -4283,11 +4285,11 @@ export default function App() {
   }, [activeNotes, activeNote, activeBacklinkTitle, activeBacklinkLabel]);
 
   const draftWordCount = useMemo(() => {
-    const text = draftMarkdown.trim();
+    const text = activeDraftMarkdown.trim();
     return text ? text.split(/\s+/).length : 0;
-  }, [draftMarkdown]);
+  }, [activeDraftMarkdown]);
 
-  const draftCharCount = draftMarkdown.length;
+  const draftCharCount = activeDraftMarkdown.length;
 
   useEffect(() => {
     let cancelled = false;
@@ -4482,6 +4484,7 @@ export default function App() {
 
   useEffect(() => {
     if (!activeNote) {
+      setDraftNoteId("");
       setDraftMarkdown("");
       setSaveState("saved");
       setTagEditorOpen(false);
@@ -4490,6 +4493,7 @@ export default function App() {
       return;
     }
 
+    setDraftNoteId(activeNote.id);
     setDraftMarkdown(activeNote.markdown);
     setSaveState("saved");
     setTagEditorOpen(false);
@@ -4520,7 +4524,7 @@ export default function App() {
       return;
     }
 
-    if (draftMarkdown === activeNote.markdown) {
+    if (draftNoteId !== activeNote.id || activeDraftMarkdown === activeNote.markdown) {
       return;
     }
 
@@ -4534,7 +4538,7 @@ export default function App() {
       setSaveState("saving");
       setNotes((previous) =>
         previous.map((note) =>
-          note.id === activeNote.id ? applyNoteMarkdownWithUniquePath(note, draftMarkdown, previous) : note
+          note.id === activeNote.id ? applyNoteMarkdownWithUniquePath(note, activeDraftMarkdown, previous) : note
         )
       );
       setSaveState("saved");
@@ -4547,7 +4551,7 @@ export default function App() {
         window.clearTimeout(autosaveTimerRef.current);
       }
     };
-  }, [draftMarkdown, activeNote?.id, activeNote?.markdown]);
+  }, [activeDraftMarkdown, activeNote?.id, activeNote?.markdown, draftNoteId]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -5545,7 +5549,7 @@ export default function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
-    draftMarkdown,
+    activeDraftMarkdown,
     activeNote?.id,
     activeNote?.markdown,
     slashMenu,
@@ -5584,12 +5588,12 @@ export default function App() {
     }
 
     if (editorMode === "markdown") {
-      setFindInNoteMatches(findMarkdownTextRanges(draftMarkdown, query));
+      setFindInNoteMatches(findMarkdownTextRanges(activeDraftMarkdown, query));
       return;
     }
 
     setFindInNoteMatches(richEditorRef.current?.findTextRanges(query) ?? []);
-  }, [findInNoteOpen, findInNoteQuery, draftMarkdown, editorMode, activeNote?.id]);
+  }, [activeDraftMarkdown, findInNoteOpen, findInNoteQuery, editorMode, activeNote?.id]);
 
   useEffect(() => {
     if (!findInNoteOpen) {
@@ -6264,7 +6268,13 @@ export default function App() {
   }
 
   function flushActiveDraft(): void {
-    if (!activeNote || !activeId || activeId !== activeNote.id || draftMarkdown === activeNote.markdown) {
+    if (
+      !activeNote ||
+      !activeId ||
+      activeId !== activeNote.id ||
+      draftNoteId !== activeNote.id ||
+      activeDraftMarkdown === activeNote.markdown
+    ) {
       return;
     }
 
@@ -6275,7 +6285,7 @@ export default function App() {
 
     setNotes((previous) =>
       previous.map((note) =>
-        note.id === activeNote.id ? applyNoteMarkdownWithUniquePath(note, draftMarkdown, previous) : note
+        note.id === activeNote.id ? applyNoteMarkdownWithUniquePath(note, activeDraftMarkdown, previous) : note
       )
     );
     setSaveState("saved");
@@ -6899,6 +6909,7 @@ export default function App() {
     setActiveId(nextActive);
     setSelectedIds(nextActive ? new Set([nextActive]) : new Set());
     setLastSelectedId(nextActive || null);
+    setDraftNoteId(nextActive);
     setDraftMarkdown(importedNotes[0]?.markdown ?? "");
     setSearchOpen(false);
     setToastMessage(`Imported snapshot (${importedNotes.length} notes)`);
@@ -6952,6 +6963,8 @@ export default function App() {
     setActiveId(nextActive);
     setSelectedIds(nextActive ? new Set([nextActive]) : new Set());
     setLastSelectedId(nextActive || null);
+    setDraftNoteId(nextActive);
+    setDraftNoteId(nextActive);
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
     setToastMessage(`Imported ENEX (${imported.length} notes) into ${targetNotebook}`);
@@ -7034,6 +7047,7 @@ export default function App() {
     setActiveId(nextActive);
     setSelectedIds(nextActive ? new Set([nextActive]) : new Set());
     setLastSelectedId(nextActive || null);
+    setDraftNoteId(nextActive);
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
     setToastMessage(
@@ -7103,6 +7117,7 @@ export default function App() {
     setActiveId(nextActive);
     setSelectedIds(nextActive ? new Set([nextActive]) : new Set());
     setLastSelectedId(nextActive || null);
+    setDraftNoteId(nextActive);
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
     setToastMessage(`Imported Markdown files (${imported.length}) into ${targetNotebook}`);
@@ -7166,6 +7181,7 @@ export default function App() {
     setActiveId(nextActive);
     setSelectedIds(nextActive ? new Set([nextActive]) : new Set());
     setLastSelectedId(nextActive || null);
+    setDraftNoteId(nextActive);
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
     setToastMessage(`Imported text files (${imported.length}) into ${targetNotebook}`);
@@ -7516,9 +7532,9 @@ export default function App() {
     let sourceNotes = notes;
     if (activeId) {
       const sourceActiveNote = notes.find((note) => note.id === activeId && !note.trashedAt);
-      if (sourceActiveNote && draftMarkdown !== sourceActiveNote.markdown) {
+      if (sourceActiveNote && draftNoteId === sourceActiveNote.id && activeDraftMarkdown !== sourceActiveNote.markdown) {
         sourceNotes = notes.map((note) =>
-          note.id === sourceActiveNote.id ? applyNoteMarkdownWithUniquePath(note, draftMarkdown, notes) : note
+          note.id === sourceActiveNote.id ? applyNoteMarkdownWithUniquePath(note, activeDraftMarkdown, notes) : note
         );
       }
     }
@@ -7550,6 +7566,7 @@ export default function App() {
     if (activeId) {
       const nextActive = nextNotes.find((note) => note.id === activeId);
       if (nextActive) {
+        setDraftNoteId(nextActive.id);
         setDraftMarkdown(nextActive.markdown);
       }
     }
@@ -10341,6 +10358,68 @@ export default function App() {
     }
   }
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.pkmShell?.onAppMenuAction) {
+      return;
+    }
+
+    const unsubscribe = window.pkmShell.onAppMenuAction((actionId) => {
+      if (actionId === "show-search") {
+        setQuickQuery("");
+        setSearchOpen(true);
+        return;
+      }
+
+      if (actionId === "show-command-palette") {
+        setQuickQuery(">");
+        setSearchOpen(true);
+        return;
+      }
+
+      if (actionId === "toggle-note-info") {
+        setMetadataOpen((previous) => !previous);
+        setAiPanelOpen(false);
+        return;
+      }
+
+      if (actionId === "print-note") {
+        window.print();
+        return;
+      }
+
+      if (actionId === "find-note") {
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          return;
+        }
+        openSearchResult(activeNote, "find-note");
+        return;
+      }
+
+      if (
+        actionId === "toggle-note-template" ||
+        actionId === "toggle-note-shortcut" ||
+        actionId === "toggle-note-pin-home" ||
+        actionId === "toggle-note-pin-notebook"
+      ) {
+        if (!activeNote) {
+          setToastMessage("Open a note first");
+          return;
+        }
+        openSearchResult(activeNote, actionId);
+        return;
+      }
+
+      runPaletteAction(actionId);
+    });
+
+    return () => {
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
+    };
+  }, [activeNote, openSearchResult, runPaletteAction]);
+
   function openCardMenu(noteId: string, clientX: number, clientY: number): void {
     const noteIds = selectedIds.has(noteId)
       ? [noteId, ...Array.from(selectedIds).filter((selectedId) => selectedId !== noteId)]
@@ -10778,6 +10857,7 @@ export default function App() {
     });
 
     if (activeId === noteId) {
+      setDraftNoteId(noteId);
       setDraftMarkdown(snapshot.markdown);
     }
 
@@ -11319,6 +11399,7 @@ export default function App() {
     });
 
     if (nextDraft !== null) {
+      setDraftNoteId(activeId);
       setDraftMarkdown(nextDraft);
     }
 
@@ -15412,8 +15493,9 @@ a{color:#1d4ed8}
                     <textarea
                       ref={markdownEditorRef}
                       className="markdown-editor"
-                      value={draftMarkdown}
+                      value={activeDraftMarkdown}
                       onChange={(event) => {
+                        setDraftNoteId(activeNote.id);
                         setDraftMarkdown(event.target.value);
                         syncLinkSuggestion(event.target.value, event.target.selectionStart);
                         syncMentionSuggestion(event.target.value, event.target.selectionStart);
@@ -15677,8 +15759,11 @@ a{color:#1d4ed8}
                     <h3>Rich text</h3>
                     <RichMarkdownEditor
                       ref={richEditorRef}
-                      markdown={draftMarkdown}
-                      onMarkdownChange={(nextMarkdown) => setDraftMarkdown(nextMarkdown)}
+                      markdown={activeDraftMarkdown}
+                      onMarkdownChange={(nextMarkdown) => {
+                        setDraftNoteId(activeNote.id);
+                        setDraftMarkdown(nextMarkdown);
+                      }}
                       onSlashQueryChange={syncRichSlashSuggestion}
                       onRequestLink={() => runRichToolbarAction("link")}
                       onContextMenu={(event) => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import App from "./App";
 
 describe("App", () => {
@@ -368,6 +368,68 @@ describe("App", () => {
     fireEvent.click(agendaCard as HTMLButtonElement);
     expect(screen.getByRole("heading", { name: "Agenda", level: 2 })).toBeInTheDocument();
     expect(screen.getByText("Daily Notes/Agenda.md")).toBeInTheDocument();
+  });
+
+  it("does not leak the previous note draft into a newly selected note", () => {
+    render(<App />);
+    const notesList = screen.getByLabelText("Notes list");
+    const findCard = (title: string) =>
+      Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+        entry.textContent?.includes(title)
+      );
+
+    const agendaCard = findCard("Agenda");
+    const todoCard = findCard("To-do list");
+    expect(agendaCard).toBeTruthy();
+    expect(todoCard).toBeTruthy();
+
+    fireEvent.click(agendaCard as HTMLButtonElement);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: "# Agenda\n\nDraft content that should stay in Agenda\n" }
+    });
+
+    fireEvent.click(todoCard as HTMLButtonElement);
+
+    expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
+    expect(screen.getByText("Daily Notes/To-do list.md")).toBeInTheDocument();
+    expect((document.querySelector(".markdown-editor") as HTMLTextAreaElement).value).toContain("High priority");
+    expect((document.querySelector(".markdown-editor") as HTMLTextAreaElement).value).not.toContain(
+      "Draft content that should stay in Agenda"
+    );
+  });
+
+  it("responds to native app menu actions", async () => {
+    let menuListener: ((actionId: string) => void) | null = null;
+    window.pkmShell = {
+      ...window.pkmShell,
+      getPlatform: window.pkmShell?.getPlatform ?? (() => "mac"),
+      onAppMenuAction: (listener) => {
+        menuListener = listener;
+        return () => {
+          if (menuListener === listener) {
+            menuListener = null;
+          }
+        };
+      }
+    };
+
+    render(<App />);
+    expect(menuListener).toBeTruthy();
+
+    act(() => {
+      (menuListener as (actionId: string) => void)("show-command-palette");
+    });
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Search or ask a question")).toHaveValue(">");
+    });
+
+    act(() => {
+      (menuListener as (actionId: string) => void)("toggle-note-info");
+    });
+    expect(screen.getByRole("heading", { name: "Note metadata" })).toBeInTheDocument();
   });
 
   it("filters graph nodes by query", () => {

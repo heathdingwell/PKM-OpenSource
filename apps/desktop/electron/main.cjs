@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain } = require("electron");
 const { randomUUID } = require("node:crypto");
 const { execFile } = require("node:child_process");
 const fsSync = require("node:fs");
@@ -1536,11 +1536,143 @@ function createWindow() {
   }
 }
 
+function sendMenuAction(actionId) {
+  const target = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  if (!target || target.isDestroyed()) {
+    return;
+  }
+  target.webContents.send("app:menu-action", actionId);
+}
+
+function buildAppMenu() {
+  const template = [];
+
+  if (process.platform === "darwin") {
+    template.push({
+      label: app.name,
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" }
+      ]
+    });
+  }
+
+  template.push(
+    {
+      label: "File",
+      submenu: [
+        { label: "New Note", accelerator: "CmdOrCtrl+N", click: () => sendMenuAction("new-note") },
+        { label: "Open Today's Note", click: () => sendMenuAction("open-today-note") },
+        { label: "New From Template", click: () => sendMenuAction("new-from-template") },
+        { type: "separator" },
+        { label: "Import Markdown Files", click: () => sendMenuAction("import-markdown-files") },
+        { label: "Import Text Files", click: () => sendMenuAction("import-text-files") },
+        { label: "Import HTML Files", click: () => sendMenuAction("import-html-files") },
+        { label: "Import ENEX", click: () => sendMenuAction("import-enex") },
+        { label: "Import Vault Snapshot", click: () => sendMenuAction("import-snapshot") },
+        { type: "separator" },
+        { label: "Export Vault Snapshot", click: () => sendMenuAction("export-snapshot") },
+        ...(process.platform === "darwin" ? [] : [{ type: "separator" }, { role: "quit" }])
+      ]
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "pasteAndMatchStyle" },
+        { role: "delete" },
+        { role: "selectAll" },
+        { type: "separator" },
+        { label: "Search", accelerator: "CmdOrCtrl+J", click: () => sendMenuAction("show-search") },
+        { label: "Command Palette", accelerator: "CmdOrCtrl+Shift+P", click: () => sendMenuAction("show-command-palette") },
+        { label: "Find In Note", accelerator: "CmdOrCtrl+F", click: () => sendMenuAction("find-note") }
+      ]
+    },
+    {
+      label: "View",
+      submenu: [
+        { label: "Home", click: () => sendMenuAction("open-home") },
+        { label: "All Notes", click: () => sendMenuAction("open-all-notes") },
+        { label: "Tasks", click: () => sendMenuAction("open-tasks") },
+        { label: "Files", click: () => sendMenuAction("open-files") },
+        { label: "Calendar", click: () => sendMenuAction("open-calendar") },
+        { label: "Graph", click: () => sendMenuAction("open-graph") },
+        { label: "Trash", click: () => sendMenuAction("open-trash") },
+        { type: "separator" },
+        { label: "Toggle Note Info", click: () => sendMenuAction("toggle-note-info") },
+        { label: "Toggle Backlinks Pane", click: () => sendMenuAction("toggle-backlinks-pane") },
+        { label: "Toggle Focus Mode", click: () => sendMenuAction("toggle-focus") },
+        { label: "Toggle AI Panel", click: () => sendMenuAction("toggle-ai") },
+        { type: "separator" },
+        { label: "Cobalt Theme", click: () => sendMenuAction("set-theme-cobalt") },
+        { label: "Sky Theme", click: () => sendMenuAction("set-theme-sky") },
+        { label: "Slate Theme", click: () => sendMenuAction("set-theme-slate") },
+        { label: "Cycle Theme", click: () => sendMenuAction("cycle-theme") },
+        { type: "separator" },
+        { role: "togglefullscreen" }
+      ]
+    },
+    {
+      label: "Note",
+      submenu: [
+        { label: "Share Note", click: () => sendMenuAction("share-note") },
+        { label: "Copy Note Link", click: () => sendMenuAction("copy-note-link") },
+        { label: "Copy Note Path", click: () => sendMenuAction("copy-note-path") },
+        { type: "separator" },
+        { label: "Rename Note", accelerator: "CmdOrCtrl+Shift+R", click: () => sendMenuAction("rename-note") },
+        { label: "Edit Tags", accelerator: "CmdOrCtrl+Alt+T", click: () => sendMenuAction("open-note-tags") },
+        { label: "Note History", accelerator: "CmdOrCtrl+Alt+H", click: () => sendMenuAction("open-note-history") },
+        { label: "Move Note", accelerator: "CmdOrCtrl+Alt+M", click: () => sendMenuAction("move-note") },
+        { label: "Copy To Notebook", accelerator: "CmdOrCtrl+Alt+Y", click: () => sendMenuAction("copy-note") },
+        { label: "Duplicate Note", accelerator: "CmdOrCtrl+Alt+D", click: () => sendMenuAction("duplicate-note") },
+        { type: "separator" },
+        { label: "Toggle Template", click: () => sendMenuAction("toggle-note-template") },
+        { label: "Toggle Shortcut", click: () => sendMenuAction("toggle-note-shortcut") },
+        { label: "Toggle Pin To Home", click: () => sendMenuAction("toggle-note-pin-home") },
+        { label: "Toggle Pin To Notebook", click: () => sendMenuAction("toggle-note-pin-notebook") },
+        { label: "Open Local Graph", click: () => sendMenuAction("open-active-local-graph") },
+        { type: "separator" },
+        { label: "Export as Markdown", click: () => sendMenuAction("export-note-markdown") },
+        { label: "Export as HTML", click: () => sendMenuAction("export-note-html") },
+        { label: "Export as Text", click: () => sendMenuAction("export-note-text") },
+        { label: "Export as PDF", click: () => sendMenuAction("export-note-pdf") },
+        { label: "Print Note", accelerator: "CmdOrCtrl+Alt+P", click: () => sendMenuAction("print-note") },
+        { type: "separator" },
+        { label: "Move To Trash", accelerator: "CmdOrCtrl+Backspace", click: () => sendMenuAction("trash-note") },
+        { label: "Restore Note", click: () => sendMenuAction("restore-note") }
+      ]
+    },
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" },
+        { role: "zoom" },
+        ...(process.platform === "darwin" ? [{ type: "separator" }, { role: "front" }] : [{ role: "close" }])
+      ]
+    }
+  );
+
+  return Menu.buildFromTemplate(template);
+}
+
 app.whenReady().then(() => {
   logStartup("app ready");
   if (process.platform === "darwin" && app.dock?.setIcon && !app.isPackaged) {
     app.dock.setIcon(appIconPath());
   }
+  Menu.setApplicationMenu(buildAppMenu());
 
   ipcMain.handle("vault:load", async () => {
     try {

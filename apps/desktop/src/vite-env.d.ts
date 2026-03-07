@@ -132,6 +132,7 @@ declare global {
         models?: string[];
         error?: string;
       } | null>;
+      onAppMenuAction?: (listener: (actionId: string) => void) => (() => void) | void;
     };
   }
 }

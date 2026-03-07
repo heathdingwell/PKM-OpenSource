@@ -13,5 +13,15 @@ contextBridge.exposeInMainWorld("pkmShell", {
   backupVaultToGit: () => ipcRenderer.invoke("vault:git-backup"),
   chatWithLlm: (payload) => ipcRenderer.invoke("llm:chat", payload),
   testLlmConnection: (payload) => ipcRenderer.invoke("llm:test-connection", payload),
-  listLlmModels: (payload) => ipcRenderer.invoke("llm:list-models", payload)
+  listLlmModels: (payload) => ipcRenderer.invoke("llm:list-models", payload),
+  onAppMenuAction: (listener) => {
+    if (typeof listener !== "function") {
+      return undefined;
+    }
+    const wrapped = (_event, actionId) => listener(actionId);
+    ipcRenderer.on("app:menu-action", wrapped);
+    return () => {
+      ipcRenderer.removeListener("app:menu-action", wrapped);
+    };
+  }
 });

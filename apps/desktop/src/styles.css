@@ -2693,6 +2693,10 @@ body.is-resizing {
   position: fixed;
   z-index: 60;
   width: 236px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: 12px;

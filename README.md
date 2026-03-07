@@ -142,6 +142,9 @@ and keyboard-heavy note management. The remaining roadmap in `docs/` is long-tai
   - `Set theme: Cobalt`
   - `Set theme: Sky`
   - `Set theme: Slate`
+- Theme overrides:
+  - Settings can override primary color, panel/sidebar surfaces, text color, UI/editor font stacks, panel gap, and panel radius.
+  - Overrides persist across restarts without patching app CSS.
 - Explicit note sort actions via command palette:
   - `Set sort: Updated (newest first|oldest first)`
   - `Set sort: Created (newest first|oldest first)`

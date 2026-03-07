@@ -3239,6 +3239,36 @@ describe("App", () => {
     expect(screen.getByText("Theme switched to sky")).toBeInTheDocument();
   });
 
+  it("persists theme override settings", () => {
+    const { unmount } = render(<App />);
+    const appShell = screen.getByRole("application", { name: "PKM OpenSource Shell" });
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+
+    fireEvent.change(screen.getByLabelText("Primary color"), { target: { value: "#0f766e" } });
+    fireEvent.change(screen.getByLabelText("UI font stack"), { target: { value: "Georgia, serif" } });
+    fireEvent.change(screen.getByLabelText("Theme editor font stack"), { target: { value: "Menlo, monospace" } });
+    fireEvent.change(screen.getByLabelText("Panel gap"), { target: { value: "14" } });
+    fireEvent.change(screen.getByLabelText("Panel radius"), { target: { value: "16" } });
+
+    expect(appShell.style.getPropertyValue("--primary")).toBe("#0f766e");
+    expect(appShell.style.getPropertyValue("--font-ui")).toBe("Georgia, serif");
+    expect(appShell.style.getPropertyValue("--font-editor")).toBe("Menlo, monospace");
+    expect(appShell.style.getPropertyValue("--panel-gap")).toBe("14px");
+    expect(appShell.style.getPropertyValue("--panel-radius")).toBe("16px");
+
+    unmount();
+
+    render(<App />);
+    const restoredShell = screen.getByRole("application", { name: "PKM OpenSource Shell" });
+    expect(restoredShell.style.getPropertyValue("--primary")).toBe("#0f766e");
+    expect(restoredShell.style.getPropertyValue("--font-ui")).toBe("Georgia, serif");
+    expect(restoredShell.style.getPropertyValue("--font-editor")).toBe("Menlo, monospace");
+    expect(restoredShell.style.getPropertyValue("--panel-gap")).toBe("14px");
+    expect(restoredShell.style.getPropertyValue("--panel-radius")).toBe("16px");
+  });
+
   it("sets editor font from command palette action", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));

@@ -232,6 +232,18 @@ interface AppPrefs {
   notebookStacks?: Record<string, string>;
   customStacks?: string[];
   collapsedStacks?: string[];
+  themeOverrides?: ThemeOverrides;
+}
+
+interface ThemeOverrides {
+  primary?: string;
+  bgPanel?: string;
+  bgSidebar?: string;
+  text?: string;
+  fontUi?: string;
+  fontEditor?: string;
+  panelGap?: number;
+  panelRadius?: number;
 }
 
 interface LinkSuggestionState {
@@ -437,6 +449,32 @@ const DEFAULT_TAG_PANE_HEIGHT = 52;
 const NOTE_LIST_INITIAL_BATCH = 24;
 const NOTE_LIST_BATCH = 24;
 const themeIds: ThemeId[] = ["cobalt", "sky", "slate"];
+const defaultUiFontStack = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif';
+const defaultEditorFontStack = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif';
+const defaultThemeSpacing = {
+  panelGap: 8,
+  panelRadius: 10
+} as const;
+const themePreviewDefaults: Record<ThemeId, { primary: string; bgPanel: string; bgSidebar: string; text: string }> = {
+  cobalt: {
+    primary: "#2563eb",
+    bgPanel: "#ffffff",
+    bgSidebar: "#f2f7ff",
+    text: "#1f2937"
+  },
+  sky: {
+    primary: "#0ea5e9",
+    bgPanel: "#dbeaf7",
+    bgSidebar: "#d6ecff",
+    text: "#15324d"
+  },
+  slate: {
+    primary: "#4f46e5",
+    bgPanel: "#e2e5ea",
+    bgSidebar: "#dce3ee",
+    text: "#1f2937"
+  }
+};
 const editorFontFamilies: Array<{ id: EditorFontFamilyId; label: string; value: string }> = [
   {
     id: "palatino",
@@ -2313,6 +2351,113 @@ function loadInitialNotes(): AppNote[] {
   }
 }
 
+function normalizeThemeColor(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed) ? trimmed : undefined;
+}
+
+function normalizeThemeFontStack(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 160) {
+    return undefined;
+  }
+  return /^[A-Za-z0-9 ,."'()-]+$/.test(trimmed) ? trimmed : undefined;
+}
+
+function clampThemePanelGap(value: number): number {
+  return Math.max(4, Math.min(24, Math.round(value)));
+}
+
+function clampThemePanelRadius(value: number): number {
+  return Math.max(4, Math.min(24, Math.round(value)));
+}
+
+function sanitizeThemeOverrides(value: unknown): ThemeOverrides {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  const parsed = value as Partial<ThemeOverrides>;
+  const next: ThemeOverrides = {};
+  const primary = normalizeThemeColor(parsed.primary);
+  const bgPanel = normalizeThemeColor(parsed.bgPanel);
+  const bgSidebar = normalizeThemeColor(parsed.bgSidebar);
+  const text = normalizeThemeColor(parsed.text);
+  const fontUi = normalizeThemeFontStack(parsed.fontUi);
+  const fontEditor = normalizeThemeFontStack(parsed.fontEditor);
+
+  if (primary) {
+    next.primary = primary;
+  }
+  if (bgPanel) {
+    next.bgPanel = bgPanel;
+  }
+  if (bgSidebar) {
+    next.bgSidebar = bgSidebar;
+  }
+  if (text) {
+    next.text = text;
+  }
+  if (fontUi) {
+    next.fontUi = fontUi;
+  }
+  if (fontEditor) {
+    next.fontEditor = fontEditor;
+  }
+  if (typeof parsed.panelGap === "number" && Number.isFinite(parsed.panelGap)) {
+    next.panelGap = clampThemePanelGap(parsed.panelGap);
+  }
+  if (typeof parsed.panelRadius === "number" && Number.isFinite(parsed.panelRadius)) {
+    next.panelRadius = clampThemePanelRadius(parsed.panelRadius);
+  }
+
+  return next;
+}
+
+function buildThemeOverrideStyle(themeOverrides: ThemeOverrides): CSSProperties {
+  const style: Record<string, string> = {};
+  const primary = normalizeThemeColor(themeOverrides.primary);
+  const bgPanel = normalizeThemeColor(themeOverrides.bgPanel);
+  const bgSidebar = normalizeThemeColor(themeOverrides.bgSidebar);
+  const text = normalizeThemeColor(themeOverrides.text);
+  const fontUi = normalizeThemeFontStack(themeOverrides.fontUi);
+  const fontEditor = normalizeThemeFontStack(themeOverrides.fontEditor);
+
+  if (primary) {
+    style["--primary"] = primary;
+  }
+  if (bgPanel) {
+    style["--bg-panel"] = bgPanel;
+    style["--bg-card"] = bgPanel;
+    style["--bg-editor"] = bgPanel;
+  }
+  if (bgSidebar) {
+    style["--bg-sidebar"] = bgSidebar;
+  }
+  if (text) {
+    style["--text"] = text;
+  }
+  if (fontUi) {
+    style["--font-ui"] = fontUi;
+  }
+  if (fontEditor) {
+    style["--font-editor"] = fontEditor;
+  }
+  if (typeof themeOverrides.panelGap === "number") {
+    style["--panel-gap"] = `${clampThemePanelGap(themeOverrides.panelGap)}px`;
+  }
+  if (typeof themeOverrides.panelRadius === "number") {
+    style["--panel-radius"] = `${clampThemePanelRadius(themeOverrides.panelRadius)}px`;
+  }
+  return style as CSSProperties;
+}
+
 function defaultPrefs(): AppPrefs {
   return {
     selectedNotebook: "Daily Notes",
@@ -2346,7 +2491,8 @@ function defaultPrefs(): AppPrefs {
     autoReciprocalLinks: false,
     notebookStacks: {},
     customStacks: [],
-    collapsedStacks: []
+    collapsedStacks: [],
+    themeOverrides: {}
   };
 }
 
@@ -2475,7 +2621,8 @@ function loadPrefs(): AppPrefs {
         : [],
       collapsedStacks: Array.isArray(parsed.collapsedStacks)
         ? parsed.collapsedStacks.filter((stack): stack is string => typeof stack === "string")
-        : []
+        : [],
+      themeOverrides: sanitizeThemeOverrides(parsed.themeOverrides)
     };
   } catch {
     return defaultPrefs();
@@ -2822,6 +2969,9 @@ export default function App() {
   const [editorMode, setEditorMode] = useState<EditorMode>("markdown");
   const [liteEditMode, setLiteEditMode] = useState(false);
   const [themeId, setThemeId] = useState<ThemeId>(initialPrefs.themeId ?? "cobalt");
+  const [themeOverrides, setThemeOverrides] = useState<ThemeOverrides>(
+    sanitizeThemeOverrides(initialPrefs.themeOverrides)
+  );
   const [viewMode, setViewMode] = useState<NoteViewMode>(initialPrefs.viewMode ?? "cards");
   const [noteDensity, setNoteDensity] = useState<NoteDensityMode>(initialPrefs.noteDensity ?? "comfortable");
   const [noteGroupMode, setNoteGroupMode] = useState<NoteGroupMode>(initialPrefs.noteGroupMode ?? "none");
@@ -4588,7 +4738,8 @@ export default function App() {
       autoReciprocalLinks,
       notebookStacks,
       customStacks,
-      collapsedStacks: Array.from(collapsedStacks)
+      collapsedStacks: Array.from(collapsedStacks),
+      themeOverrides: sanitizeThemeOverrides(themeOverrides)
     };
     window.localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
   }, [
@@ -4623,7 +4774,8 @@ export default function App() {
     autoReciprocalLinks,
     notebookStacks,
     customStacks,
-    collapsedStacksKey
+    collapsedStacksKey,
+    themeOverrides
   ]);
 
   useEffect(() => {
@@ -13318,6 +13470,7 @@ a{color:#1d4ed8}
     "--editor-font-family": activeEditorFont,
     "--editor-font-size": `${editorFontSize}px`
   } as CSSProperties;
+  const appShellStyle = buildThemeOverrideStyle(themeOverrides);
 
   function loadMoreVisibleNotes(): void {
     setNoteListLimit((previous) => Math.min(visibleNotes.length, previous + NOTE_LIST_BATCH));
@@ -13380,6 +13533,7 @@ a{color:#1d4ed8}
   return (
     <div
       className={focusMode ? "app-shell focus-mode" : "app-shell"}
+      style={appShellStyle}
       role="application"
       aria-label="PKM OpenSource Shell"
       onClick={() => {
@@ -16004,6 +16158,134 @@ a{color:#1d4ed8}
                           <p className={`vault-backup-status ${gitBackupStatus?.lastError ? "error" : ""}`}>
                             {describeGitBackup(gitBackupStatus)}
                           </p>
+                        </div>
+                        <div className="theme-override-settings">
+                          <div className="theme-override-head">
+                            <strong>Theme overrides</strong>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setThemeOverrides({});
+                                setToastMessage("Theme overrides reset");
+                              }}
+                            >
+                              Reset
+                            </button>
+                          </div>
+                          <label className="theme-override-field">
+                            <span>Primary color</span>
+                            <input
+                              aria-label="Primary color"
+                              type="color"
+                              value={themeOverrides.primary ?? themePreviewDefaults[themeId].primary}
+                              onChange={(event) =>
+                                setThemeOverrides((previous) => ({
+                                  ...previous,
+                                  primary: event.target.value
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="theme-override-field">
+                            <span>Panel color</span>
+                            <input
+                              aria-label="Panel color"
+                              type="color"
+                              value={themeOverrides.bgPanel ?? themePreviewDefaults[themeId].bgPanel}
+                              onChange={(event) =>
+                                setThemeOverrides((previous) => ({
+                                  ...previous,
+                                  bgPanel: event.target.value
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="theme-override-field">
+                            <span>Sidebar color</span>
+                            <input
+                              aria-label="Sidebar color"
+                              type="color"
+                              value={themeOverrides.bgSidebar ?? themePreviewDefaults[themeId].bgSidebar}
+                              onChange={(event) =>
+                                setThemeOverrides((previous) => ({
+                                  ...previous,
+                                  bgSidebar: event.target.value
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="theme-override-field">
+                            <span>Text color</span>
+                            <input
+                              aria-label="Text color"
+                              type="color"
+                              value={themeOverrides.text ?? themePreviewDefaults[themeId].text}
+                              onChange={(event) =>
+                                setThemeOverrides((previous) => ({
+                                  ...previous,
+                                  text: event.target.value
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="theme-override-field">
+                            <span>UI font stack</span>
+                            <input
+                              aria-label="UI font stack"
+                              value={themeOverrides.fontUi ?? defaultUiFontStack}
+                              onChange={(event) =>
+                                setThemeOverrides((previous) => ({
+                                  ...previous,
+                                  fontUi: event.target.value
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="theme-override-field">
+                            <span>Theme editor font stack</span>
+                            <input
+                              aria-label="Theme editor font stack"
+                              value={themeOverrides.fontEditor ?? defaultEditorFontStack}
+                              onChange={(event) =>
+                                setThemeOverrides((previous) => ({
+                                  ...previous,
+                                  fontEditor: event.target.value
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="theme-override-field">
+                            <span>Panel gap</span>
+                            <input
+                              aria-label="Panel gap"
+                              type="number"
+                              min={4}
+                              max={24}
+                              value={themeOverrides.panelGap ?? defaultThemeSpacing.panelGap}
+                              onChange={(event) =>
+                                setThemeOverrides((previous) => ({
+                                  ...previous,
+                                  panelGap: clampThemePanelGap(Number.parseInt(event.target.value || "8", 10))
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="theme-override-field">
+                            <span>Panel radius</span>
+                            <input
+                              aria-label="Panel radius"
+                              type="number"
+                              min={4}
+                              max={24}
+                              value={themeOverrides.panelRadius ?? defaultThemeSpacing.panelRadius}
+                              onChange={(event) =>
+                                setThemeOverrides((previous) => ({
+                                  ...previous,
+                                  panelRadius: clampThemePanelRadius(Number.parseInt(event.target.value || "10", 10))
+                                }))
+                              }
+                            />
+                          </label>
                         </div>
                         <label>
                           <span>Temperature</span>

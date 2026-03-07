@@ -6611,6 +6611,61 @@ export default function App() {
     setSlashMenu(null);
   }
 
+  function revealNoteInWorkspace(
+    noteId: string,
+    options?: {
+      browseMode?: NoteBrowseMode;
+      notebook?: string;
+      clearTagFilters?: boolean;
+      resetReminderScope?: boolean;
+      closeAuxiliaryPanels?: boolean;
+      closeAiPanel?: boolean;
+      closeSearch?: boolean;
+      sidebarView?: SidebarView;
+    }
+  ): boolean {
+    const target = notes.find((note) => note.id === noteId);
+    if (!target) {
+      return false;
+    }
+
+    flushActiveDraft();
+    setSidebarView(options?.sidebarView ?? "notes");
+
+    const nextBrowseMode = options?.browseMode ?? (target.trashedAt ? "trash" : "all");
+    setBrowseMode(nextBrowseMode);
+    setSelectedNotebook(
+      options?.notebook ?? (nextBrowseMode === "trash" ? "All Notes" : target.notebook)
+    );
+
+    if (options?.clearTagFilters) {
+      setTagFilters([]);
+    }
+    if (options?.resetReminderScope) {
+      setReminderScopeMode("all");
+    }
+    if (options?.closeAuxiliaryPanels) {
+      setTasksDialogOpen(false);
+      setFilesDialogOpen(false);
+      setCalendarDialogOpen(false);
+    }
+    if (options?.closeAiPanel) {
+      setAiPanelOpen(false);
+    }
+    if (options?.closeSearch) {
+      setSearchOpen(false);
+    }
+
+    setActiveId(noteId);
+    setSelectedIds(new Set([noteId]));
+    setLastSelectedId(noteId);
+    touchRecent(noteId);
+    setLinkSuggestion(null);
+    setMentionSuggestion(null);
+    setSlashMenu(null);
+    return true;
+  }
+
   function visibleSelectionRange(anchorId: string, targetId: string): string[] {
     const ids = visibleNotes.map((note) => note.id);
     const start = ids.indexOf(anchorId);
@@ -8535,15 +8590,15 @@ export default function App() {
         setSearchOpen(false);
         return;
       }
-      setSidebarView("notes");
-      setBrowseMode("all");
-      setSelectedNotebook(target.notebook);
-      setTasksDialogOpen(false);
-      setFilesDialogOpen(false);
-      setCalendarDialogOpen(false);
-      setAiPanelOpen(false);
-      focusNote(target.id);
-      setSearchOpen(false);
+      revealNoteInWorkspace(target.id, {
+        browseMode: "all",
+        notebook: target.notebook,
+        clearTagFilters: true,
+        resetReminderScope: true,
+        closeAuxiliaryPanels: true,
+        closeAiPanel: true,
+        closeSearch: true
+      });
       return;
     }
 
@@ -8652,15 +8707,15 @@ export default function App() {
         setSearchOpen(false);
         return;
       }
-      setSidebarView("notes");
-      setBrowseMode("all");
-      setSelectedNotebook(target.notebook);
-      setTasksDialogOpen(false);
-      setFilesDialogOpen(false);
-      setCalendarDialogOpen(false);
-      setAiPanelOpen(false);
-      focusNote(target.id);
-      setSearchOpen(false);
+      revealNoteInWorkspace(target.id, {
+        browseMode: "all",
+        notebook: target.notebook,
+        clearTagFilters: true,
+        resetReminderScope: true,
+        closeAuxiliaryPanels: true,
+        closeAiPanel: true,
+        closeSearch: true
+      });
       return;
     }
 
@@ -8757,15 +8812,15 @@ export default function App() {
         setSearchOpen(false);
         return;
       }
-      setSidebarView("notes");
-      setBrowseMode("templates");
-      setSelectedNotebook("All Notes");
-      setTasksDialogOpen(false);
-      setFilesDialogOpen(false);
-      setCalendarDialogOpen(false);
-      setAiPanelOpen(false);
-      focusNote(target.id);
-      setSearchOpen(false);
+      revealNoteInWorkspace(target.id, {
+        browseMode: "templates",
+        notebook: "All Notes",
+        clearTagFilters: true,
+        resetReminderScope: true,
+        closeAuxiliaryPanels: true,
+        closeAiPanel: true,
+        closeSearch: true
+      });
       return;
     }
 
@@ -8801,15 +8856,15 @@ export default function App() {
         setSearchOpen(false);
         return;
       }
-      setSidebarView("notes");
-      setBrowseMode("all");
-      setSelectedNotebook(target.notebook);
-      setTasksDialogOpen(false);
-      setFilesDialogOpen(false);
-      setCalendarDialogOpen(false);
-      setAiPanelOpen(false);
-      focusNote(target.id);
-      setSearchOpen(false);
+      revealNoteInWorkspace(target.id, {
+        browseMode: "all",
+        notebook: target.notebook,
+        clearTagFilters: true,
+        resetReminderScope: true,
+        closeAuxiliaryPanels: true,
+        closeAiPanel: true,
+        closeSearch: true
+      });
       return;
     }
 
@@ -8835,15 +8890,15 @@ export default function App() {
         setSearchOpen(false);
         return;
       }
-      setSidebarView("notes");
-      setBrowseMode("all");
-      setSelectedNotebook(target.notebook);
-      setTasksDialogOpen(false);
-      setFilesDialogOpen(false);
-      setCalendarDialogOpen(false);
-      setAiPanelOpen(false);
-      focusNote(target.id);
-      setSearchOpen(false);
+      revealNoteInWorkspace(target.id, {
+        browseMode: "all",
+        notebook: target.notebook,
+        clearTagFilters: true,
+        resetReminderScope: true,
+        closeAuxiliaryPanels: true,
+        closeAiPanel: true,
+        closeSearch: true
+      });
       return;
     }
 
@@ -13947,10 +14002,16 @@ a{color:#1d4ed8}
                   <button
                     type="button"
                     className="recent-item"
-                    onClick={() => {
-                      setSelectedNotebook(note.notebook);
-                      focusNote(note.id);
-                    }}
+                    onClick={() =>
+                      revealNoteInWorkspace(note.id, {
+                        browseMode: "all",
+                        notebook: note.notebook,
+                        clearTagFilters: true,
+                        resetReminderScope: true,
+                        closeAuxiliaryPanels: true,
+                        closeAiPanel: true
+                      })
+                    }
                   >
                     <span>{note.title}</span>
                     <small>{formatRelativeTime(note.updatedAt)}</small>
@@ -13987,10 +14048,16 @@ a{color:#1d4ed8}
                         <button
                           type="button"
                           className="shortcut-item"
-                          onClick={() => {
-                            setSelectedNotebook(note.notebook);
-                            focusNote(note.id);
-                          }}
+                          onClick={() =>
+                            revealNoteInWorkspace(note.id, {
+                              browseMode: "all",
+                              notebook: note.notebook,
+                              clearTagFilters: true,
+                              resetReminderScope: true,
+                              closeAuxiliaryPanels: true,
+                              closeAiPanel: true
+                            })
+                          }
                         >
                           <span>{note.title}</span>
                           <small>{note.notebook}</small>
@@ -14136,10 +14203,16 @@ a{color:#1d4ed8}
                   <button
                     type="button"
                     className="shortcut-item"
-                    onClick={() => {
-                      setSelectedNotebook(note.notebook);
-                      focusNote(note.id);
-                    }}
+                    onClick={() =>
+                      revealNoteInWorkspace(note.id, {
+                        browseMode: "all",
+                        notebook: note.notebook,
+                        clearTagFilters: true,
+                        resetReminderScope: true,
+                        closeAuxiliaryPanels: true,
+                        closeAiPanel: true
+                      })
+                    }
                   >
                     <span>{note.title}</span>
                     <small>{note.notebook}</small>
@@ -14171,10 +14244,16 @@ a{color:#1d4ed8}
                   <button
                     type="button"
                     className="shortcut-item"
-                    onClick={() => {
-                      setSelectedNotebook(note.notebook);
-                      focusNote(note.id);
-                    }}
+                    onClick={() =>
+                      revealNoteInWorkspace(note.id, {
+                        browseMode: "all",
+                        notebook: note.notebook,
+                        clearTagFilters: true,
+                        resetReminderScope: true,
+                        closeAuxiliaryPanels: true,
+                        closeAiPanel: true
+                      })
+                    }
                   >
                     <span>{note.title}</span>
                     <small>{formatRelativeTime(note.updatedAt)}</small>
@@ -14537,11 +14616,16 @@ a{color:#1d4ed8}
                     <li key={note.id}>
                       <button
                         type="button"
-                        onClick={() => {
-                          setBrowseMode("all");
-                          setSelectedNotebook(note.notebook);
-                          focusNote(note.id);
-                        }}
+                        onClick={() =>
+                          revealNoteInWorkspace(note.id, {
+                            browseMode: "all",
+                            notebook: note.notebook,
+                            clearTagFilters: true,
+                            resetReminderScope: true,
+                            closeAuxiliaryPanels: true,
+                            closeAiPanel: true
+                          })
+                        }
                       >
                         <strong>{note.title}</strong>
                         <small>{note.notebook}</small>
@@ -14564,11 +14648,16 @@ a{color:#1d4ed8}
                     <li key={note.id}>
                       <button
                         type="button"
-                        onClick={() => {
-                          setBrowseMode("all");
-                          setSelectedNotebook(note.notebook);
-                          focusNote(note.id);
-                        }}
+                        onClick={() =>
+                          revealNoteInWorkspace(note.id, {
+                            browseMode: "all",
+                            notebook: note.notebook,
+                            clearTagFilters: true,
+                            resetReminderScope: true,
+                            closeAuxiliaryPanels: true,
+                            closeAiPanel: true
+                          })
+                        }
                       >
                         <strong>{note.title}</strong>
                         <small>{formatRelativeTime(note.updatedAt)}</small>
@@ -14591,11 +14680,16 @@ a{color:#1d4ed8}
                     <li key={task.id}>
                       <button
                         type="button"
-                        onClick={() => {
-                          setBrowseMode("all");
-                          setSelectedNotebook(task.notebook);
-                          focusNote(task.noteId);
-                        }}
+                        onClick={() =>
+                          revealNoteInWorkspace(task.noteId, {
+                            browseMode: "all",
+                            notebook: task.notebook,
+                            clearTagFilters: true,
+                            resetReminderScope: true,
+                            closeAuxiliaryPanels: true,
+                            closeAiPanel: true
+                          })
+                        }
                       >
                         <strong>{task.text}</strong>
                         <small>
@@ -14621,11 +14715,16 @@ a{color:#1d4ed8}
                     <li key={note.id}>
                       <button
                         type="button"
-                        onClick={() => {
-                          setBrowseMode("all");
-                          setSelectedNotebook(note.notebook);
-                          focusNote(note.id);
-                        }}
+                        onClick={() =>
+                          revealNoteInWorkspace(note.id, {
+                            browseMode: "all",
+                            notebook: note.notebook,
+                            clearTagFilters: true,
+                            resetReminderScope: true,
+                            closeAuxiliaryPanels: true,
+                            closeAiPanel: true
+                          })
+                        }
                       >
                         <strong>{note.title}</strong>
                         <small>{note.reminderAt ? describeReminderDate(note.reminderAt) : "No reminder"}</small>
@@ -14801,12 +14900,16 @@ a{color:#1d4ed8}
                     type="button"
                     className="graph-node"
                     style={{ left: `${node.x}%`, top: `${node.y}%` }}
-                    onClick={() => {
-                      setSidebarView("notes");
-                      setBrowseMode("all");
-                      setSelectedNotebook(node.note.notebook);
-                      focusNote(node.note.id);
-                    }}
+                    onClick={() =>
+                      revealNoteInWorkspace(node.note.id, {
+                        browseMode: "all",
+                        notebook: node.note.notebook,
+                        clearTagFilters: true,
+                        resetReminderScope: true,
+                        closeAuxiliaryPanels: true,
+                        closeAiPanel: true
+                      })
+                    }
                     title={node.note.title}
                   >
                     {node.note.title}
@@ -15158,11 +15261,16 @@ a{color:#1d4ed8}
                           <li key={entry.note.id}>
                             <button
                               type="button"
-                              onClick={() => {
-                                setBrowseMode("all");
-                                setSelectedNotebook(entry.note.notebook);
-                                openLinkedNote(entry.note);
-                              }}
+                              onClick={() =>
+                                revealNoteInWorkspace(entry.note.id, {
+                                  browseMode: "all",
+                                  notebook: entry.note.notebook,
+                                  clearTagFilters: true,
+                                  resetReminderScope: true,
+                                  closeAuxiliaryPanels: true,
+                                  closeAiPanel: true
+                                })
+                              }
                             >
                               <strong>{entry.note.title}</strong>
                               <small>
@@ -18283,14 +18391,19 @@ a{color:#1d4ed8}
                       type="button"
                       className="task-open"
                       onClick={() => {
-                        setSelectedNotebook(task.notebook);
-                        focusNote(task.noteId);
+                        revealNoteInWorkspace(task.noteId, {
+                          browseMode: "all",
+                          notebook: task.notebook,
+                          clearTagFilters: true,
+                          resetReminderScope: true,
+                          closeAuxiliaryPanels: true,
+                          closeAiPanel: true
+                        });
                         setTasksDialogOpen(false);
                         setTaskDueFilter("all");
                         setTaskSortMode("recent");
                         setTaskScopeMode("all");
                         setTaskQuery("");
-                        setSidebarView("notes");
                       }}
                     >
                       <strong>{task.text}</strong>
@@ -18500,8 +18613,14 @@ a{color:#1d4ed8}
                         type="button"
                         className="task-open"
                         onClick={() => {
-                          setSelectedNotebook(file.notebook);
-                          focusNote(file.noteId);
+                          revealNoteInWorkspace(file.noteId, {
+                            browseMode: "all",
+                            notebook: file.notebook,
+                            clearTagFilters: true,
+                            resetReminderScope: true,
+                            closeAuxiliaryPanels: true,
+                            closeAiPanel: true
+                          });
                           setFilesDialogOpen(false);
                           setFilesQuery("");
                           setFilesFilterKind("all");

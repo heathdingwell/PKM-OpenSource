@@ -370,6 +370,103 @@ describe("App", () => {
     expect(screen.getByText("Daily Notes/Agenda.md")).toBeInTheDocument();
   });
 
+  it("updates the editor and preview panes when selecting seeded notes across notebooks", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll<HTMLButtonElement>(".notebook-item"));
+    const findNotebook = (label: string) => notebookItems().find((entry) => entry.textContent?.includes(label));
+    const findCard = (title: string) =>
+      Array.from(screen.getByLabelText("Notes list").querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+        entry.textContent?.includes(title)
+      );
+
+    const clippingsNotebook = findNotebook("Clippings");
+    const recipesNotebook = findNotebook("Recipes");
+    expect(clippingsNotebook).toBeTruthy();
+    expect(recipesNotebook).toBeTruthy();
+
+    fireEvent.click(clippingsNotebook as HTMLButtonElement);
+    const clippingCard = findCard("Founder Advice excerpt");
+    expect(clippingCard).toBeTruthy();
+    fireEvent.click(clippingCard as HTMLButtonElement);
+    expect(screen.getByRole("heading", { name: "Founder Advice excerpt", level: 2 })).toBeInTheDocument();
+    expect(screen.getByText("Clippings/Founder Advice excerpt.md")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText(/compounding skills/i)).toBeInTheDocument();
+
+    fireEvent.click(recipesNotebook as HTMLButtonElement);
+    const recipeCard = findCard("Simple soup");
+    expect(recipeCard).toBeTruthy();
+    fireEvent.click(recipeCard as HTMLButtonElement);
+    expect(screen.getByRole("heading", { name: "Simple soup", level: 2 })).toBeInTheDocument();
+    expect(screen.getByText("Recipes/Simple soup.md")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText("Ingredients")).toBeInTheDocument();
+  });
+
+  it("opens a sidebar recent note across notebooks and syncs the right panes", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const notesList = screen.getByLabelText("Notes list");
+    const findCard = (title: string) =>
+      Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+        entry.textContent?.includes(title)
+      );
+
+    const todoCard = findCard("To-do list");
+    expect(todoCard).toBeTruthy();
+    fireEvent.click(todoCard as HTMLButtonElement);
+
+    const notebookButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".notebook-item")).find((entry) =>
+      entry.textContent?.includes("Clippings")
+    );
+    expect(notebookButton).toBeTruthy();
+    fireEvent.click(notebookButton as HTMLButtonElement);
+    expect(screen.getByRole("heading", { name: "Clippings", level: 1 })).toBeInTheDocument();
+
+    const recentButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".recent-item")).find((entry) =>
+      entry.textContent?.includes("To-do list")
+    );
+    expect(recentButton).toBeTruthy();
+    fireEvent.click(recentButton as HTMLButtonElement);
+
+    expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
+    expect(screen.getByText("Daily Notes/To-do list.md")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText("High priority")).toBeInTheDocument();
+  });
+
+  it("opens a Home dashboard recent note across notebooks and syncs the right panes", () => {
+    render(<App />);
+    const notebookItems = () => Array.from(document.querySelectorAll<HTMLButtonElement>(".notebook-item"));
+    const findCard = (title: string) =>
+      Array.from(screen.getByLabelText("Notes list").querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+        entry.textContent?.includes(title)
+      );
+
+    const todoCard = findCard("To-do list");
+    expect(todoCard).toBeTruthy();
+    fireEvent.click(todoCard as HTMLButtonElement);
+
+    const clippingsNotebook = notebookItems().find((entry) => entry.textContent?.includes("Clippings"));
+    expect(clippingsNotebook).toBeTruthy();
+    fireEvent.click(clippingsNotebook as HTMLButtonElement);
+
+    const clippingCard = findCard("Founder Advice excerpt");
+    expect(clippingCard).toBeTruthy();
+    fireEvent.click(clippingCard as HTMLButtonElement);
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+
+    const homeRecentButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".home-list button")).find((entry) =>
+      entry.textContent?.includes("To-do list")
+    );
+    expect(homeRecentButton).toBeTruthy();
+    fireEvent.click(homeRecentButton as HTMLButtonElement);
+
+    expect(screen.getByRole("heading", { name: "Daily Notes", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
+    expect(screen.getByText("Daily Notes/To-do list.md")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText("High priority")).toBeInTheDocument();
+  });
+
   it("does not leak the previous note draft into a newly selected note", () => {
     render(<App />);
     const notesList = screen.getByLabelText("Notes list");

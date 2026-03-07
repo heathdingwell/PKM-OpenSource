@@ -1,6 +1,6 @@
 # PKM-OpenSource
 
-Open source notes app with Markdown-first storage and an high-density experience layer.
+Open source notes app with Markdown-first storage and a high-density desktop experience.
 
 ## Workspace layout
 - `apps/desktop`: Electron + React desktop shell
@@ -20,7 +20,9 @@ Open source notes app with Markdown-first storage and an high-density experience
 - Output folder: `apps/desktop/release`
 
 ## Current status
-This is an implementation scaffold aligned to the docs in `docs/` and intended for iterative feature parity work.
+Desktop personal V1 is implemented and packaged. The app supports daily note workflows, notebook and stack organization,
+rich/plain-text editing, backlinks, templates, AI copilot integrations, configurable Git backups, import/export flows,
+and keyboard-heavy note management. The remaining roadmap in `docs/` is long-tail parity and post-V1 refinement.
 
 ## Implemented now
 - Templates view with "set as template" and "use template" flows.

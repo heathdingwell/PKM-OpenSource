@@ -2288,23 +2288,55 @@ function getSeededNotes(): AppNote[] {
   });
 }
 
+function parseStoredNoteHistory(value: unknown): Record<string, NoteHistoryEntry[]> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>).map(([noteId, snapshots]) => {
+    if (!Array.isArray(snapshots)) {
+      return [noteId, []] as const;
+    }
+
+    const safe = snapshots
+      .filter(
+        (entry): entry is NoteHistoryEntry =>
+          Boolean(entry) &&
+          typeof entry === "object" &&
+          typeof (entry as NoteHistoryEntry).at === "string" &&
+          typeof (entry as NoteHistoryEntry).title === "string" &&
+          typeof (entry as NoteHistoryEntry).markdown === "string"
+      )
+      .slice(0, 30);
+
+    return [noteId, safe] as const;
+  });
+
+  return Object.fromEntries(entries);
+}
+
 function deriveLegacyMarkdown(note: AppNote): string {
   const title = note.title.trim() || note.path.split("/").pop()?.replace(/\.md$/i, "") || "Untitled";
   const snippet = note.snippet.trim();
   return snippet ? `# ${title}\n\n${snippet}\n` : `# ${title}\n\n`;
 }
 
-function repairLoadedNote(note: AppNote): AppNote {
+function resolveRecoveredMarkdown(note: AppNote, snapshots: NoteHistoryEntry[] | undefined): string {
+  const nonEmptySnapshot = snapshots?.find((entry) => entry.markdown.trim().length > 0)?.markdown;
+  return nonEmptySnapshot ?? deriveLegacyMarkdown(note);
+}
+
+function repairLoadedNote(note: AppNote, noteHistory?: Record<string, NoteHistoryEntry[]>): AppNote {
   if (note.markdown.trim().length > 0) {
     return note;
   }
 
-  const fallbackMarkdown = deriveLegacyMarkdown(note);
+  const fallbackMarkdown = resolveRecoveredMarkdown(note, noteHistory?.[note.id]);
   return noteFromMarkdown(note, fallbackMarkdown, note.updatedAt, { pathOverride: note.path });
 }
 
-function repairLoadedNotes(notes: AppNote[]): AppNote[] {
-  return notes.map(repairLoadedNote);
+function repairLoadedNotes(notes: AppNote[], noteHistory?: Record<string, NoteHistoryEntry[]>): AppNote[] {
+  return notes.map((note) => repairLoadedNote(note, noteHistory));
 }
 
 function isAppNote(value: unknown): value is AppNote {
@@ -2356,18 +2388,19 @@ function loadInitialNotes(): AppNote[] {
   }
 
   try {
+    const parsedHistory = parseStoredNoteHistory(JSON.parse(window.localStorage.getItem(HISTORY_STORAGE_KEY) ?? "{}"));
     const raw = window.localStorage.getItem(NOTES_STORAGE_KEY);
     if (!raw) {
-      return repairLoadedNotes(getSeededNotes());
+      return repairLoadedNotes(getSeededNotes(), parsedHistory);
     }
 
     const parsed = JSON.parse(raw) as AppNote[];
     if (!Array.isArray(parsed) || !parsed.length) {
-      return repairLoadedNotes(getSeededNotes());
+      return repairLoadedNotes(getSeededNotes(), parsedHistory);
     }
 
     const hydrated = parsed.filter(isAppNote);
-    return hydrated.length ? repairLoadedNotes(hydrated) : repairLoadedNotes(getSeededNotes());
+    return hydrated.length ? repairLoadedNotes(hydrated, parsedHistory) : repairLoadedNotes(getSeededNotes(), parsedHistory);
   } catch {
     return repairLoadedNotes(getSeededNotes());
   }
@@ -2833,26 +2866,7 @@ function loadNoteHistory(): Record<string, NoteHistoryEntry[]> {
       return {};
     }
 
-    const entries = Object.entries(parsed as Record<string, unknown>).map(([noteId, snapshots]) => {
-      if (!Array.isArray(snapshots)) {
-        return [noteId, []] as const;
-      }
-
-      const safe = snapshots
-        .filter(
-          (entry): entry is NoteHistoryEntry =>
-            Boolean(entry) &&
-            typeof entry === "object" &&
-            typeof (entry as NoteHistoryEntry).at === "string" &&
-            typeof (entry as NoteHistoryEntry).title === "string" &&
-            typeof (entry as NoteHistoryEntry).markdown === "string"
-        )
-        .slice(0, 30);
-
-      return [noteId, safe] as const;
-    });
-
-    return Object.fromEntries(entries);
+    return parseStoredNoteHistory(parsed);
   } catch {
     return {};
   }
@@ -4586,6 +4600,17 @@ export default function App() {
 
     void window.pkmShell.saveVaultState(notes);
   }, [notes, vaultReady]);
+
+  useEffect(() => {
+    setNotes((previous) => {
+      const repaired = repairLoadedNotes(previous, noteHistory);
+      const changed = repaired.some((note, index) => {
+        const prior = previous[index];
+        return !prior || prior.markdown !== note.markdown || prior.title !== note.title || prior.path !== note.path;
+      });
+      return changed ? repaired : previous;
+    });
+  }, [noteHistory]);
 
   useEffect(() => {
     const previous = previousNotesRef.current;
@@ -6719,6 +6744,15 @@ export default function App() {
     setLiteEditMode(true);
     setMetadataOpen(false);
     setAiPanelOpen(false);
+  }
+
+  function openNoteFromList(noteId: string): void {
+    focusNote(noteId);
+    setEditorMode("markdown");
+    setLiteEditMode(false);
+    setMetadataOpen(false);
+    setAiPanelOpen(false);
+    window.requestAnimationFrame(() => markdownEditorRef.current?.focus());
   }
 
   function openNoteInLiteEdit(noteId?: string): void {
@@ -15124,7 +15158,7 @@ a{color:#1d4ed8}
                             }}
                             className={isSelected ? "note-card selected" : "note-card"}
                             onClick={(event) => onCardClick(note.id, event)}
-                            onDoubleClick={() => openFocusedEditor(note.id)}
+                            onDoubleClick={() => openNoteFromList(note.id)}
                             onContextMenu={(event) => {
                               event.preventDefault();
                               openCardMenu(note.id, event.clientX, event.clientY);

@@ -552,6 +552,58 @@ describe("App", () => {
     expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText("Simple soup")).toBeInTheDocument();
   });
 
+  it("repairs blank persisted notes from note history snapshots on startup", () => {
+    const malformedNotes = [
+      {
+        id: "legacy-readwise",
+        path: "Readwise/Tweets From Eric Cole.md",
+        title: "Tweets From Eric Cole",
+        snippet: "stale snippet",
+        tags: [],
+        linksOut: [],
+        createdAt: "2026-02-25T15:00:00.000Z",
+        updatedAt: "2026-02-25T15:00:00.000Z",
+        notebook: "Readwise",
+        markdown: "",
+        isTemplate: false
+      }
+    ];
+    const history = {
+      "legacy-readwise": [
+        {
+          at: "2026-03-07T23:36:55.554Z",
+          title: "Tweets From Eric Cole",
+          markdown:
+            "# Tweets From Eric Cole\n\nhttps://twitter.com/erichustls If I wanted to quit my job and use AI to get rich by Summer, here is exactly what I would do.\n"
+        }
+      ]
+    };
+    window.localStorage.setItem("pkm-os.desktop.notes.v2", JSON.stringify(malformedNotes));
+    window.localStorage.setItem("pkm-os.desktop.noteHistory.v1", JSON.stringify(history));
+
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "Tweets From Eric Cole", level: 2 })).toBeInTheDocument();
+    expect((document.querySelector(".markdown-editor") as HTMLTextAreaElement).value).toContain("# Tweets From Eric Cole");
+    expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText("Tweets From Eric Cole")).toBeInTheDocument();
+    expect((window.localStorage.getItem("pkm-os.desktop.notes.v2") ?? "")).toContain("# Tweets From Eric Cole");
+  });
+
+  it("keeps the preview visible when a note card is double-clicked", () => {
+    render(<App />);
+    const notesList = screen.getByLabelText("Notes list");
+    const todoCard = Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+      entry.textContent?.includes("To-do list")
+    );
+    expect(todoCard).toBeTruthy();
+
+    fireEvent.doubleClick(todoCard as HTMLButtonElement);
+
+    expect(screen.getByRole("region", { name: "Rendered preview" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
+    expect((document.querySelector(".markdown-editor") as HTMLTextAreaElement).value).toContain("# To-do list");
+  });
+
   it("responds to native app menu actions", async () => {
     let menuListener: ((actionId: string) => void) | null = null;
     window.pkmShell = {

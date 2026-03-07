@@ -732,7 +732,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "git-backup-now", label: "Run Git backup now", keywords: ["git", "backup", "commit"] },
   { id: "export-snapshot", label: "Export vault snapshot", keywords: ["backup", "snapshot", "export", "vault"] },
   { id: "import-snapshot", label: "Import vault snapshot", keywords: ["backup", "snapshot", "import", "restore", "vault"] },
-  { id: "import-enex", label: "Import ENEX archive", keywords: ["evernote", "enex", "import", "archive"] },
+  { id: "import-enex", label: "Import ENEX archive", keywords: ["enex", "import", "archive"] },
   { id: "import-markdown-files", label: "Import Markdown files", keywords: ["import", "markdown", "md", "files"] },
   { id: "import-text-files", label: "Import Text files", keywords: ["import", "text", "txt", "files"] },
   { id: "import-html-files", label: "Import HTML files", keywords: ["import", "html", "htm", "files"] },

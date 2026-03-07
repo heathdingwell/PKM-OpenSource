@@ -69,7 +69,7 @@ This is an implementation scaffold aligned to the docs in `docs/` and intended f
 - Vault snapshots for manual backup/restore:
   - Export via command palette: `Export vault snapshot`
   - Restore via command palette: `Import vault snapshot`
-- ENEX import (Evernote export basics):
+- ENEX import (basic archive support):
   - Import `.enex` files via command palette: `Import ENEX archive`
   - Supports importing one or many ENEX files in a single picker operation
   - Imported notes are grouped into a notebook derived from the ENEX file name when importing from `All Notes`

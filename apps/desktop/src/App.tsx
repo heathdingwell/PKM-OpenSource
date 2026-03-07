@@ -2288,6 +2288,25 @@ function getSeededNotes(): AppNote[] {
   });
 }
 
+function deriveLegacyMarkdown(note: AppNote): string {
+  const title = note.title.trim() || note.path.split("/").pop()?.replace(/\.md$/i, "") || "Untitled";
+  const snippet = note.snippet.trim();
+  return snippet ? `# ${title}\n\n${snippet}\n` : `# ${title}\n\n`;
+}
+
+function repairLoadedNote(note: AppNote): AppNote {
+  if (note.markdown.trim().length > 0) {
+    return note;
+  }
+
+  const fallbackMarkdown = deriveLegacyMarkdown(note);
+  return noteFromMarkdown(note, fallbackMarkdown, note.updatedAt, { pathOverride: note.path });
+}
+
+function repairLoadedNotes(notes: AppNote[]): AppNote[] {
+  return notes.map(repairLoadedNote);
+}
+
 function isAppNote(value: unknown): value is AppNote {
   if (!value || typeof value !== "object") {
     return false;
@@ -2333,23 +2352,24 @@ function buildBacklinkCountByNoteId(notes: AppNote[]): Map<string, number> {
 
 function loadInitialNotes(): AppNote[] {
   if (typeof window === "undefined") {
-    return getSeededNotes();
+    return repairLoadedNotes(getSeededNotes());
   }
 
   try {
     const raw = window.localStorage.getItem(NOTES_STORAGE_KEY);
     if (!raw) {
-      return getSeededNotes();
+      return repairLoadedNotes(getSeededNotes());
     }
 
     const parsed = JSON.parse(raw) as AppNote[];
     if (!Array.isArray(parsed) || !parsed.length) {
-      return getSeededNotes();
+      return repairLoadedNotes(getSeededNotes());
     }
 
-    return parsed;
+    const hydrated = parsed.filter(isAppNote);
+    return hydrated.length ? repairLoadedNotes(hydrated) : repairLoadedNotes(getSeededNotes());
   } catch {
-    return getSeededNotes();
+    return repairLoadedNotes(getSeededNotes());
   }
 }
 

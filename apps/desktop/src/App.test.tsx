@@ -498,6 +498,60 @@ describe("App", () => {
     );
   });
 
+  it("repairs legacy persisted notes with blank markdown", () => {
+    const legacyNotes = [
+      {
+        id: "legacy-todo",
+        path: "Daily Notes/To-do list.md",
+        title: "To-do list",
+        snippet: "High priority Add your most urgent tasks",
+        tags: [],
+        linksOut: [],
+        createdAt: "2026-02-26T17:00:00.000Z",
+        updatedAt: "2026-02-26T17:00:00.000Z",
+        notebook: "Daily Notes",
+        markdown: "",
+        isTemplate: true
+      },
+      {
+        id: "legacy-recipe",
+        path: "Recipes/Simple soup.md",
+        title: "Simple soup",
+        snippet: "Ingredients 2 onions 1 carrot",
+        tags: [],
+        linksOut: [],
+        createdAt: "2026-02-23T09:00:00.000Z",
+        updatedAt: "2026-02-23T09:00:00.000Z",
+        notebook: "Recipes",
+        markdown: "",
+        isTemplate: false
+      }
+    ];
+    window.localStorage.setItem("pkm-os.desktop.notes.v2", JSON.stringify(legacyNotes));
+
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
+    expect((document.querySelector(".markdown-editor") as HTMLTextAreaElement).value).toContain("# To-do list");
+    expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText("To-do list")).toBeInTheDocument();
+
+    const recipesNotebook = Array.from(document.querySelectorAll<HTMLButtonElement>(".notebook-item")).find((entry) =>
+      entry.textContent?.includes("Recipes")
+    );
+    expect(recipesNotebook).toBeTruthy();
+    fireEvent.click(recipesNotebook as HTMLButtonElement);
+
+    const recipeCard = Array.from(screen.getByLabelText("Notes list").querySelectorAll<HTMLButtonElement>("button.note-card")).find(
+      (entry) => entry.textContent?.includes("Simple soup")
+    );
+    expect(recipeCard).toBeTruthy();
+    fireEvent.click(recipeCard as HTMLButtonElement);
+
+    expect(screen.getByRole("heading", { name: "Simple soup", level: 2 })).toBeInTheDocument();
+    expect((document.querySelector(".markdown-editor") as HTMLTextAreaElement).value).toContain("# Simple soup");
+    expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText("Simple soup")).toBeInTheDocument();
+  });
+
   it("responds to native app menu actions", async () => {
     let menuListener: ((actionId: string) => void) | null = null;
     window.pkmShell = {

@@ -15040,6 +15040,38 @@ a{color:#1d4ed8}
                 </button>
                 <button
                   type="button"
+                  className={homePinnedSet.has(activeNote.id) ? "link-btn active" : "link-btn"}
+                  aria-pressed={homePinnedSet.has(activeNote.id)}
+                  title={homePinnedSet.has(activeNote.id) ? "Unpin note from Home" : "Pin note to Home"}
+                  onClick={() => {
+                    const { pinned, unpinned } = togglePinnedNotes([activeNote.id], "home");
+                    if (pinned > 0) {
+                      setToastMessage(`${pinned} pinned to Home`);
+                    } else if (unpinned > 0) {
+                      setToastMessage(`${unpinned} unpinned from Home`);
+                    }
+                  }}
+                >
+                  Home pin
+                </button>
+                <button
+                  type="button"
+                  className={notebookPinnedSet.has(activeNote.id) ? "link-btn active" : "link-btn"}
+                  aria-pressed={notebookPinnedSet.has(activeNote.id)}
+                  title={notebookPinnedSet.has(activeNote.id) ? "Unpin note from notebook" : "Pin note to notebook"}
+                  onClick={() => {
+                    const { pinned, unpinned } = togglePinnedNotes([activeNote.id], "notebook");
+                    if (pinned > 0) {
+                      setToastMessage(`${pinned} pinned to notebook`);
+                    } else if (unpinned > 0) {
+                      setToastMessage(`${unpinned} unpinned from notebook`);
+                    }
+                  }}
+                >
+                  Notebook pin
+                </button>
+                <button
+                  type="button"
                   className="link-btn"
                   title="Open note in new window"
                   onClick={() => openNoteInNewWindow(activeNote.id)}

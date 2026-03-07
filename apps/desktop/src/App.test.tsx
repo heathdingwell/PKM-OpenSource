@@ -1596,6 +1596,36 @@ describe("App", () => {
     );
   });
 
+  it("toggles home pin state from note header action", () => {
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    const homePinButton = within(headerActions as HTMLElement).getByRole("button", { name: "Home pin" });
+    const initialPressed = homePinButton.getAttribute("aria-pressed");
+
+    fireEvent.click(homePinButton);
+    expect(within(headerActions as HTMLElement).getByRole("button", { name: "Home pin" })).toHaveAttribute(
+      "aria-pressed",
+      initialPressed === "true" ? "false" : "true"
+    );
+  });
+
+  it("toggles notebook pin state from note header action", () => {
+    render(<App />);
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+
+    const notebookPinButton = within(headerActions as HTMLElement).getByRole("button", { name: "Notebook pin" });
+    const initialPressed = notebookPinButton.getAttribute("aria-pressed");
+
+    fireEvent.click(notebookPinButton);
+    expect(within(headerActions as HTMLElement).getByRole("button", { name: "Notebook pin" })).toHaveAttribute(
+      "aria-pressed",
+      initialPressed === "true" ? "false" : "true"
+    );
+  });
+
   it("opens note in new window from note header action", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     render(<App />);

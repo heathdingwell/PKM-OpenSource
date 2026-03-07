@@ -838,6 +838,8 @@ const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
   { id: "note-info", label: "Note info", shortcut: "cmd+shift+i" },
   { id: "toggle-template", label: "Set as template", shortcut: "cmd+alt+5" },
   { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
+  { id: "toggle-auto-links", label: "Enable auto links" },
+  { id: "cycle-theme", label: "Cycle theme" },
   { id: "divider-4", label: "", divider: true },
   { id: "export", label: "Export", shortcut: "cmd+alt+1" },
   { id: "export-text", label: "Export as Text", shortcut: "cmd+alt+3" },
@@ -3478,7 +3480,7 @@ export default function App() {
 
   const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
 
-  const activeNote = visibleNotes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
+  const activeNote = notes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
   const noteHistoryNote = noteHistoryDialog ? notes.find((note) => note.id === noteHistoryDialog.noteId) ?? null : null;
   const noteHistoryEntries = noteHistoryDialog ? noteHistory[noteHistoryDialog.noteId] ?? [] : [];
 
@@ -11919,6 +11921,18 @@ a{color:#1d4ed8}
       return;
     }
 
+    if (action === "toggle-auto-links") {
+      toggleAutoReciprocalLinks();
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "cycle-theme") {
+      cycleTheme();
+      setContextMenu(null);
+      return;
+    }
+
     if (action === "toggle-template") {
       const { marked, unmarked } = toggleTemplateNotes(contextMenu.noteIds);
       if (marked && unmarked) {
@@ -12032,6 +12046,9 @@ a{color:#1d4ed8}
     }
     if (action === "toggle-template") {
       return allTemplates ? "Remove from Templates" : "Set as template";
+    }
+    if (action === "toggle-auto-links") {
+      return autoReciprocalLinks ? "Disable auto links" : "Enable auto links";
     }
     if (action === "move-trash") {
       return allTrashed ? "Delete permanently" : "Move to Trash";
@@ -15152,152 +15169,6 @@ a{color:#1d4ed8}
                 </button>
                 <button
                   type="button"
-                  className="link-btn"
-                  title="Copy note link"
-                  onClick={() => void copyNoteLink(activeNote.id)}
-                >
-                  Link
-                </button>
-                <button
-                  type="button"
-                  className="link-btn"
-                  title="Copy note path"
-                  onClick={() => void copyNotePath(activeNote.id)}
-                >
-                  Path
-                </button>
-                <button
-                  type="button"
-                  className="link-btn"
-                  title="Rename note"
-                  onClick={() => openNoteRename(activeNote.id)}
-                >
-                  Rename
-                </button>
-                <button
-                  type="button"
-                  className="link-btn"
-                  title="Edit note tags"
-                  onClick={() => openTagEditor(activeNote.id)}
-                >
-                  Tags
-                </button>
-                <button
-                  type="button"
-                  className="link-btn"
-                  title="Open note history"
-                  onClick={() => openNoteHistory(activeNote.id)}
-                >
-                  History
-                </button>
-                <button
-                  type="button"
-                  className="link-btn"
-                  title="Find in note"
-                  onClick={openFindInNote}
-                >
-                  Find
-                </button>
-                <button
-                  type="button"
-                  className="link-btn"
-                  title="Move note"
-                  onClick={() => openMoveDialogForNotes([activeNote.id], "move")}
-                >
-                  Move
-                </button>
-                <button
-                  type="button"
-                  className="link-btn"
-                  title="Copy note to notebook"
-                  onClick={() => openMoveDialogForNotes([activeNote.id], "copy")}
-                >
-                  Copy
-                </button>
-                <button
-                  type="button"
-                  className="link-btn"
-                  title="Duplicate note"
-                  onClick={() => {
-                    void duplicateNotes([activeNote.id]);
-                  }}
-                >
-                  Duplicate
-                </button>
-                <button
-                  type="button"
-                  className={activeNote.isTemplate ? "link-btn active" : "link-btn"}
-                  aria-pressed={activeNote.isTemplate}
-                  title={activeNote.isTemplate ? "Remove note from templates" : "Mark note as template"}
-                  onClick={() => {
-                    const { marked, unmarked } = toggleTemplateNotes([activeNote.id]);
-                    if (marked > 0) {
-                      setToastMessage(`${marked} marked as template`);
-                    } else if (unmarked > 0) {
-                      setToastMessage(`${unmarked} removed from templates`);
-                    }
-                  }}
-                >
-                  Template
-                </button>
-                <button
-                  type="button"
-                  className={shortcutSet.has(activeNote.id) ? "link-btn active" : "link-btn"}
-                  aria-pressed={shortcutSet.has(activeNote.id)}
-                  title={shortcutSet.has(activeNote.id) ? "Remove note from shortcuts" : "Add note to shortcuts"}
-                  onClick={() => {
-                    const { added, removed } = toggleShortcutNotes([activeNote.id]);
-                    if (added > 0) {
-                      setToastMessage(`${added} added to shortcuts`);
-                    } else if (removed > 0) {
-                      setToastMessage(`${removed} removed from shortcuts`);
-                    }
-                  }}
-                >
-                  Shortcut
-                </button>
-                <button
-                  type="button"
-                  className={homePinnedSet.has(activeNote.id) ? "link-btn active" : "link-btn"}
-                  aria-pressed={homePinnedSet.has(activeNote.id)}
-                  title={homePinnedSet.has(activeNote.id) ? "Unpin note from Home" : "Pin note to Home"}
-                  onClick={() => {
-                    const { pinned, unpinned } = togglePinnedNotes([activeNote.id], "home");
-                    if (pinned > 0) {
-                      setToastMessage(`${pinned} pinned to Home`);
-                    } else if (unpinned > 0) {
-                      setToastMessage(`${unpinned} unpinned from Home`);
-                    }
-                  }}
-                >
-                  Home pin
-                </button>
-                <button
-                  type="button"
-                  className={notebookPinnedSet.has(activeNote.id) ? "link-btn active" : "link-btn"}
-                  aria-pressed={notebookPinnedSet.has(activeNote.id)}
-                  title={notebookPinnedSet.has(activeNote.id) ? "Unpin note from notebook" : "Pin note to notebook"}
-                  onClick={() => {
-                    const { pinned, unpinned } = togglePinnedNotes([activeNote.id], "notebook");
-                    if (pinned > 0) {
-                      setToastMessage(`${pinned} pinned to notebook`);
-                    } else if (unpinned > 0) {
-                      setToastMessage(`${unpinned} unpinned from notebook`);
-                    }
-                  }}
-                >
-                  Notebook pin
-                </button>
-                <button
-                  type="button"
-                  className="link-btn"
-                  title="Open note in new window"
-                  onClick={() => openNoteInNewWindow(activeNote.id)}
-                >
-                  Window
-                </button>
-                <button
-                  type="button"
                   className={liteEditMode ? "link-btn active" : "link-btn"}
                   aria-pressed={liteEditMode}
                   title="Toggle lite edit mode"
@@ -15333,18 +15204,6 @@ a{color:#1d4ed8}
                   AI
                 </button>
                 <button
-                  type="button"
-                  className={autoReciprocalLinks ? "link-btn active" : "link-btn"}
-                  aria-pressed={autoReciprocalLinks}
-                  title="Toggle automatic reciprocal links"
-                  onClick={toggleAutoReciprocalLinks}
-                >
-                  Auto links
-                </button>
-                <button type="button" className="link-btn" title="Cycle theme" onClick={cycleTheme}>
-                  Theme
-                </button>
-                <button
                   ref={editorMenuButtonRef}
                   type="button"
                   className="link-btn"
@@ -15358,7 +15217,7 @@ a{color:#1d4ed8}
                     openEditorMenu();
                   }}
                 >
-                  ...
+                  Actions
                 </button>
               </div>
             </header>

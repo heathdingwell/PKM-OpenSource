@@ -1345,10 +1345,11 @@ body.is-resizing {
 .editor-topbar {
   min-height: 54px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  padding: 0 18px;
+  padding: 10px 18px;
   border-bottom: 1px solid var(--border);
   background: #ffffff;
 }
@@ -1410,7 +1411,11 @@ body.is-resizing {
 
 .editor-top-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
+  margin-left: auto;
+  min-width: 0;
 }
 
 .share-btn {
@@ -1434,6 +1439,13 @@ body.is-resizing {
   color: #1e4fa6;
   border-color: #9db8ec;
   background: #eaf1ff;
+}
+
+@media (max-width: 1220px) {
+  .editor-top-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 .editor-toolbar {

@@ -7,6 +7,13 @@ describe("App", () => {
     (window as unknown as { pkmShell?: unknown }).pkmShell = undefined;
   });
 
+  function openHeaderNoteActions(): HTMLElement {
+    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
+    expect(headerActions).toBeTruthy();
+    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "More note actions" }));
+    return screen.getByRole("menu", { name: "Note actions" });
+  }
+
   it("renders the notebook view shell", () => {
     render(<App />);
     expect(screen.getByRole("application", { name: "PKM OpenSource Shell" })).toBeInTheDocument();
@@ -33,8 +40,6 @@ describe("App", () => {
     const liteButton = screen.getByRole("button", { name: "Lite" });
     const focusButton = screen.getByRole("button", { name: "Focus" });
     const aiButton = screen.getByRole("button", { name: "AI" });
-    const autoLinksButton = screen.getByRole("button", { name: "Auto links" });
-
     expect(markdownButton).toHaveAttribute("aria-pressed", "true");
     expect(richButton).toHaveAttribute("aria-pressed", "false");
     expect(insertButton).toHaveAttribute("aria-haspopup", "listbox");
@@ -44,7 +49,6 @@ describe("App", () => {
     expect(liteButton).toHaveAttribute("aria-pressed", "false");
     expect(focusButton).toHaveAttribute("aria-pressed", "false");
     expect(aiButton).toHaveAttribute("aria-pressed", "false");
-    expect(autoLinksButton).toHaveAttribute("aria-pressed", "false");
 
     fireEvent.click(richButton);
     expect(markdownButton).toHaveAttribute("aria-pressed", "false");
@@ -67,9 +71,6 @@ describe("App", () => {
 
     fireEvent.click(aiButton);
     expect(aiButton).toHaveAttribute("aria-pressed", "true");
-
-    fireEvent.click(autoLinksButton);
-    expect(autoLinksButton).toHaveAttribute("aria-pressed", "true");
   });
 
   it("exposes explicit tag editor controls", () => {
@@ -345,6 +346,28 @@ describe("App", () => {
     await waitFor(() => {
       expect(recentTitles()[0]).toBe("To-do list edited");
     });
+  });
+
+  it("updates the editor and preview panes when clicking a different note", () => {
+    render(<App />);
+    const notesList = screen.getByLabelText("Notes list");
+    const findCard = (title: string) =>
+      Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+        entry.textContent?.includes(title)
+      );
+
+    const agendaCard = findCard("Agenda");
+    const todoCard = findCard("To-do list");
+    expect(agendaCard).toBeTruthy();
+    expect(todoCard).toBeTruthy();
+
+    fireEvent.click(todoCard as HTMLButtonElement);
+    expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
+    expect(screen.getByText("Daily Notes/To-do list.md")).toBeInTheDocument();
+
+    fireEvent.click(agendaCard as HTMLButtonElement);
+    expect(screen.getByRole("heading", { name: "Agenda", level: 2 })).toBeInTheDocument();
+    expect(screen.getByText("Daily Notes/Agenda.md")).toBeInTheDocument();
   });
 
   it("filters graph nodes by query", () => {
@@ -1477,10 +1500,8 @@ describe("App", () => {
     });
 
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Link" }));
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Copy link/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
@@ -1493,146 +1514,112 @@ describe("App", () => {
     });
 
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Path" }));
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Copy path/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("Daily Notes/Agenda.md"));
     expect(screen.getByText("Note path copied")).toBeInTheDocument();
   });
 
   it("opens rename note dialog from note header action", () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Rename" }));
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Rename/i }));
     expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
   });
 
   it("opens tag editor from note header action", () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Tags" }));
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Edit tags/i }));
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
     expect(document.getElementById("tag-input")).toBeInstanceOf(HTMLInputElement);
   });
 
   it("opens note history from note header action", () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "History" }));
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Note history/i }));
     expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
   });
 
   it("opens find in note from note header action", () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Find" }));
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Find in note/i }));
     expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
   });
 
   it("opens move dialog from note header action", () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Move" }));
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: "Move cmd+alt+m" }));
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
   it("opens copy dialog from note header action", () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Copy" }));
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Copy to/i }));
     expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
   });
 
   it("duplicates note from note header action", async () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Duplicate" }));
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Duplicate/i }));
     expect(await screen.findByText("1 duplicated")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Agenda copy" })).toBeInTheDocument();
   });
 
   it("toggles template state from note header action", () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    const templateButton = within(headerActions as HTMLElement).getByRole("button", { name: "Template" });
-    const initialPressed = templateButton.getAttribute("aria-pressed");
-
+    const noteActionsMenu = openHeaderNoteActions();
+    const templateButton = within(noteActionsMenu).getByRole("button", { name: /Set as template|Remove from Templates/i });
     fireEvent.click(templateButton);
-    expect(within(headerActions as HTMLElement).getByRole("button", { name: "Template" })).toHaveAttribute(
-      "aria-pressed",
-      initialPressed === "true" ? "false" : "true"
-    );
+    const refreshedMenu = openHeaderNoteActions();
+    expect(
+      within(refreshedMenu).getByRole("button", { name: /Set as template|Remove from Templates/i }).textContent
+    ).not.toBe(templateButton.textContent);
   });
 
   it("toggles shortcut state from note header action", () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    const shortcutButton = within(headerActions as HTMLElement).getByRole("button", { name: "Shortcut" });
-    const initialPressed = shortcutButton.getAttribute("aria-pressed");
-
+    const noteActionsMenu = openHeaderNoteActions();
+    const shortcutButton = within(noteActionsMenu).getByRole("button", { name: /Add to Shortcuts|Remove from Shortcuts/i });
     fireEvent.click(shortcutButton);
-    expect(within(headerActions as HTMLElement).getByRole("button", { name: "Shortcut" })).toHaveAttribute(
-      "aria-pressed",
-      initialPressed === "true" ? "false" : "true"
-    );
+    const refreshedMenu = openHeaderNoteActions();
+    expect(
+      within(refreshedMenu).getByRole("button", { name: /Add to Shortcuts|Remove from Shortcuts/i }).textContent
+    ).not.toBe(shortcutButton.textContent);
   });
 
   it("toggles home pin state from note header action", () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    const homePinButton = within(headerActions as HTMLElement).getByRole("button", { name: "Home pin" });
-    const initialPressed = homePinButton.getAttribute("aria-pressed");
-
+    const noteActionsMenu = openHeaderNoteActions();
+    const homePinButton = within(noteActionsMenu).getByRole("button", { name: /Pin to Home|Unpin from Home/i });
     fireEvent.click(homePinButton);
-    expect(within(headerActions as HTMLElement).getByRole("button", { name: "Home pin" })).toHaveAttribute(
-      "aria-pressed",
-      initialPressed === "true" ? "false" : "true"
-    );
+    const refreshedMenu = openHeaderNoteActions();
+    expect(
+      within(refreshedMenu).getByRole("button", { name: /Pin to Home|Unpin from Home/i }).textContent
+    ).not.toBe(homePinButton.textContent);
   });
 
   it("toggles notebook pin state from note header action", () => {
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    const notebookPinButton = within(headerActions as HTMLElement).getByRole("button", { name: "Notebook pin" });
-    const initialPressed = notebookPinButton.getAttribute("aria-pressed");
-
+    const noteActionsMenu = openHeaderNoteActions();
+    const notebookPinButton = within(noteActionsMenu).getByRole("button", { name: /Pin to Notebook|Unpin from Notebook/i });
     fireEvent.click(notebookPinButton);
-    expect(within(headerActions as HTMLElement).getByRole("button", { name: "Notebook pin" })).toHaveAttribute(
-      "aria-pressed",
-      initialPressed === "true" ? "false" : "true"
-    );
+    const refreshedMenu = openHeaderNoteActions();
+    expect(
+      within(refreshedMenu).getByRole("button", { name: /Pin to Notebook|Unpin from Notebook/i }).textContent
+    ).not.toBe(notebookPinButton.textContent);
   });
 
   it("opens note in new window from note header action", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Window" }));
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Open in new window/i }));
     expect(openSpy).toHaveBeenCalledTimes(1);
     openSpy.mockRestore();
   });
@@ -9808,13 +9795,11 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
-  it("toggles auto reciprocal links from the editor header", () => {
+  it("toggles auto reciprocal links from the note actions menu", () => {
     render(<App />);
-    const autoLinksButton = screen.getByRole("button", { name: "Auto links" });
-    expect(autoLinksButton).not.toHaveClass("active");
-
-    fireEvent.click(autoLinksButton);
-    expect(autoLinksButton).toHaveClass("active");
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Enable auto links/i }));
+    expect(screen.getByText("Auto reciprocal links enabled")).toBeInTheDocument();
   });
 
   it("uses unsaved draft content for AI note context", async () => {

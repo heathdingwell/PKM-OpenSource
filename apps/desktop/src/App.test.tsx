@@ -7778,6 +7778,26 @@ describe("App", () => {
     expect(updatedEditor?.value).toContain('<div align="center">aligned text</div>');
   });
 
+  it("aligns a markdown table column from typed slash menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    const tableMarkdown = ["| Name | Status |", "| --- | --- |", "| Alpha | /align |"].join("\n");
+    const cursor = tableMarkdown.indexOf("/align") + "/align".length;
+    fireEvent.change(editor as HTMLTextAreaElement, {
+      target: { value: tableMarkdown, selectionStart: cursor, selectionEnd: cursor }
+    });
+
+    const slashMenu = document.querySelector(".slash-menu") as HTMLElement | null;
+    expect(slashMenu).toBeTruthy();
+    fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("option", { name: "Align center" }));
+
+    const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(updatedEditor?.value).toBe(["| Name | Status |", "| --- | :---: |", "| Alpha |  |"].join("\n"));
+  });
+
   it("normalizes HTML paste into markdown in markdown editor", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -9189,6 +9209,26 @@ describe("App", () => {
     fireEvent.click(within(menu as HTMLElement).getByRole("button", { name: "Code block" }));
 
     expect((editor as HTMLTextAreaElement).value).toContain("```text");
+  });
+
+  it("aligns a markdown table column from editor context menu", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+
+    const tableMarkdown = ["| Name | Status |", "| --- | --- |", "| Alpha | Open |"].join("\n");
+    fireEvent.change(editor as HTMLTextAreaElement, { target: { value: tableMarkdown } });
+    const cursor = tableMarkdown.indexOf("Open");
+    (editor as HTMLTextAreaElement).focus();
+    (editor as HTMLTextAreaElement).setSelectionRange(cursor, cursor);
+    fireEvent.contextMenu(editor as HTMLTextAreaElement);
+
+    const menu = document.querySelector(".editor-context-menu") as HTMLElement | null;
+    expect(menu).toBeTruthy();
+    fireEvent.click(within(menu as HTMLElement).getByRole("button", { name: "Align right" }));
+
+    expect((editor as HTMLTextAreaElement).value).toBe(["| Name | Status |", "| --- | ---: |", "| Alpha | Open |"].join("\n"));
   });
 
   it("inserts table of contents from editor context menu", () => {

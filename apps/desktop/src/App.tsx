@@ -12874,6 +12874,46 @@ a{color:#1d4ed8}
     });
   }
 
+  function applyMarkdownTableMutation(
+    action: MarkdownTableAction,
+    options?: {
+      sourceMarkdown?: string;
+      selectionStart?: number;
+      selectionEnd?: number;
+      notifyIfMissing?: boolean;
+    }
+  ): boolean {
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      if (options?.notifyIfMissing ?? true) {
+        setToastMessage("Markdown editor is not ready");
+      }
+      return false;
+    }
+
+    const sourceMarkdown = options?.sourceMarkdown ?? draftMarkdown;
+    const selectionStart = options?.selectionStart ?? editor.selectionStart;
+    const selectionEnd = options?.selectionEnd ?? editor.selectionEnd;
+    const mutated = applyMarkdownTableAction(sourceMarkdown, selectionStart, selectionEnd, action);
+    if (!mutated.changed) {
+      if (options?.notifyIfMissing ?? true) {
+        setToastMessage("Place cursor inside a Markdown table first");
+      }
+      return false;
+    }
+
+    setDraftMarkdown(mutated.markdown);
+    window.requestAnimationFrame(() => {
+      const current = markdownEditorRef.current;
+      if (!current) {
+        return;
+      }
+      current.focus();
+      current.setSelectionRange(mutated.selectionStart, mutated.selectionEnd);
+    });
+    return true;
+  }
+
   function handleEditorContextAction(action: string): void {
     if (action === "copy-note-link") {
       if (activeNote) {
@@ -12977,11 +13017,26 @@ a{color:#1d4ed8}
     } else if (action === "subscript") {
       applyMarkdownInlineFormat("<sub>", "</sub>", "sub");
     } else if (action === "align-left") {
-      applyMarkdownInlineFormat('<div align="left">', "</div>", "aligned text");
+      const editor = markdownEditorRef.current;
+      if (editor && editor.selectionStart === editor.selectionEnd && applyMarkdownTableMutation("align-column-left", { notifyIfMissing: false })) {
+        // table mutation applied
+      } else {
+        applyMarkdownInlineFormat('<div align="left">', "</div>", "aligned text");
+      }
     } else if (action === "align-center") {
-      applyMarkdownInlineFormat('<div align="center">', "</div>", "aligned text");
+      const editor = markdownEditorRef.current;
+      if (editor && editor.selectionStart === editor.selectionEnd && applyMarkdownTableMutation("align-column-center", { notifyIfMissing: false })) {
+        // table mutation applied
+      } else {
+        applyMarkdownInlineFormat('<div align="center">', "</div>", "aligned text");
+      }
     } else if (action === "align-right") {
-      applyMarkdownInlineFormat('<div align="right">', "</div>", "aligned text");
+      const editor = markdownEditorRef.current;
+      if (editor && editor.selectionStart === editor.selectionEnd && applyMarkdownTableMutation("align-column-right", { notifyIfMissing: false })) {
+        // table mutation applied
+      } else {
+        applyMarkdownInlineFormat('<div align="right">', "</div>", "aligned text");
+      }
     } else if (action === "indent") {
       applyMarkdownInlineFormat("", "", "indented text", { linePrefix: "    " });
     } else if (action === "bullet") {
@@ -13000,27 +13055,9 @@ a{color:#1d4ed8}
         keywords: ["toc"]
       });
     } else if (action === "table-row-after" || action === "table-column-after" || action === "table-delete") {
-      const editor = markdownEditorRef.current;
-      if (!editor) {
-        setToastMessage("Markdown editor is not ready");
-      } else {
-        const tableAction: MarkdownTableAction =
-          action === "table-row-after" ? "add-row-after" : action === "table-column-after" ? "add-column-after" : "delete-table";
-        const mutated = applyMarkdownTableAction(draftMarkdown, editor.selectionStart, editor.selectionEnd, tableAction);
-        if (!mutated.changed) {
-          setToastMessage("Place cursor inside a Markdown table first");
-        } else {
-          setDraftMarkdown(mutated.markdown);
-          window.requestAnimationFrame(() => {
-            const current = markdownEditorRef.current;
-            if (!current) {
-              return;
-            }
-            current.focus();
-            current.setSelectionRange(mutated.selectionStart, mutated.selectionEnd);
-          });
-        }
-      }
+      const tableAction: MarkdownTableAction =
+        action === "table-row-after" ? "add-row-after" : action === "table-column-after" ? "add-column-after" : "delete-table";
+      applyMarkdownTableMutation(tableAction);
     } else if (action === "divider") {
       applyMarkdownSlashCommand({ id: "divider", label: "Divider", section: "Essentials", keywords: ["hr"] });
     } else if (action === "code-block") {
@@ -13172,14 +13209,41 @@ a{color:#1d4ed8}
         wrap("<sub>", "</sub>", "sub");
         break;
       case "align-left":
-        wrap('<div align="left">', "</div>", "aligned text");
-        break;
       case "align-center":
-        wrap('<div align="center">', "</div>", "aligned text");
+      case "align-right": {
+        const tableAction: MarkdownTableAction =
+          command.id === "align-left"
+            ? "align-column-left"
+            : command.id === "align-center"
+              ? "align-column-center"
+              : "align-column-right";
+        if (!selectedText) {
+          const sourceMarkdown = typedRange
+            ? `${draftMarkdown.slice(0, replaceStart)}${draftMarkdown.slice(replaceEnd)}`
+            : draftMarkdown;
+          const cursor = replaceStart;
+          if (
+            applyMarkdownTableMutation(tableAction, {
+              sourceMarkdown,
+              selectionStart: cursor,
+              selectionEnd: cursor,
+              notifyIfMissing: false
+            })
+          ) {
+            setSlashMenu(null);
+            setLinkSuggestion(null);
+            return;
+          }
+        }
+        if (command.id === "align-left") {
+          wrap('<div align="left">', "</div>", "aligned text");
+        } else if (command.id === "align-center") {
+          wrap('<div align="center">', "</div>", "aligned text");
+        } else {
+          wrap('<div align="right">', "</div>", "aligned text");
+        }
         break;
-      case "align-right":
-        wrap('<div align="right">', "</div>", "aligned text");
-        break;
+      }
       case "indent":
         insert(`    ${selectedText || "indented text"}`);
         break;

@@ -32,6 +32,26 @@ describe("applyMarkdownTableAction", () => {
     expect(result.markdown).toBe(["Before", "", "", "After"].join("\n"));
   });
 
+  it("aligns the active column to the center", () => {
+    const markdown = ["| Name | Status |", "| --- | --- |", "| Alpha | Open |"].join("\n");
+    const cursor = markdown.indexOf("Status");
+
+    const result = applyMarkdownTableAction(markdown, cursor, cursor, "align-column-center");
+
+    expect(result.changed).toBe(true);
+    expect(result.markdown).toBe(["| Name | Status |", "| --- | :---: |", "| Alpha | Open |"].join("\n"));
+  });
+
+  it("aligns the active column to the right", () => {
+    const markdown = ["| Name | Status |", "| --- | --- |", "| Alpha | Open |"].join("\n");
+    const cursor = markdown.indexOf("Open");
+
+    const result = applyMarkdownTableAction(markdown, cursor, cursor, "align-column-right");
+
+    expect(result.changed).toBe(true);
+    expect(result.markdown).toBe(["| Name | Status |", "| --- | ---: |", "| Alpha | Open |"].join("\n"));
+  });
+
   it("returns unchanged content when cursor is outside a table", () => {
     const markdown = "# Note\n\nNo table here";
     const cursor = markdown.indexOf("No table");

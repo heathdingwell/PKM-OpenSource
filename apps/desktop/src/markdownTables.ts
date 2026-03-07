@@ -1,4 +1,10 @@
-export type MarkdownTableAction = "add-row-after" | "add-column-after" | "delete-table";
+export type MarkdownTableAction =
+  | "add-row-after"
+  | "add-column-after"
+  | "align-column-left"
+  | "align-column-center"
+  | "align-column-right"
+  | "delete-table";
 
 export interface MarkdownTableMutationResult {
   changed: boolean;
@@ -57,6 +63,16 @@ function isDelimiterCell(value: string): boolean {
 function isDelimiterLine(line: string): boolean {
   const cells = splitTableCells(line);
   return cells.length > 0 && cells.every(isDelimiterCell);
+}
+
+function formatDelimiterCell(alignment: "left" | "center" | "right"): string {
+  if (alignment === "left") {
+    return ":---";
+  }
+  if (alignment === "center") {
+    return ":---:";
+  }
+  return "---:";
 }
 
 function normalizeRows(rows: ParsedRow[]): ParsedRow[] {
@@ -226,6 +242,20 @@ export function applyMarkdownTableAction(
     if (targetRow === 1) {
       targetRow = 0;
     }
+  } else if (
+    action === "align-column-left" ||
+    action === "align-column-center" ||
+    action === "align-column-right"
+  ) {
+    const alignment = action === "align-column-left" ? "left" : action === "align-column-center" ? "center" : "right";
+    rows = rows.map((row, index) => {
+      if (index !== 1) {
+        return row;
+      }
+      const nextCells = [...row.cells];
+      nextCells[activeColumn] = formatDelimiterCell(alignment);
+      return { ...row, cells: nextCells };
+    });
   }
 
   const serializedRows = rows.map(serializeRow);

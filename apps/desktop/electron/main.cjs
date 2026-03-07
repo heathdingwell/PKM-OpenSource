@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const { randomUUID } = require("node:crypto");
 const { execFile } = require("node:child_process");
+const fsSync = require("node:fs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { promisify } = require("node:util");
@@ -18,7 +19,44 @@ const GIT_BACKUP_MIN_AUTOSAVE_DELAY_MS = 1000;
 const GIT_BACKUP_MAX_AUTOSAVE_DELAY_MS = 120000;
 const GIT_BACKUP_DEFAULT_PUSH_REMOTE = "origin";
 const GIT_BACKUP_DEFAULT_PUSH_BRANCH = "main";
-const APP_ICON_PNG = path.join(__dirname, "../assets/app-icon.png");
+const STARTUP_LOG_NAME = "startup.log";
+
+function startupLogPath() {
+  try {
+    return path.join(app.getPath("userData"), STARTUP_LOG_NAME);
+  } catch (_error) {
+    return path.join(process.cwd(), STARTUP_LOG_NAME);
+  }
+}
+
+function formatLogDetails(details) {
+  if (details instanceof Error) {
+    return details.stack || details.message;
+  }
+  if (typeof details === "string") {
+    return details;
+  }
+  try {
+    return JSON.stringify(details);
+  } catch (_error) {
+    return String(details);
+  }
+}
+
+function logStartup(message, details) {
+  try {
+    const rendered = details === undefined ? "" : ` ${formatLogDetails(details)}`;
+    const line = `[${new Date().toISOString()}] ${message}${rendered}\n`;
+    fsSync.mkdirSync(path.dirname(startupLogPath()), { recursive: true });
+    fsSync.appendFileSync(startupLogPath(), line, "utf8");
+  } catch (_error) {
+    // Best-effort logging only.
+  }
+}
+
+function appIconPath() {
+  return path.join(__dirname, "../assets/app-icon.png");
+}
 
 function vaultRootPath() {
   return path.join(app.getPath("userData"), VAULT_DIR_NAME);
@@ -1413,31 +1451,95 @@ async function callLlmProvider(payload) {
 }
 
 function createWindow() {
-  const win = new BrowserWindow({
+  const browserWindowOptions = {
     width: 1440,
     height: 900,
     minWidth: 1080,
     minHeight: 700,
+    show: false,
     backgroundColor: "#ffffff",
-    icon: APP_ICON_PNG,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false
     }
+  };
+  if (!app.isPackaged) {
+    browserWindowOptions.icon = appIconPath();
+  }
+  const win = new BrowserWindow(browserWindowOptions);
+
+  logStartup("createWindow");
+
+  win.once("ready-to-show", () => {
+    logStartup("window ready-to-show");
+    win.center();
+    win.show();
+    if (typeof win.moveTop === "function") {
+      win.moveTop();
+    }
+    win.focus();
+    if (process.platform === "darwin" && typeof app.focus === "function") {
+      app.focus({ steal: true });
+    }
+  });
+
+  win.on("show", () => {
+    logStartup("window show");
+  });
+
+  win.on("closed", () => {
+    logStartup("window closed");
+  });
+
+  win.on("unresponsive", () => {
+    logStartup("window unresponsive");
+  });
+
+  win.webContents.on("did-finish-load", () => {
+    logStartup("webContents did-finish-load");
+  });
+
+  win.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+    logStartup("webContents did-fail-load", `${errorCode} ${errorDescription} ${validatedURL}`);
+  });
+
+  win.webContents.on("render-process-gone", (_event, details) => {
+    logStartup("render-process-gone", JSON.stringify(details));
+  });
+
+  win.webContents.on("unresponsive", () => {
+    logStartup("webContents unresponsive");
   });
 
   if (!app.isPackaged) {
-    win.loadURL("http://localhost:5173");
+    void win
+      .loadURL("http://localhost:5173")
+      .then(() => {
+        logStartup("dev loadURL resolved");
+      })
+      .catch((error) => {
+        logStartup("dev loadURL rejected", error?.stack || error?.message);
+      });
     win.webContents.openDevTools({ mode: "detach" });
   } else {
-    win.loadFile(path.join(__dirname, "../dist/index.html"));
+    const entryPath = path.join(__dirname, "../dist/index.html");
+    logStartup("packaged loadFile", entryPath);
+    void win
+      .loadFile(entryPath)
+      .then(() => {
+        logStartup("packaged loadFile resolved");
+      })
+      .catch((error) => {
+        logStartup("packaged loadFile rejected", error?.stack || error?.message);
+      });
   }
 }
 
 app.whenReady().then(() => {
-  if (process.platform === "darwin" && app.dock?.setIcon) {
-    app.dock.setIcon(APP_ICON_PNG);
+  logStartup("app ready");
+  if (process.platform === "darwin" && app.dock?.setIcon && !app.isPackaged) {
+    app.dock.setIcon(appIconPath());
   }
 
   ipcMain.handle("vault:load", async () => {
@@ -1579,10 +1681,29 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+}).catch((error) => {
+  logStartup("app.whenReady rejected", error);
 });
 
 app.on("window-all-closed", () => {
+  logStartup("window-all-closed");
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("activate", () => {
+  logStartup("app activate");
+});
+
+app.on("child-process-gone", (_event, details) => {
+  logStartup("child-process-gone", JSON.stringify(details));
+});
+
+process.on("uncaughtException", (error) => {
+  logStartup("uncaughtException", error?.stack || error?.message);
+});
+
+process.on("unhandledRejection", (reason) => {
+  logStartup("unhandledRejection", reason);
 });

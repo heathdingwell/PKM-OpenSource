@@ -1667,30 +1667,29 @@ body.is-resizing .pane-resizer::after {
   align-items: center;
 }
 
-.editor-icon-button {
-  width: 28px;
-  height: 28px;
+.topbar-icon-btn {
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 7px;
   color: var(--muted);
-  background: var(--bg-panel);
-  font: 600 12px/1 var(--font-ui);
+  background: transparent;
+  font: 600 13px/1 var(--font-ui);
 }
 
-.editor-icon-button:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
+.topbar-icon-btn:hover {
   background: var(--bg-hover);
+  color: var(--text);
 }
 
-.editor-icon-button.active {
-  color: var(--primary-strong);
-  border-color: var(--border-strong);
+.topbar-icon-btn.active {
   background: var(--bg-active);
+  color: var(--primary);
+  border-color: var(--border-strong);
 }
 
 @media (max-width: 1220px) {

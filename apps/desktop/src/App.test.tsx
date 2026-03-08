@@ -26,6 +26,7 @@ describe("App", () => {
   it("exposes clear toolbar labels and pressed states", () => {
     render(<App />);
 
+    expect(screen.getByRole("button", { name: "Copy Link" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Info" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More note actions" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bold" })).toBeInTheDocument();
@@ -37,6 +38,7 @@ describe("App", () => {
     const markdownButton = screen.getByRole("button", { name: "Markdown" });
     const richButton = screen.getByRole("button", { name: "Rich" });
     const insertButton = screen.getByRole("button", { name: "Insert" });
+    const copyLinkButton = screen.getByRole("button", { name: "Copy Link" });
     const infoButton = screen.getByRole("button", { name: "Info" });
     const moreActionsButton = screen.getByRole("button", { name: "More note actions" });
     const focusButton = screen.getByRole("button", { name: "Focus" });
@@ -45,6 +47,7 @@ describe("App", () => {
     expect(richButton).toHaveAttribute("aria-pressed", "false");
     expect(insertButton).toHaveAttribute("aria-haspopup", "listbox");
     expect(insertButton).toHaveAttribute("aria-expanded", "false");
+    expect(copyLinkButton).not.toHaveAttribute("aria-pressed");
     expect(infoButton).toHaveAttribute("aria-pressed", "false");
     expect(moreActionsButton).toHaveAttribute("aria-haspopup", "menu");
     expect(moreActionsButton).toHaveAttribute("aria-expanded", "false");
@@ -1834,6 +1837,7 @@ describe("App", () => {
     render(<App />);
     const noteActionsMenu = openHeaderNoteActions();
 
+    expect(within(noteActionsMenu).getByRole("button", { name: /Open in Lite edit mode/i })).toBeInTheDocument();
     expect(within(noteActionsMenu).getByRole("button", { name: /Rename/i })).toBeInTheDocument();
     expect(within(noteActionsMenu).getByRole("button", { name: /^Move…/i })).toBeInTheDocument();
     expect(within(noteActionsMenu).getByRole("button", { name: /Copy to/i })).toBeInTheDocument();
@@ -1936,6 +1940,20 @@ describe("App", () => {
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
     clickSpy.mockRestore();
+  });
+
+  it("copies note link from topbar action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy Link" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
 
   it("copies note link using KeyL code with keyboard shortcut", async () => {
@@ -6595,7 +6613,9 @@ describe("App", () => {
     const searchInput = screen.getByPlaceholderText("Search or ask a question");
     fireEvent.change(searchInput, { target: { value: "agenda" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /Copy link/i }));
+    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
+    expect(searchActions).toBeTruthy();
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /Copy link/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });

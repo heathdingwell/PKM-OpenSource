@@ -832,6 +832,8 @@ const seedCalendarEvents: Array<Pick<CalendarEvent, "title" | "startAt" | "endAt
   ];
 
 const editorMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
+  { id: "open-lite-edit", label: "Open in Lite edit mode", shortcut: "alt+cmd+o" },
+  { id: "divider-0", label: "", divider: true },
   { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
   { id: "move", label: "Move…", shortcut: "cmd+alt+m" },
   { id: "copy-to", label: "Copy to…", shortcut: "cmd+alt+y" },
@@ -12316,6 +12318,9 @@ a{color:#1d4ed8}
       return Boolean(note?.trashedAt);
     });
 
+    if (action === "open-lite-edit") {
+      return liteEditMode ? "Open in full editor" : "Open in Lite edit mode";
+    }
     if (action === "add-shortcuts") {
       return allShortcut ? "Remove from Shortcuts" : "Add to Shortcuts";
     }
@@ -15564,7 +15569,16 @@ a{color:#1d4ed8}
               <div className="editor-top-actions">
                 <button
                   type="button"
-                  className={metadataOpen ? "editor-icon-button active" : "editor-icon-button"}
+                  className="topbar-icon-btn"
+                  aria-label="Copy Link"
+                  title="Copy note link"
+                  onClick={() => void copyNoteLink(activeNote.id)}
+                >
+                  <span aria-hidden="true">🔗</span>
+                </button>
+                <button
+                  type="button"
+                  className={metadataOpen ? "topbar-icon-btn active" : "topbar-icon-btn"}
                   aria-pressed={metadataOpen}
                   aria-label="Info"
                   title="Toggle note info panel"
@@ -15574,32 +15588,32 @@ a{color:#1d4ed8}
                     setFocusMode(false);
                   }}
                 >
-                  <span aria-hidden="true">i</span>
+                  <span aria-hidden="true">ℹ</span>
                 </button>
                 <button
                   type="button"
-                  className={focusMode ? "editor-icon-button active" : "editor-icon-button"}
+                  className={focusMode ? "topbar-icon-btn active" : "topbar-icon-btn"}
                   aria-pressed={focusMode}
                   aria-label="Focus"
                   title="Toggle focus mode"
                   onClick={() => setFocusMode((previous) => !previous)}
                 >
-                  <span aria-hidden="true">[]</span>
+                  <span aria-hidden="true">⛶</span>
                 </button>
                 <button
                   type="button"
-                  className={aiPanelOpen ? "editor-icon-button active" : "editor-icon-button"}
+                  className={aiPanelOpen ? "topbar-icon-btn active" : "topbar-icon-btn"}
                   aria-pressed={aiPanelOpen}
                   aria-label="AI"
                   title="Toggle AI panel"
                   onClick={toggleAiPanel}
                 >
-                  <span aria-hidden="true">AI</span>
+                  <span aria-hidden="true">✦</span>
                 </button>
                 <button
                   ref={editorMenuButtonRef}
                   type="button"
-                  className="editor-icon-button"
+                  className={contextMenu?.source === "editor" ? "topbar-icon-btn active" : "topbar-icon-btn"}
                   aria-label="More note actions"
                   aria-haspopup="menu"
                   aria-expanded={contextMenu?.source === "editor"}
@@ -15610,7 +15624,7 @@ a{color:#1d4ed8}
                     openEditorMenu();
                   }}
                 >
-                  <span aria-hidden="true">...</span>
+                  <span aria-hidden="true">···</span>
                 </button>
               </div>
             </header>

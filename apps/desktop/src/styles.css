@@ -3317,7 +3317,12 @@ body.is-resizing .pane-resizer::after {
   padding: 0 14px;
   border: 0;
   border-bottom: 1px solid var(--border);
-  background: transparent;
+  color: var(--text);
+  background: var(--bg-input);
+}
+
+.search-modal input::placeholder {
+  color: var(--muted);
 }
 
 .search-chips {
@@ -3406,14 +3411,20 @@ body.is-resizing .pane-resizer::after {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  padding: 8px 0;
-  color: var(--chip-text);
+  padding: 10px 12px;
+  margin: 0 -2px;
+  color: var(--text);
   border-bottom: 1px solid var(--border);
+  border-radius: 8px;
   font-size: 14px;
+  cursor: pointer;
+}
+
+.search-results li:hover {
+  background: var(--bg-hover);
 }
 
 .search-results li.active {
-  border-radius: 8px;
   border-bottom-color: transparent;
   background: var(--bg-active);
 }
@@ -3431,6 +3442,10 @@ body.is-resizing .pane-resizer::after {
   color: inherit;
   text-align: left;
   background: transparent;
+}
+
+.recent-search-open:hover {
+  color: var(--primary);
 }
 
 .recent-search-remove {

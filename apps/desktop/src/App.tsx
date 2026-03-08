@@ -15659,7 +15659,8 @@ a{color:#1d4ed8}
 
             <div ref={editorMainRef} className="editor-main" style={editorMainStyle}>
               <article className={metadataOpen || aiPanelOpen ? "editor-content with-metadata" : "editor-content"}>
-              <div className={liteEditMode ? "editor-workbench lite" : "editor-workbench"}>
+                <div className="editor-content-main">
+                  <div className={liteEditMode ? "editor-workbench lite" : "editor-workbench"}>
                 {editorMode === "markdown" ? (
                   <section
                     className={attachmentDropTarget === "markdown" ? "markdown-pane drop-active" : "markdown-pane"}
@@ -16107,52 +16108,55 @@ a{color:#1d4ed8}
                 ) : null}
               </div>
 
-              {slashMenu ? (
-                <section
-                  id="insert-slash-menu"
-                  className="slash-menu"
-                  role="listbox"
-                  aria-label="Insert block menu"
-                  onMouseDown={(event) => event.preventDefault()}
-                >
-                  <header>
-                    <span>/ {slashMenu.query || "commands"}</span>
-                    <small>{slashResults.length} results</small>
-                  </header>
-                  <div className="slash-menu-list">
-                    {slashResults.length ? (
-                      slashSections.map(([section, commands]) => (
-                        <div key={section} className="slash-group">
-                          <h4>{section}</h4>
-                          {commands.map((command) => {
-                            const globalIndex = slashResults.findIndex((item) => item.id === command.id);
-                            return (
-                              <button
-                                key={command.id}
-                                type="button"
-                                role="option"
-                                aria-selected={slashMenu.selected === globalIndex}
-                                className={slashMenu.selected === globalIndex ? "active" : ""}
-                                onMouseDown={(event) => {
-                                  event.preventDefault();
-                                  commitSlashCommand(globalIndex);
-                                }}
-                              >
-                                {command.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="slash-empty">No commands found</p>
-                    )}
-                  </div>
-                </section>
-              ) : null}
+                  {slashMenu ? (
+                    <section
+                      id="insert-slash-menu"
+                      className="slash-menu"
+                      role="listbox"
+                      aria-label="Insert block menu"
+                      onMouseDown={(event) => event.preventDefault()}
+                    >
+                      <header>
+                        <span>/ {slashMenu.query || "commands"}</span>
+                        <small>{slashResults.length} results</small>
+                      </header>
+                      <div className="slash-menu-list">
+                        {slashResults.length ? (
+                          slashSections.map(([section, commands]) => (
+                            <div key={section} className="slash-group">
+                              <h4>{section}</h4>
+                              {commands.map((command) => {
+                                const globalIndex = slashResults.findIndex((item) => item.id === command.id);
+                                return (
+                                  <button
+                                    key={command.id}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={slashMenu.selected === globalIndex}
+                                    className={slashMenu.selected === globalIndex ? "active" : ""}
+                                    onMouseDown={(event) => {
+                                      event.preventDefault();
+                                      commitSlashCommand(globalIndex);
+                                    }}
+                                  >
+                                    {command.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="slash-empty">No commands found</p>
+                        )}
+                      </div>
+                    </section>
+                  ) : null}
+                </div>
 
-              {aiPanelOpen ? (
-                <aside className="metadata-panel ai-panel">
+                <div className="editor-sidepanels">
+
+                {aiPanelOpen ? (
+                  <aside className="metadata-panel ai-panel">
                   <header>
                     <h4>AI Copilot</h4>
                     <button type="button" onClick={() => setAiPanelOpen(false)}>
@@ -16579,11 +16583,11 @@ a{color:#1d4ed8}
                       </button>
                     </form>
                   </div>
-                </aside>
-              ) : null}
+                  </aside>
+                ) : null}
 
-              {metadataOpen && activeNote ? (
-                <aside className="metadata-panel">
+                {metadataOpen && activeNote ? (
+                  <aside className="metadata-panel">
                   <header>
                     <h4>Note metadata</h4>
                     <button type="button" onClick={() => setMetadataOpen(false)}>
@@ -16974,8 +16978,9 @@ a{color:#1d4ed8}
                       </button>
                     )}
                   </div>
-                </aside>
-              ) : null}
+                  </aside>
+                ) : null}
+                </div>
               </article>
 
               <footer className="editor-footer">

@@ -679,6 +679,20 @@ describe("App", () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: originalInnerWidth });
   });
 
+  it("docks note metadata beside the editor instead of overlaying the preview", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    const sidePanels = document.querySelector(".editor-sidepanels");
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" }).closest(".preview-pane");
+
+    expect(metadataPanel).toBeTruthy();
+    expect(sidePanels).toContainElement(metadataPanel as HTMLElement);
+    expect(sidePanels).not.toContainElement(previewPane as HTMLElement);
+  });
+
   it("filters graph nodes by query", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));

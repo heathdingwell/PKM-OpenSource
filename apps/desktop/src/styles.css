@@ -1633,6 +1633,10 @@ body.is-resizing {
   min-height: 0;
 }
 
+.editor-content.with-metadata .editor-workbench {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
 .editor-workbench.lite {
   grid-template-columns: minmax(0, 1fr);
 }

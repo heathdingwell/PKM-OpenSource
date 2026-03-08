@@ -31,6 +31,7 @@ declare global {
         path?: string;
         error?: string;
       } | null>;
+      getVaultPath?: () => Promise<string>;
       getGitBackupStatus?: () => Promise<{
         enabled: boolean;
         commitPrefix: string;

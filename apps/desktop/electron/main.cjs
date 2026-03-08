@@ -1719,6 +1719,8 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle("vault:path", async () => vaultRootPath());
+
   ipcMain.handle("vault:git-status", async () => {
     try {
       return await gitBackupStatus();

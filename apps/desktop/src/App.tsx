@@ -214,6 +214,7 @@ interface AppPrefs {
   graphScope?: GraphScope;
   editorFontFamily?: EditorFontFamilyId;
   editorFontSize?: number;
+  defaultEditorMode?: EditorMode;
   focusMode?: boolean;
   taskDueFilter?: TaskDueFilter;
   reminderDueFilter?: ReminderDueFilter;
@@ -316,6 +317,7 @@ type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 type ReminderScopeMode = "all" | "current-note";
 type GraphScope = "workspace" | "local";
 type SidebarSectionId = "recent" | "shortcuts" | "saved-searches" | "home-pins" | "notebook-pins" | "notebooks";
+type SettingsTab = "general" | "editor" | "appearance" | "shortcuts" | "ai" | "backup";
 
 interface ParsedSearchQuery {
   text: string;
@@ -342,6 +344,7 @@ interface SlashCommand {
   label: string;
   section: string;
   keywords: string[];
+  icon?: ReactNode;
 }
 
 interface NoteListMenuState {
@@ -452,38 +455,6 @@ const DEFAULT_TAG_PANE_HEIGHT = 52;
 const NOTE_LIST_INITIAL_BATCH = 24;
 const NOTE_LIST_BATCH = 24;
 const themeIds: ThemeId[] = ["cobalt", "sky", "slate", "dark"];
-const defaultUiFontStack = 'system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
-const defaultEditorFontStack = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif';
-const defaultThemeSpacing = {
-  panelGap: 8,
-  panelRadius: 10
-} as const;
-const themePreviewDefaults: Record<ThemeId, { primary: string; bgPanel: string; bgSidebar: string; text: string }> = {
-  cobalt: {
-    primary: "#2563eb",
-    bgPanel: "#ffffff",
-    bgSidebar: "#f2f7ff",
-    text: "#1f2937"
-  },
-  sky: {
-    primary: "#0ea5e9",
-    bgPanel: "#dbeaf7",
-    bgSidebar: "#d6ecff",
-    text: "#15324d"
-  },
-  slate: {
-    primary: "#4f46e5",
-    bgPanel: "#e2e5ea",
-    bgSidebar: "#dce3ee",
-    text: "#1f2937"
-  },
-  dark: {
-    primary: "#4f9cf7",
-    bgPanel: "#2c2c2e",
-    bgSidebar: "#242426",
-    text: "#f2f2f7"
-  }
-};
 const editorFontFamilies: Array<{ id: EditorFontFamilyId; label: string; value: string }> = [
   {
     id: "palatino",
@@ -508,6 +479,12 @@ const editorFontFamilies: Array<{ id: EditorFontFamilyId; label: string; value: 
 ];
 const editorFontSizes = [14, 15, 16, 17, 18, 20];
 const aiProviders: AiProvider[] = ["openai", "anthropic", "gemini", "perplexity", "openai-compatible", "ollama"];
+const themeSwatches: Array<{ id: ThemeId; label: string; shell: string; panel: string; accent: string }> = [
+  { id: "cobalt", label: "Cobalt", shell: "#f8fbff", panel: "#ffffff", accent: "#2563eb" },
+  { id: "sky", label: "Sky", shell: "#ecf6ff", panel: "#f7fbff", accent: "#0ea5e9" },
+  { id: "slate", label: "Slate", shell: "#eff1f5", panel: "#fbfcfe", accent: "#4f46e5" },
+  { id: "dark", label: "Dark", shell: "#1c1c1e", panel: "#2c2c2e", accent: "#4f9cf7" }
+];
 
 function clampTagPaneHeight(value: number): number {
   return Math.max(MIN_TAG_PANE_HEIGHT, Math.min(value, MAX_TAG_PANE_HEIGHT));
@@ -692,6 +669,8 @@ const REMOVE_SHORTCUT_NOTEBOOK_ACTION_PREFIX = "remove-shortcut-notebook:";
 const REMOVE_SHORTCUT_TAG_ACTION_PREFIX = "remove-shortcut-tag:";
 const commandPaletteActions: CommandPaletteAction[] = [
   { id: "new-note", label: "New note", keywords: ["create", "note"] },
+  { id: "open-settings", label: "Open settings", keywords: ["settings", "preferences", "config"] },
+  { id: "show-shortcuts", label: "Keyboard shortcuts", keywords: ["keyboard", "shortcuts", "help"] },
   { id: "open-today-note", label: "Open today's note", keywords: ["today", "daily", "journal"] },
   { id: "new-from-template", label: "New from template", keywords: ["template", "clone"] },
   { id: "new-notebook", label: "New notebook", keywords: ["folder", "notebook"] },
@@ -864,6 +843,120 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "save-search", label: "Save current search", keywords: ["search", "save"] }
 ];
 
+function renderSlashCommandIcon(id: string): ReactNode {
+  switch (id) {
+    case "new-task":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <rect x="1.5" y="1.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "event":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <rect x="2" y="2.5" width="10" height="9.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M2 5.5h10M4.5 1.5v2M9.5 1.5v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      );
+    case "new-linked-note":
+    case "link-to-note":
+    case "link":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M5.75 8.25a2.5 2.5 0 0 0 3.5 0l1-1a2.5 2.5 0 0 0-3.5-3.5l-.8.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          <path d="M8.25 5.75a2.5 2.5 0 0 0-3.5 0l-1 1a2.5 2.5 0 0 0 3.5 3.5l.8-.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      );
+    case "heading-1":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M2.5 3v8M2.5 7h5M7.5 3v8M11 5l-1.25.9V11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "heading-2":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M2.5 3v8M2.5 7h5M7.5 3v8M9.8 5.2c0-.9.7-1.7 1.7-1.7S13 4.3 13 5.2c0 .6-.3 1.1-.8 1.5L10 8.7h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "heading-3":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M2.5 3v8M2.5 7h5M7.5 3v8M10 4h2.2a1.3 1.3 0 1 1 0 2.6H11m1.2 0a1.5 1.5 0 1 1 0 3H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "paragraph":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M3 3h4.2a2.8 2.8 0 1 1 0 5.6H5.8V11H4.2V8.6H3V3Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+        </svg>
+      );
+    case "bullet-list":
+    case "checklist":
+    case "numbered-list":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="2.5" cy="4" r="1" fill="currentColor" />
+          <circle cx="2.5" cy="7" r="1" fill="currentColor" />
+          <circle cx="2.5" cy="10" r="1" fill="currentColor" />
+          <path d="M5 4h7M5 7h7M5 10h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      );
+    case "image":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <rect x="1.5" y="2" width="11" height="10" rx="2" stroke="currentColor" strokeWidth="1.3" />
+          <circle cx="4.4" cy="5" r="1" fill="currentColor" />
+          <path d="m3 10 2.5-2.5L8 10l1.5-1.5L11 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "file":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M8.5 2H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.5L8.5 2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+          <path d="M8.5 2v2.5H11" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+        </svg>
+      );
+    case "video":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <rect x="1.5" y="3" width="7.5" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M9 5.5 12 4v6l-3-1.5v-3Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+        </svg>
+      );
+    case "audio":
+    case "transcribe-media":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M7 2.2a1.6 1.6 0 0 1 1.6 1.6v3.1A1.6 1.6 0 1 1 5.4 6.9V3.8A1.6 1.6 0 0 1 7 2.2Z" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M3.7 6.8a3.3 3.3 0 1 0 6.6 0M7 10.1v1.7M4.8 12h4.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      );
+    case "table":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M1.5 5.5h11M5 2v10M9 2v10" stroke="currentColor" strokeWidth="1.1" />
+        </svg>
+      );
+    case "divider":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      );
+    case "code-block":
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M8.5 3 11.5 7l-3 4M5.5 3 2.5 7l3 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 const seedCalendarEvents: Array<Pick<CalendarEvent, "title" | "startAt" | "endAt" | "allDay" | "calendar" | "noteId">> =
   [
     {
@@ -906,6 +999,7 @@ const editorMenuRows: Array<{ id: string; label: string; shortcut?: string; divi
   { id: "pin-home", label: "Pin to Home", shortcut: "cmd+alt+7" },
   { id: "divider-3", label: "", divider: true },
   { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
+  { id: "open-settings", label: "Settings…", shortcut: "cmd+," },
   { id: "export", label: "Export…", shortcut: "cmd+alt+1" },
   { id: "print", label: "Print", shortcut: "cmd+alt+p" },
   { id: "divider-4", label: "", divider: true },
@@ -932,20 +1026,20 @@ const cardMenuRows: Array<{ id: string; label: string; shortcut?: string; divide
 ];
 
 const slashCommands: SlashCommand[] = [
-  { id: "transcribe-media", label: "Transcribe media", section: "New Features", keywords: ["audio", "video"] },
-  { id: "new-task", label: "New task", section: "Essentials", keywords: ["todo", "checklist"] },
-  { id: "event", label: "Event", section: "Essentials", keywords: ["calendar"] },
-  { id: "new-linked-note", label: "New linked note", section: "Essentials", keywords: ["wikilink"] },
-  { id: "link-to-note", label: "Link to note", section: "Essentials", keywords: ["wikilink"] },
-  { id: "link", label: "Link", section: "Essentials", keywords: ["url"] },
+  { id: "transcribe-media", label: "Transcribe media", section: "New Features", keywords: ["audio", "video"], icon: renderSlashCommandIcon("transcribe-media") },
+  { id: "new-task", label: "New task", section: "Essentials", keywords: ["todo", "checklist"], icon: renderSlashCommandIcon("new-task") },
+  { id: "event", label: "Event", section: "Essentials", keywords: ["calendar"], icon: renderSlashCommandIcon("event") },
+  { id: "new-linked-note", label: "New linked note", section: "Essentials", keywords: ["wikilink"], icon: renderSlashCommandIcon("new-linked-note") },
+  { id: "link-to-note", label: "Link to note", section: "Essentials", keywords: ["wikilink"], icon: renderSlashCommandIcon("link-to-note") },
+  { id: "link", label: "Link", section: "Essentials", keywords: ["url"], icon: renderSlashCommandIcon("link") },
   { id: "table-of-contents", label: "Table of contents", section: "Essentials", keywords: ["toc"] },
-  { id: "table", label: "Table", section: "Essentials", keywords: ["grid"] },
-  { id: "divider", label: "Divider", section: "Essentials", keywords: ["hr", "line"] },
+  { id: "table", label: "Table", section: "Essentials", keywords: ["grid"], icon: renderSlashCommandIcon("table") },
+  { id: "divider", label: "Divider", section: "Essentials", keywords: ["hr", "line"], icon: renderSlashCommandIcon("divider") },
   { id: "quote", label: "Quote", section: "Text Styles", keywords: ["blockquote"] },
-  { id: "heading-1", label: "Large header", section: "Text Styles", keywords: ["h1", "heading"] },
-  { id: "heading-2", label: "Medium header", section: "Text Styles", keywords: ["h2", "heading"] },
-  { id: "heading-3", label: "Small header", section: "Text Styles", keywords: ["h3", "heading"] },
-  { id: "paragraph", label: "Normal text", section: "Text Styles", keywords: ["body", "paragraph"] },
+  { id: "heading-1", label: "Large header", section: "Text Styles", keywords: ["h1", "heading"], icon: renderSlashCommandIcon("heading-1") },
+  { id: "heading-2", label: "Medium header", section: "Text Styles", keywords: ["h2", "heading"], icon: renderSlashCommandIcon("heading-2") },
+  { id: "heading-3", label: "Small header", section: "Text Styles", keywords: ["h3", "heading"], icon: renderSlashCommandIcon("heading-3") },
+  { id: "paragraph", label: "Normal text", section: "Text Styles", keywords: ["body", "paragraph"], icon: renderSlashCommandIcon("paragraph") },
   { id: "bold", label: "Bold", section: "Formatting", keywords: ["strong"] },
   { id: "italic", label: "Italic", section: "Formatting", keywords: ["emphasis"] },
   { id: "underline", label: "Underlined", section: "Formatting", keywords: ["underline"] },
@@ -956,17 +1050,17 @@ const slashCommands: SlashCommand[] = [
   { id: "align-center", label: "Align center", section: "Alignment", keywords: ["center", "align"] },
   { id: "align-right", label: "Align right", section: "Alignment", keywords: ["right", "align"] },
   { id: "indent", label: "Indent", section: "Alignment", keywords: ["tab", "indent"] },
-  { id: "bullet-list", label: "Bullet list", section: "Lists", keywords: ["ul", "list"] },
-  { id: "checklist", label: "Checklist", section: "Lists", keywords: ["task", "todo"] },
-  { id: "numbered-list", label: "Numbered list", section: "Lists", keywords: ["ol", "list"] },
+  { id: "bullet-list", label: "Bullet list", section: "Lists", keywords: ["ul", "list"], icon: renderSlashCommandIcon("bullet-list") },
+  { id: "checklist", label: "Checklist", section: "Lists", keywords: ["task", "todo"], icon: renderSlashCommandIcon("checklist") },
+  { id: "numbered-list", label: "Numbered list", section: "Lists", keywords: ["ol", "list"], icon: renderSlashCommandIcon("numbered-list") },
   { id: "checkbox", label: "Checkbox", section: "Lists", keywords: ["task", "check"] },
-  { id: "image", label: "Image", section: "Media", keywords: ["photo"] },
-  { id: "file", label: "File", section: "Media", keywords: ["attachment"] },
-  { id: "video", label: "Video", section: "Media", keywords: ["media"] },
-  { id: "audio", label: "Audio", section: "Media", keywords: ["recording"] },
+  { id: "image", label: "Image", section: "Media", keywords: ["photo"], icon: renderSlashCommandIcon("image") },
+  { id: "file", label: "File", section: "Media", keywords: ["attachment"], icon: renderSlashCommandIcon("file") },
+  { id: "video", label: "Video", section: "Media", keywords: ["media"], icon: renderSlashCommandIcon("video") },
+  { id: "audio", label: "Audio", section: "Media", keywords: ["recording"], icon: renderSlashCommandIcon("audio") },
   { id: "sketch", label: "Sketch", section: "Media", keywords: ["draw", "canvas"] },
   { id: "google-drive", label: "Google Drive", section: "Utilities", keywords: ["drive", "google"] },
-  { id: "code-block", label: "Code Block", section: "Advanced", keywords: ["code", "fence"] },
+  { id: "code-block", label: "Code Block", section: "Advanced", keywords: ["code", "fence"], icon: renderSlashCommandIcon("code-block") },
   { id: "formula", label: "Formula", section: "Advanced", keywords: ["latex", "math"] },
   { id: "current-date", label: "Current date", section: "Utilities", keywords: ["today", "date"] },
   { id: "current-time", label: "Current time", section: "Utilities", keywords: ["time", "clock"] }
@@ -1570,16 +1664,6 @@ function noteGroupModeLabel(mode: NoteGroupMode): string {
     return "Group: Notebook";
   }
   return "Group: Tag";
-}
-
-function formatAutosaveDelay(autosaveDelayMs: number): string {
-  if (autosaveDelayMs < 1000) {
-    return `${autosaveDelayMs}ms`;
-  }
-  if (autosaveDelayMs % 1000 === 0) {
-    return `${Math.round(autosaveDelayMs / 1000)}s`;
-  }
-  return `${(autosaveDelayMs / 1000).toFixed(1)}s`;
 }
 
 function toDateInputValue(date: Date): string {
@@ -2631,6 +2715,7 @@ function defaultPrefs(): AppPrefs {
     graphScope: "workspace",
     editorFontFamily: "palatino",
     editorFontSize: 16,
+    defaultEditorMode: "markdown",
     focusMode: false,
     taskDueFilter: "all",
     reminderDueFilter: "all",
@@ -2702,6 +2787,7 @@ function loadPrefs(): AppPrefs {
         typeof parsed.editorFontSize === "number" && editorFontSizes.includes(parsed.editorFontSize)
           ? parsed.editorFontSize
           : 16,
+      defaultEditorMode: parsed.defaultEditorMode === "rich" ? "rich" : "markdown",
       focusMode: typeof parsed.focusMode === "boolean" ? parsed.focusMode : false,
       taskDueFilter:
         parsed.taskDueFilter === "overdue" ||
@@ -3113,7 +3199,8 @@ export default function App() {
   const [draftNoteId, setDraftNoteId] = useState<string>("");
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">("saved");
   const [sidebarView, setSidebarView] = useState<SidebarView>("notes");
-  const [editorMode, setEditorMode] = useState<EditorMode>("markdown");
+  const [editorMode, setEditorMode] = useState<EditorMode>(initialPrefs.defaultEditorMode ?? "markdown");
+  const [defaultEditorMode, setDefaultEditorMode] = useState<EditorMode>(initialPrefs.defaultEditorMode ?? "markdown");
   const [liteEditMode, setLiteEditMode] = useState(false);
   const [themeId, setThemeId] = useState<ThemeId>(initialPrefs.themeId ?? "cobalt");
   const [themeOverrides, setThemeOverrides] = useState<ThemeOverrides>(
@@ -3153,7 +3240,16 @@ export default function App() {
   );
   const [metadataOpen, setMetadataOpen] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
-  const [aiShowSettings, setAiShowSettings] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
+  const [vaultPath, setVaultPath] = useState<string>("App-managed vault");
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return !window.localStorage.getItem("pkm-welcomed");
+  });
   const [aiSettings, setAiSettings] = useState<AiSettings>(initialAiSettings);
   const [aiMessages, setAiMessages] = useState<AiChatMessage[]>([]);
   const [aiInput, setAiInput] = useState("");
@@ -4319,7 +4415,6 @@ export default function App() {
     }));
   }, [activeDraftMarkdown, calendarEventsById]);
   const currentAiProviderDefaults = useMemo(() => aiProviderDefaults(aiSettings.provider), [aiSettings.provider]);
-  const aiKeyOptional = aiSettings.provider === "ollama" || aiSettings.provider === "openai-compatible";
 
   const suggestions = useMemo(() => {
     if (!linkSuggestion) {
@@ -4835,6 +4930,22 @@ export default function App() {
   }, [aiSettings]);
 
   useEffect(() => {
+    let cancelled = false;
+    if (typeof window === "undefined" || !window.pkmShell?.getVaultPath) {
+      setVaultPath(vaultMode === "desktop" ? "Desktop-managed local vault" : "Browser session vault");
+      return;
+    }
+    void window.pkmShell.getVaultPath().then((path) => {
+      if (!cancelled && path) {
+        setVaultPath(path);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [vaultMode]);
+
+  useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
@@ -4885,6 +4996,7 @@ export default function App() {
       graphScope,
       editorFontFamily,
       editorFontSize,
+      defaultEditorMode,
       focusMode,
       taskDueFilter,
       reminderDueFilter,
@@ -4922,6 +5034,7 @@ export default function App() {
     graphScope,
     editorFontFamily,
     editorFontSize,
+    defaultEditorMode,
     focusMode,
     taskDueFilter,
     reminderDueFilter,
@@ -5650,6 +5763,18 @@ export default function App() {
         return;
       }
 
+      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key === ",") {
+        event.preventDefault();
+        openSettings();
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key === "/") {
+        event.preventDefault();
+        setShortcutsHelpOpen(true);
+        return;
+      }
+
       if (
         (event.metaKey || event.ctrlKey) &&
         !event.shiftKey &&
@@ -5696,11 +5821,16 @@ export default function App() {
         setAttachmentDropTarget(null);
         setSidebarView("notes");
         setSearchOpen(false);
+        setSettingsOpen(false);
+        setShortcutsHelpOpen(false);
         setFindInNoteOpen(false);
         setSlashInputDialog(null);
         setMediaInsertDialog(null);
         setSlashMenu(null);
         setMentionSuggestion(null);
+        if (showWelcome) {
+          dismissWelcome();
+        }
         if (focusMode && !searchOpen && !findInNoteOpen) {
           setFocusMode(false);
         }
@@ -5729,6 +5859,7 @@ export default function App() {
     slashInputDialog,
     mediaInsertDialog,
     findInNoteOpen,
+    showWelcome,
     sidebarView,
     browseMode,
     visibleNotes,
@@ -5976,6 +6107,23 @@ export default function App() {
     setToastMessage(`Theme switched to ${theme}`);
   }
 
+  function openSettings(tab: SettingsTab = "general"): void {
+    setSettingsTab(tab);
+    setSettingsOpen(true);
+    setSearchOpen(false);
+  }
+
+  function closeSettings(): void {
+    setSettingsOpen(false);
+  }
+
+  function dismissWelcome(): void {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("pkm-welcomed", "1");
+    }
+    setShowWelcome(false);
+  }
+
   function applySortMode(mode: NoteSortMode): void {
     setSortMode(mode);
     const label = sortModes.find((entry) => entry.id === mode)?.label ?? mode;
@@ -6007,6 +6155,13 @@ export default function App() {
     const normalized = editorFontSizes.includes(size) ? size : 16;
     setEditorFontSize(normalized);
     setToastMessage(`Editor font size set to ${normalized}`);
+  }
+
+  function applyDefaultEditorMode(mode: EditorMode): void {
+    setDefaultEditorMode(mode);
+    setEditorMode(mode);
+    setLiteEditMode(false);
+    setToastMessage(`Default editor set to ${mode === "markdown" ? "Markdown" : "Rich text"}`);
   }
 
   function toggleAiPanel(): void {
@@ -6116,30 +6271,6 @@ export default function App() {
     setGitBackupAutoPush(status.autoPush === true);
     setGitBackupPushRemote(status.pushRemote || "origin");
     setGitBackupPushBranch(status.pushBranch || "main");
-  }
-
-  function describeGitBackup(status: GitBackupStatus | null): string {
-    if (!status) {
-      return "Status unavailable";
-    }
-    if (!status.enabled) {
-      return "Disabled";
-    }
-    if (status.lastError) {
-      return status.lastError;
-    }
-    if (status.lastCommitAt) {
-      const hash = status.lastCommitHash ? ` (${status.lastCommitHash})` : "";
-      const pushTarget = status.autoPush ? ` · auto-push ${status.pushRemote}/${status.pushBranch}` : "";
-      return `Last commit ${new Date(status.lastCommitAt).toLocaleString()}${hash} · ${formatAutosaveDelay(status.autosaveDelayMs)} delay${pushTarget}`;
-    }
-    if (status.dirty) {
-      return "Pending changes";
-    }
-    if (status.available === false) {
-      return "Git is unavailable";
-    }
-    return "Ready";
   }
 
   async function refreshGitBackupStatus(): Promise<GitBackupStatus | null> {
@@ -10134,11 +10265,7 @@ export default function App() {
     }
 
     if (actionId === "open-ai-settings") {
-      setAiPanelOpen(true);
-      setAiShowSettings(true);
-      setMetadataOpen(false);
-      setFocusMode(false);
-      setSearchOpen(false);
+      openSettings("ai");
       return;
     }
 
@@ -10150,18 +10277,14 @@ export default function App() {
     }
 
     if (actionId === "test-ai-connection") {
-      setAiPanelOpen(true);
-      setAiShowSettings(true);
-      setMetadataOpen(false);
+      openSettings("ai");
       setSearchOpen(false);
       void testAiConnection();
       return;
     }
 
     if (actionId === "fetch-ai-models") {
-      setAiPanelOpen(true);
-      setAiShowSettings(true);
-      setMetadataOpen(false);
+      openSettings("ai");
       setSearchOpen(false);
       void fetchAiModels();
       return;
@@ -10506,6 +10629,17 @@ export default function App() {
 
     if (actionId === "cycle-theme") {
       cycleTheme();
+      setSearchOpen(false);
+      return;
+    }
+
+    if (actionId === "open-settings") {
+      openSettings();
+      return;
+    }
+
+    if (actionId === "show-shortcuts") {
+      setShortcutsHelpOpen(true);
       setSearchOpen(false);
       return;
     }
@@ -12271,6 +12405,12 @@ a{color:#1d4ed8}
       return;
     }
 
+    if (action === "open-settings") {
+      openSettings();
+      setContextMenu(null);
+      return;
+    }
+
     if (action === "toggle-auto-links") {
       toggleAutoReciprocalLinks();
       setContextMenu(null);
@@ -12981,7 +13121,21 @@ a{color:#1d4ed8}
             setDropNotebook(null);
           }}
         >
-          <span>{notebook}</span>
+          <span className="notebook-item-inner">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true" className="notebook-item-icon">
+              <path
+                d={
+                  selectedNotebook === notebook
+                    ? "M1.5 4.5h4l1.5 1.5H13a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1Z"
+                    : "M1.5 4h4l1.5 1.5H13a1 1 0 0 1 1 1V11a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"
+                }
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="notebook-item-name">{notebook.split("/").pop()}</span>
+          </span>
           <small>{count}</small>
           {isDropTarget ? <i className="drop-indicator" /> : null}
         </button>
@@ -13986,6 +14140,40 @@ a{color:#1d4ed8}
     "--editor-font-size": `${editorFontSize}px`
   } as CSSProperties;
   const appShellStyle = buildThemeOverrideStyle(themeOverrides);
+
+  const shortcutReferenceRows = useMemo(() => {
+    const rows: Array<{ shortcut: string; action: string }> = [
+      { shortcut: "cmd+n", action: "New note" },
+      { shortcut: "cmd+k / cmd+p", action: "Open search" },
+      { shortcut: "cmd+shift+k", action: "Open command palette" },
+      { shortcut: "cmd+shift+d", action: "Open today note" },
+      { shortcut: "cmd+,", action: "Open settings" },
+      { shortcut: "cmd+/", action: "Show keyboard shortcuts" },
+      { shortcut: "cmd+f", action: "Find in note" },
+      { shortcut: "cmd+s", action: "Save note" },
+      { shortcut: "cmd+t", action: "Insert task" },
+      { shortcut: "cmd+b", action: "Bold" },
+      { shortcut: "cmd+i", action: "Italic" },
+      { shortcut: "cmd+u", action: "Underline" }
+    ];
+    for (const row of [...editorMenuRows, ...cardMenuRows]) {
+      if (!row.shortcut || row.divider) {
+        continue;
+      }
+      const key = `${row.shortcut}|${row.label}`;
+      if (rows.some((entry) => `${entry.shortcut}|${entry.action}` === key)) {
+        continue;
+      }
+      rows.push({ shortcut: row.shortcut, action: row.label.replace(/…/g, "...") });
+    }
+    return rows;
+  }, []);
+
+  const currentVaultModeLabel = vaultMode === "desktop" ? "Desktop-managed local vault" : "Browser session vault";
+  const gitBackupAvailable = gitBackupStatus?.available !== false;
+  const gitBackupDelayValue = Number.parseInt(gitBackupDelaySeconds, 10);
+  const safePanelGap = typeof themeOverrides.panelGap === "number" ? themeOverrides.panelGap : 8;
+  const safePanelRadius = typeof themeOverrides.panelRadius === "number" ? themeOverrides.panelRadius : 10;
 
   function loadMoreVisibleNotes(): void {
     setNoteListLimit((previous) => Math.min(visibleNotes.length, previous + NOTE_LIST_BATCH));
@@ -15549,6 +15737,31 @@ a{color:#1d4ed8}
                 </>
               ) : (
                 <div className="note-grid-empty">
+                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true" className="note-grid-empty-icon">
+                    {browseMode === "trash" ? (
+                      <>
+                        <rect x="8" y="12" width="24" height="22" rx="3" stroke="currentColor" strokeWidth="1.5" opacity="0.35" />
+                        <path d="M6 12h28M15 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </>
+                    ) : browseMode === "reminders" ? (
+                      <>
+                        <circle cx="20" cy="22" r="10" stroke="currentColor" strokeWidth="1.5" opacity="0.35" />
+                        <path d="M20 17v5.5l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M20 8v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </>
+                    ) : browseMode === "templates" ? (
+                      <>
+                        <rect x="8" y="8" width="24" height="24" rx="3" stroke="currentColor" strokeWidth="1.5" opacity="0.35" />
+                        <path d="M8 15h24M15 15v17" stroke="currentColor" strokeWidth="1.5" />
+                      </>
+                    ) : (
+                      <>
+                        <rect x="11" y="14" width="20" height="18" rx="2.5" stroke="currentColor" strokeWidth="1.5" opacity="0.35" />
+                        <rect x="8" y="10" width="20" height="18" rx="2.5" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
+                        <path d="M15 19h10M15 23h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </>
+                    )}
+                  </svg>
                   <p>
                     {browseMode === "templates"
                       ? "No templates found."
@@ -15562,23 +15775,24 @@ a{color:#1d4ed8}
                           ? "No notes match the current filters."
                           : "No notes in this view yet."}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (
-                        browseMode === "templates" ||
-                        browseMode === "shortcuts" ||
-                        browseMode === "trash" ||
-                        browseMode === "reminders"
-                      ) {
-                        setBrowseMode("all");
-                      }
-                      setTagFilters([]);
-                      createNewNote();
-                    }}
-                  >
-                    Create note
-                  </button>
+                  {browseMode !== "trash" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          browseMode === "templates" ||
+                          browseMode === "shortcuts" ||
+                          browseMode === "reminders"
+                        ) {
+                          setBrowseMode("all");
+                        }
+                        setTagFilters([]);
+                        createNewNote();
+                      }}
+                    >
+                      Create note
+                    </button>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -15655,6 +15869,19 @@ a{color:#1d4ed8}
       <main className="editor-shell">
         {activeNote ? (
           <>
+            {focusMode ? (
+              <button
+                type="button"
+                className="focus-exit-btn has-tooltip"
+                data-tooltip="Exit focus mode"
+                aria-label="Exit focus mode"
+                onClick={() => setFocusMode(false)}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M2 5V2h3M9 2h3v3M12 9v3H9M5 12H2V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            ) : null}
             <header className="editor-topbar">
               <div className="editor-top-meta">
                 <div className="crumbs">
@@ -15916,8 +16143,12 @@ a{color:#1d4ed8}
                   <path d="M9.5 3.5 13 7.5l-3.5 4M5.5 3.5 2 7.5l3.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
-              <span className={`save-pill ${saveState}`}>
-                {saveState === "dirty" ? "Unsaved" : saveState} · {vaultMode}
+              <span
+                className={`save-pill ${saveState}`}
+                aria-live="polite"
+                aria-label={saveState === "dirty" ? "Unsaved changes" : saveState === "saving" ? "Saving…" : "Saved"}
+              >
+                {saveState === "dirty" ? "Unsaved" : saveState === "saving" ? "Saving" : "Saved"}
               </span>
             </div>
 
@@ -16466,12 +16697,19 @@ a{color:#1d4ed8}
                                     role="option"
                                     aria-selected={slashMenu.selected === globalIndex}
                                     className={slashMenu.selected === globalIndex ? "active" : ""}
-                                    onMouseDown={(event) => {
+                                  onMouseDown={(event) => {
                                       event.preventDefault();
                                       commitSlashCommand(globalIndex);
                                     }}
                                   >
-                                    {command.label}
+                                    <span className="slash-item-icon" aria-hidden="true">
+                                      {command.icon ?? (
+                                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                          <circle cx="7" cy="7" r="2" fill="currentColor" opacity="0.35" />
+                                        </svg>
+                                      )}
+                                    </span>
+                                    <span>{command.label}</span>
                                   </button>
                                 );
                               })}
@@ -16492,13 +16730,18 @@ a{color:#1d4ed8}
                   <header className="drawer-panel-header">
                     <h4>AI Copilot</h4>
                     <button type="button" className="drawer-close" aria-label="Close AI panel" onClick={() => setAiPanelOpen(false)}>
-                      x
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                        <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                      </svg>
                     </button>
                   </header>
                   <div className="ai-body">
                     <div className="ai-toolbar">
-                      <button type="button" onClick={() => setAiShowSettings((previous) => !previous)}>
-                        {aiShowSettings ? "Hide settings" : "Settings"}
+                      <button type="button" title="Settings (cmd+,)" aria-label="Settings" onClick={() => openSettings("ai")}>
+                        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                          <circle cx="7.5" cy="7.5" r="2" stroke="currentColor" strokeWidth="1.4"/>
+                          <path d="M7.5 1v1.5M7.5 12.5V14M14 7.5h-1.5M2.5 7.5H1M12.1 2.9l-1.06 1.06M3.96 11.04l-1.06 1.06M12.1 12.1l-1.06-1.06M3.96 3.96L2.9 2.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                        </svg>
                       </button>
                       <button type="button" onClick={insertAiTranscriptIntoNote}>
                         Insert chat
@@ -16507,366 +16750,6 @@ a{color:#1d4ed8}
                         Clear chat
                       </button>
                     </div>
-                    {aiShowSettings ? (
-                      <section className="ai-settings">
-                        <label>
-                          <span>Provider</span>
-                          <div className="ai-provider-row">
-                            <select
-                              value={aiSettings.provider}
-                              onChange={(event) => applyAiProvider(event.target.value as AiProvider)}
-                            >
-                              {aiProviders.map((provider) => (
-                                <option key={provider} value={provider}>
-                                  {aiProviderLabel(provider)}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const defaults = aiProviderDefaults(aiSettings.provider);
-                                setAiSettings((previous) => ({
-                                  ...previous,
-                                  baseUrl: defaults.baseUrl,
-                                  model: defaults.model
-                                }));
-                                setAiModels([]);
-                                setAiConnectionState(null);
-                              }}
-                            >
-                              Reset
-                            </button>
-                          </div>
-                          <small>{aiProviderHint(aiSettings.provider)}</small>
-                        </label>
-                        <label>
-                          <span>Base URL</span>
-                          <input
-                            value={aiSettings.baseUrl}
-                            placeholder={currentAiProviderDefaults.baseUrl}
-                            onChange={(event) => {
-                              setAiSettings({ ...aiSettings, baseUrl: event.target.value });
-                              setAiConnectionState(null);
-                            }}
-                          />
-                        </label>
-                        <label>
-                          <span>Model</span>
-                          <input
-                            list={aiModels.length ? "ai-model-options" : undefined}
-                            value={aiSettings.model}
-                            placeholder={currentAiProviderDefaults.model}
-                            onChange={(event) => {
-                              setAiSettings({ ...aiSettings, model: event.target.value });
-                              setAiConnectionState(null);
-                            }}
-                          />
-                          {aiModels.length ? (
-                            <datalist id="ai-model-options">
-                              {aiModels.map((model) => (
-                                <option key={model} value={model} />
-                              ))}
-                            </datalist>
-                          ) : null}
-                        </label>
-                        <label>
-                          <span>API key {aiKeyOptional ? "(optional)" : ""}</span>
-                          <input
-                            type="password"
-                            value={aiSettings.apiKey}
-                            placeholder={currentAiProviderDefaults.apiKeyPlaceholder}
-                            onChange={(event) => {
-                              setAiSettings({ ...aiSettings, apiKey: event.target.value });
-                              setAiConnectionState(null);
-                            }}
-                          />
-                        </label>
-                        <div className="ai-settings-actions">
-                          <button
-                            type="button"
-                            onClick={() => void testAiConnection()}
-                            disabled={aiBusy || aiConnectionBusy || aiModelFetchBusy}
-                          >
-                            {aiConnectionBusy ? "Testing..." : "Test connection"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void fetchAiModels()}
-                            disabled={aiBusy || aiConnectionBusy || aiModelFetchBusy}
-                          >
-                            {aiModelFetchBusy ? "Fetching..." : "Fetch models"}
-                          </button>
-                        </div>
-                        {aiConnectionState ? (
-                          <p className={`ai-connection ${aiConnectionState.tone}`}>{aiConnectionState.message}</p>
-                        ) : null}
-                        <div className="vault-backup-settings">
-                          <div className="vault-backup-head">
-                            <strong>Git backup</strong>
-                            <button
-                              type="button"
-                              onClick={() => void toggleGitBackups()}
-                              disabled={gitBackupBusy}
-                            >
-                              {gitBackupStatus?.enabled ?? true ? "Disable" : "Enable"}
-                            </button>
-                          </div>
-                          <div className="vault-backup-actions">
-                            <button type="button" onClick={() => void runGitBackupNow()} disabled={gitBackupBusy}>
-                              {gitBackupBusy ? "Running..." : "Backup now"}
-                            </button>
-                            <button type="button" onClick={() => void refreshGitBackupStatus()} disabled={gitBackupBusy}>
-                              Refresh
-                            </button>
-                          </div>
-                          <label className="vault-backup-field">
-                            <span>Commit prefix</span>
-                            <input
-                              aria-label="Commit prefix"
-                              value={gitBackupCommitPrefix}
-                              onChange={(event) => setGitBackupCommitPrefix(event.target.value)}
-                              disabled={gitBackupBusy}
-                              placeholder="Vault backup"
-                            />
-                          </label>
-                          <label className="vault-backup-field">
-                            <span>Autosave delay (seconds)</span>
-                            <input
-                              aria-label="Autosave delay (seconds)"
-                              type="number"
-                              min={1}
-                              max={120}
-                              value={gitBackupDelaySeconds}
-                              onChange={(event) => setGitBackupDelaySeconds(event.target.value)}
-                              disabled={gitBackupBusy}
-                            />
-                          </label>
-                          <label className="vault-backup-toggle">
-                            <input
-                              type="checkbox"
-                              aria-label="Auto-push backups"
-                              checked={gitBackupAutoPush}
-                              onChange={(event) => setGitBackupAutoPush(event.target.checked)}
-                              disabled={gitBackupBusy}
-                            />
-                            <span>Auto-push commits</span>
-                          </label>
-                          <label className="vault-backup-field">
-                            <span>Push remote</span>
-                            <input
-                              aria-label="Push remote"
-                              value={gitBackupPushRemote}
-                              onChange={(event) => setGitBackupPushRemote(event.target.value)}
-                              disabled={gitBackupBusy || !gitBackupAutoPush}
-                              placeholder="origin"
-                            />
-                          </label>
-                          <label className="vault-backup-field">
-                            <span>Push branch</span>
-                            <input
-                              aria-label="Push branch"
-                              value={gitBackupPushBranch}
-                              onChange={(event) => setGitBackupPushBranch(event.target.value)}
-                              disabled={gitBackupBusy || !gitBackupAutoPush}
-                              placeholder="main"
-                            />
-                          </label>
-                          <button type="button" onClick={() => void saveGitBackupSettings()} disabled={gitBackupBusy}>
-                            Save backup settings
-                          </button>
-                          <p className={`vault-backup-status ${gitBackupStatus?.lastError ? "error" : ""}`}>
-                            {describeGitBackup(gitBackupStatus)}
-                          </p>
-                        </div>
-                        <div className="theme-override-settings">
-                          <div className="theme-override-head">
-                            <strong>Theme overrides</strong>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setThemeOverrides({});
-                                setToastMessage("Theme overrides reset");
-                              }}
-                            >
-                              Reset
-                            </button>
-                          </div>
-                          <label className="theme-override-field">
-                            <span>Primary color</span>
-                            <input
-                              aria-label="Primary color"
-                              type="color"
-                              value={themeOverrides.primary ?? themePreviewDefaults[themeId].primary}
-                              onChange={(event) =>
-                                setThemeOverrides((previous) => ({
-                                  ...previous,
-                                  primary: event.target.value
-                                }))
-                              }
-                            />
-                          </label>
-                          <label className="theme-override-field">
-                            <span>Panel color</span>
-                            <input
-                              aria-label="Panel color"
-                              type="color"
-                              value={themeOverrides.bgPanel ?? themePreviewDefaults[themeId].bgPanel}
-                              onChange={(event) =>
-                                setThemeOverrides((previous) => ({
-                                  ...previous,
-                                  bgPanel: event.target.value
-                                }))
-                              }
-                            />
-                          </label>
-                          <label className="theme-override-field">
-                            <span>Sidebar color</span>
-                            <input
-                              aria-label="Sidebar color"
-                              type="color"
-                              value={themeOverrides.bgSidebar ?? themePreviewDefaults[themeId].bgSidebar}
-                              onChange={(event) =>
-                                setThemeOverrides((previous) => ({
-                                  ...previous,
-                                  bgSidebar: event.target.value
-                                }))
-                              }
-                            />
-                          </label>
-                          <label className="theme-override-field">
-                            <span>Text color</span>
-                            <input
-                              aria-label="Text color"
-                              type="color"
-                              value={themeOverrides.text ?? themePreviewDefaults[themeId].text}
-                              onChange={(event) =>
-                                setThemeOverrides((previous) => ({
-                                  ...previous,
-                                  text: event.target.value
-                                }))
-                              }
-                            />
-                          </label>
-                          <label className="theme-override-field">
-                            <span>UI font stack</span>
-                            <input
-                              aria-label="UI font stack"
-                              value={themeOverrides.fontUi ?? defaultUiFontStack}
-                              onChange={(event) =>
-                                setThemeOverrides((previous) => ({
-                                  ...previous,
-                                  fontUi: event.target.value
-                                }))
-                              }
-                            />
-                          </label>
-                          <label className="theme-override-field">
-                            <span>Theme editor font stack</span>
-                            <input
-                              aria-label="Theme editor font stack"
-                              value={themeOverrides.fontEditor ?? defaultEditorFontStack}
-                              onChange={(event) =>
-                                setThemeOverrides((previous) => ({
-                                  ...previous,
-                                  fontEditor: event.target.value
-                                }))
-                              }
-                            />
-                          </label>
-                          <label className="theme-override-field">
-                            <span>Panel gap</span>
-                            <input
-                              aria-label="Panel gap"
-                              type="number"
-                              min={4}
-                              max={24}
-                              value={themeOverrides.panelGap ?? defaultThemeSpacing.panelGap}
-                              onChange={(event) =>
-                                setThemeOverrides((previous) => ({
-                                  ...previous,
-                                  panelGap: clampThemePanelGap(Number.parseInt(event.target.value || "8", 10))
-                                }))
-                              }
-                            />
-                          </label>
-                          <label className="theme-override-field">
-                            <span>Panel radius</span>
-                            <input
-                              aria-label="Panel radius"
-                              type="number"
-                              min={4}
-                              max={24}
-                              value={themeOverrides.panelRadius ?? defaultThemeSpacing.panelRadius}
-                              onChange={(event) =>
-                                setThemeOverrides((previous) => ({
-                                  ...previous,
-                                  panelRadius: clampThemePanelRadius(Number.parseInt(event.target.value || "10", 10))
-                                }))
-                              }
-                            />
-                          </label>
-                        </div>
-                        <label>
-                          <span>Temperature</span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={1.5}
-                            step={0.1}
-                            value={aiSettings.temperature}
-                            onChange={(event) =>
-                              setAiSettings({
-                                ...aiSettings,
-                                temperature: Number.parseFloat(event.target.value) || 0
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          <span>Related notes</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={8}
-                            value={aiSettings.relatedCount}
-                            onChange={(event) =>
-                              setAiSettings({
-                                ...aiSettings,
-                                relatedCount: Math.max(1, Math.min(8, Number.parseInt(event.target.value || "1", 10)))
-                              })
-                            }
-                          />
-                        </label>
-                        <label className="ai-toggle">
-                          <input
-                            type="checkbox"
-                            checked={aiSettings.includeActiveNote}
-                            onChange={(event) =>
-                              setAiSettings({ ...aiSettings, includeActiveNote: event.target.checked })
-                            }
-                          />
-                          Include active note
-                        </label>
-                        <label className="ai-toggle">
-                          <input
-                            type="checkbox"
-                            checked={aiSettings.includeRelatedNotes}
-                            onChange={(event) =>
-                              setAiSettings({ ...aiSettings, includeRelatedNotes: event.target.checked })
-                            }
-                          />
-                          Include related notes
-                        </label>
-                        <label>
-                          <span>System prompt</span>
-                          <textarea
-                            value={aiSettings.systemPrompt}
-                            onChange={(event) => setAiSettings({ ...aiSettings, systemPrompt: event.target.value })}
-                          />
-                        </label>
-                      </section>
-                    ) : null}
                     <div className="ai-chat-log">
                       {aiMessages.length ? (
                         aiMessages.map((message) => (
@@ -16928,7 +16811,9 @@ a{color:#1d4ed8}
                       aria-label="Close note info panel"
                       onClick={() => setMetadataOpen(false)}
                     >
-                      x
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                        <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                      </svg>
                     </button>
                   </header>
                   <section className="metadata-group">
@@ -20029,6 +19914,700 @@ a{color:#1d4ed8}
               </button>
               <button type="button" className="primary" onClick={confirmStackAssignment}>
                 Save
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+
+      {settingsOpen ? (
+        <div className="overlay" onClick={closeSettings}>
+          <section
+            className="settings-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Settings"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button type="button" className="settings-close" aria-label="Close settings" onClick={closeSettings}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+              </svg>
+            </button>
+            <nav className="settings-nav" aria-label="Settings sections">
+              <button type="button" className={settingsTab === "general" ? "active" : ""} onClick={() => setSettingsTab("general")}>General</button>
+              <button type="button" className={settingsTab === "editor" ? "active" : ""} onClick={() => setSettingsTab("editor")}>Editor</button>
+              <button type="button" className={settingsTab === "appearance" ? "active" : ""} onClick={() => setSettingsTab("appearance")}>Appearance</button>
+              <button type="button" className={settingsTab === "shortcuts" ? "active" : ""} onClick={() => setSettingsTab("shortcuts")}>Shortcuts</button>
+              <button type="button" className={settingsTab === "ai" ? "active" : ""} onClick={() => setSettingsTab("ai")}>AI</button>
+              <button type="button" className={settingsTab === "backup" ? "active" : ""} onClick={() => setSettingsTab("backup")}>Backup</button>
+            </nav>
+            <div className="settings-body">
+              <div className="settings-header">
+                <h2>Settings</h2>
+                <p>Adjust workspace behavior, editor defaults, appearance, AI, and backup settings.</p>
+              </div>
+
+              {settingsTab === "general" ? (
+                <>
+                  <section className="settings-section">
+                    <h3>Workspace</h3>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-vault-path">Vault path</label>
+                        <small>Current vault location used by the desktop app.</small>
+                      </div>
+                      <input id="settings-vault-path" value={vaultPath} readOnly />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-vault-mode">Vault mode</label>
+                        <small>The current runtime storage mode for this build.</small>
+                      </div>
+                      <input id="settings-vault-mode" value={currentVaultModeLabel} readOnly />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-note-density">Note density</label>
+                        <small>Control note list spacing.</small>
+                      </div>
+                      <select
+                        id="settings-note-density"
+                        aria-label="Note density"
+                        value={noteDensity}
+                        onChange={(event) => applyDensity(event.target.value === "compact" ? "compact" : "comfortable")}
+                      >
+                        <option value="comfortable">Comfortable</option>
+                        <option value="compact">Compact</option>
+                      </select>
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-note-grouping">Grouping</label>
+                        <small>Choose how note lists are grouped.</small>
+                      </div>
+                      <select
+                        id="settings-note-grouping"
+                        aria-label="Grouping"
+                        value={noteGroupMode}
+                        onChange={(event) => applyGrouping(event.target.value as NoteGroupMode)}
+                      >
+                        <option value="none">Off</option>
+                        <option value="updated-date">Updated date</option>
+                        <option value="notebook">Notebook</option>
+                        <option value="tag">Tag</option>
+                      </select>
+                    </div>
+                  </section>
+                </>
+              ) : null}
+
+              {settingsTab === "editor" ? (
+                <>
+                  <section className="settings-section">
+                    <h3>Writing</h3>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-editor-font">Editor font</label>
+                        <small>Applies to note content only.</small>
+                      </div>
+                      <select
+                        id="settings-editor-font"
+                        aria-label="Editor font"
+                        value={editorFontFamily}
+                        onChange={(event) => applyEditorFontFamily(event.target.value as EditorFontFamilyId)}
+                      >
+                        {editorFontFamilies.map((font) => (
+                          <option key={font.id} value={font.id}>
+                            {font.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-editor-size">Editor size</label>
+                        <small>Sets the default writing size.</small>
+                      </div>
+                      <select
+                        id="settings-editor-size"
+                        aria-label="Editor size"
+                        value={String(editorFontSize)}
+                        onChange={(event) => applyEditorFontSize(Number.parseInt(event.target.value, 10))}
+                      >
+                        {editorFontSizes.map((size) => (
+                          <option key={size} value={size}>
+                            {size}px
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="settings-row settings-row-stack">
+                      <div className="settings-copy">
+                        <label>Default editor mode</label>
+                        <small>Choose which editor opens by default.</small>
+                      </div>
+                      <div className="settings-choice-group" role="group" aria-label="Default editor mode">
+                        <button
+                          type="button"
+                          className={defaultEditorMode === "markdown" ? "active" : ""}
+                          onClick={() => applyDefaultEditorMode("markdown")}
+                        >
+                          Markdown
+                        </button>
+                        <button
+                          type="button"
+                          className={defaultEditorMode === "rich" ? "active" : ""}
+                          onClick={() => applyDefaultEditorMode("rich")}
+                        >
+                          Rich text
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                </>
+              ) : null}
+
+              {settingsTab === "appearance" ? (
+                <>
+                  <section className="settings-section">
+                    <h3>Theme</h3>
+                    <div className="theme-swatch-grid">
+                      {themeSwatches.map((swatch) => (
+                        <button
+                          key={swatch.id}
+                          type="button"
+                          className={themeId === swatch.id ? "theme-swatch active" : "theme-swatch"}
+                          onClick={() => setTheme(swatch.id)}
+                          aria-label={`Use ${swatch.label} theme`}
+                        >
+                          <span className="theme-swatch-preview" style={{ background: swatch.shell }}>
+                            <span className="theme-swatch-sidebar" style={{ background: swatch.panel }} />
+                            <span className="theme-swatch-panel" style={{ background: swatch.panel }}>
+                              <span className="theme-swatch-accent" style={{ background: swatch.accent }} />
+                            </span>
+                          </span>
+                          <span className="theme-swatch-label">{swatch.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                  <section className="settings-section">
+                    <h3>Layout</h3>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-panel-gap">Panel gap</label>
+                        <small>Controls spacing between chrome surfaces.</small>
+                      </div>
+                      <div className="settings-range-wrap">
+                        <input
+                          id="settings-panel-gap"
+                          aria-label="Panel gap"
+                          type="range"
+                          min="4"
+                          max="24"
+                          step="1"
+                          value={safePanelGap}
+                          onChange={(event) =>
+                            setThemeOverrides((previous) =>
+                              sanitizeThemeOverrides({
+                                ...previous,
+                                panelGap: Number.parseInt(event.target.value, 10)
+                              })
+                            )
+                          }
+                        />
+                        <span>{safePanelGap}px</span>
+                      </div>
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-panel-radius">Panel radius</label>
+                        <small>Controls surface corner radius.</small>
+                      </div>
+                      <div className="settings-range-wrap">
+                        <input
+                          id="settings-panel-radius"
+                          aria-label="Panel radius"
+                          type="range"
+                          min="4"
+                          max="24"
+                          step="1"
+                          value={safePanelRadius}
+                          onChange={(event) =>
+                            setThemeOverrides((previous) =>
+                              sanitizeThemeOverrides({
+                                ...previous,
+                                panelRadius: Number.parseInt(event.target.value, 10)
+                              })
+                            )
+                          }
+                        />
+                        <span>{safePanelRadius}px</span>
+                      </div>
+                    </div>
+                  </section>
+                  <section className="settings-section">
+                    <h3>Overrides</h3>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-primary-color">Primary color</label>
+                        <small>Override the accent color for the active theme.</small>
+                      </div>
+                      <input
+                        id="settings-primary-color"
+                        aria-label="Primary color"
+                        type="color"
+                        value={themeOverrides.primary ?? (themeId === "dark" ? "#4f9cf7" : "#2563eb")}
+                        onChange={(event) =>
+                          setThemeOverrides((previous) => sanitizeThemeOverrides({ ...previous, primary: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-bg-panel">Panel background</label>
+                        <small>Override panel surfaces.</small>
+                      </div>
+                      <input
+                        id="settings-bg-panel"
+                        aria-label="Panel background"
+                        type="color"
+                        value={themeOverrides.bgPanel ?? (themeId === "dark" ? "#2c2c2e" : "#ffffff")}
+                        onChange={(event) =>
+                          setThemeOverrides((previous) => sanitizeThemeOverrides({ ...previous, bgPanel: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-bg-sidebar">Sidebar background</label>
+                        <small>Override sidebar surfaces.</small>
+                      </div>
+                      <input
+                        id="settings-bg-sidebar"
+                        aria-label="Sidebar background"
+                        type="color"
+                        value={themeOverrides.bgSidebar ?? (themeId === "dark" ? "#242426" : "#f2f7ff")}
+                        onChange={(event) =>
+                          setThemeOverrides((previous) => sanitizeThemeOverrides({ ...previous, bgSidebar: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-text-color">Text color</label>
+                        <small>Override base chrome text.</small>
+                      </div>
+                      <input
+                        id="settings-text-color"
+                        aria-label="Text color"
+                        type="color"
+                        value={themeOverrides.text ?? (themeId === "dark" ? "#f2f2f7" : "#1f2937")}
+                        onChange={(event) =>
+                          setThemeOverrides((previous) => sanitizeThemeOverrides({ ...previous, text: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-font-ui">UI font stack</label>
+                        <small>Advanced override for app chrome.</small>
+                      </div>
+                      <input
+                        id="settings-font-ui"
+                        aria-label="UI font stack"
+                        value={themeOverrides.fontUi ?? ""}
+                        placeholder="system-ui, -apple-system, 'Segoe UI', sans-serif"
+                        onChange={(event) =>
+                          setThemeOverrides((previous) => sanitizeThemeOverrides({ ...previous, fontUi: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-font-editor-override">Theme editor font stack</label>
+                        <small>Advanced override for editor font stack.</small>
+                      </div>
+                      <input
+                        id="settings-font-editor-override"
+                        aria-label="Theme editor font stack"
+                        value={themeOverrides.fontEditor ?? ""}
+                        placeholder='"Palatino Linotype", Palatino, Georgia, serif'
+                        onChange={(event) =>
+                          setThemeOverrides((previous) => sanitizeThemeOverrides({ ...previous, fontEditor: event.target.value }))
+                        }
+                      />
+                    </div>
+                  </section>
+                </>
+              ) : null}
+
+              {settingsTab === "shortcuts" ? (
+                <section className="settings-section">
+                  <h3>Keyboard shortcuts</h3>
+                  <table className="shortcuts-table">
+                    <thead>
+                      <tr>
+                        <th>Shortcut</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shortcutReferenceRows.map((row) => (
+                        <tr key={`${row.shortcut}-${row.action}`}>
+                          <td><kbd>{row.shortcut}</kbd></td>
+                          <td>{row.action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </section>
+              ) : null}
+
+              {settingsTab === "ai" ? (
+                <>
+                  <section className="settings-section">
+                    <h3>Provider</h3>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-ai-provider">Provider</label>
+                        <small>{aiProviderHint(aiSettings.provider)}</small>
+                      </div>
+                      <select
+                        id="settings-ai-provider"
+                        aria-label="Provider"
+                        value={aiSettings.provider}
+                        onChange={(event) => applyAiProvider(event.target.value as AiProvider)}
+                      >
+                        {aiProviders.map((provider) => (
+                          <option key={provider} value={provider}>
+                            {aiProviderLabel(provider)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-ai-base-url">Base URL</label>
+                        <small>Endpoint root for the selected provider.</small>
+                      </div>
+                      <input
+                        id="settings-ai-base-url"
+                        aria-label="Base URL"
+                        value={aiSettings.baseUrl}
+                        onChange={(event) => setAiSettings((previous) => ({ ...previous, baseUrl: event.target.value }))}
+                      />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-ai-model">Model</label>
+                        <small>{aiModels.length ? `${aiModels.length} discovered models` : "Enter a model name or fetch available models."}</small>
+                      </div>
+                      <input
+                        id="settings-ai-model"
+                        aria-label="Model"
+                        list="settings-ai-models"
+                        value={aiSettings.model}
+                        onChange={(event) => setAiSettings((previous) => ({ ...previous, model: event.target.value }))}
+                      />
+                    </div>
+                    <datalist id="settings-ai-models">
+                      {aiModels.map((model) => (
+                        <option key={model} value={model} />
+                      ))}
+                    </datalist>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-ai-key">API key</label>
+                        <small>{currentAiProviderDefaults.apiKeyPlaceholder}</small>
+                      </div>
+                      <input
+                        id="settings-ai-key"
+                        aria-label="API key"
+                        type="password"
+                        value={aiSettings.apiKey}
+                        placeholder={currentAiProviderDefaults.apiKeyPlaceholder}
+                        onChange={(event) => setAiSettings((previous) => ({ ...previous, apiKey: event.target.value }))}
+                      />
+                    </div>
+                    <div className="settings-actions-row">
+                      <button type="button" onClick={() => void testAiConnection()} disabled={aiConnectionBusy || aiBusy || aiModelFetchBusy}>
+                        {aiConnectionBusy ? "Testing..." : "Test connection"}
+                      </button>
+                      <button type="button" onClick={() => void fetchAiModels()} disabled={aiModelFetchBusy || aiBusy || aiConnectionBusy}>
+                        {aiModelFetchBusy ? "Loading..." : "Fetch models"}
+                      </button>
+                    </div>
+                    {aiConnectionState ? (
+                      <p className={`settings-status ${aiConnectionState.tone}`}>{aiConnectionState.message}</p>
+                    ) : null}
+                  </section>
+                  <section className="settings-section">
+                    <h3>Context</h3>
+                    <div className="settings-row settings-row-stack">
+                      <div className="settings-copy">
+                        <label>Context sources</label>
+                        <small>Choose what the AI can include when answering.</small>
+                      </div>
+                      <div className="settings-checkbox-stack">
+                        <label className="settings-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={aiSettings.includeActiveNote}
+                            onChange={(event) => setAiSettings((previous) => ({ ...previous, includeActiveNote: event.target.checked }))}
+                          />
+                          <span>Include active note</span>
+                        </label>
+                        <label className="settings-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={aiSettings.includeRelatedNotes}
+                            onChange={(event) => setAiSettings((previous) => ({ ...previous, includeRelatedNotes: event.target.checked }))}
+                          />
+                          <span>Include related notes</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-related-count">Related notes</label>
+                        <small>Maximum number of related notes to include.</small>
+                      </div>
+                      <input
+                        id="settings-related-count"
+                        aria-label="Related notes"
+                        type="number"
+                        min="1"
+                        max="8"
+                        value={String(aiSettings.relatedCount)}
+                        onChange={(event) =>
+                          setAiSettings((previous) => ({
+                            ...previous,
+                            relatedCount: Math.max(1, Math.min(8, Number.parseInt(event.target.value || "1", 10) || 1))
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-ai-temperature">Temperature</label>
+                        <small>Higher values make responses less deterministic.</small>
+                      </div>
+                      <div className="settings-range-wrap">
+                        <input
+                          id="settings-ai-temperature"
+                          aria-label="Temperature"
+                          type="range"
+                          min="0"
+                          max="1.5"
+                          step="0.1"
+                          value={String(aiSettings.temperature)}
+                          onChange={(event) =>
+                            setAiSettings((previous) => ({ ...previous, temperature: Number.parseFloat(event.target.value) || 0 }))
+                          }
+                        />
+                        <span>{aiSettings.temperature.toFixed(1)}</span>
+                      </div>
+                    </div>
+                    <div className="settings-row settings-row-stack">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-system-prompt">System prompt</label>
+                        <small>Persistent instruction used for every AI request.</small>
+                      </div>
+                      <textarea
+                        id="settings-system-prompt"
+                        aria-label="System prompt"
+                        value={aiSettings.systemPrompt}
+                        onChange={(event) => setAiSettings((previous) => ({ ...previous, systemPrompt: event.target.value }))}
+                      />
+                    </div>
+                  </section>
+                </>
+              ) : null}
+
+              {settingsTab === "backup" ? (
+                <>
+                  <section className="settings-section">
+                    <h3>Git backup</h3>
+                    <div className="settings-row settings-row-stack">
+                      <div className="settings-copy">
+                        <label>Backup status</label>
+                        <small>Desktop builds can auto-commit vault changes to Git.</small>
+                      </div>
+                      <div className="settings-status-block">
+                        <span className={gitBackupStatus?.enabled ? "settings-status success" : "settings-status"}>
+                          {gitBackupStatus?.enabled ? "Enabled" : "Disabled"}
+                        </span>
+                        <small>
+                          {gitBackupAvailable
+                            ? gitBackupStatus?.lastCommitHash
+                              ? `Last commit ${gitBackupStatus.lastCommitHash}`
+                              : "No backup commits yet"
+                            : "Git is unavailable in this environment"}
+                        </small>
+                        {gitBackupStatus?.lastError ? <small>{gitBackupStatus.lastError}</small> : null}
+                      </div>
+                    </div>
+                    <div className="settings-actions-row">
+                      <button type="button" onClick={() => void toggleGitBackups()} disabled={gitBackupBusy || !gitBackupAvailable}>
+                        {gitBackupStatus?.enabled ? "Disable backups" : "Enable backups"}
+                      </button>
+                      <button type="button" onClick={() => void runGitBackupNow()} disabled={gitBackupBusy || !gitBackupAvailable}>
+                        {gitBackupBusy ? "Backing up..." : "Backup now"}
+                      </button>
+                    </div>
+                  </section>
+                  <section className="settings-section">
+                    <h3>Backup settings</h3>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-backup-prefix">Commit prefix</label>
+                        <small>Prefix used for automatic commit messages.</small>
+                      </div>
+                      <input
+                        id="settings-backup-prefix"
+                        aria-label="Commit prefix"
+                        value={gitBackupCommitPrefix}
+                        onChange={(event) => setGitBackupCommitPrefix(event.target.value)}
+                      />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-backup-delay">Autosave delay (seconds)</label>
+                        <small>Delay before auto-saving a Git backup.</small>
+                      </div>
+                      <input
+                        id="settings-backup-delay"
+                        aria-label="Autosave delay (seconds)"
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={gitBackupDelaySeconds}
+                        onChange={(event) => setGitBackupDelaySeconds(event.target.value)}
+                      />
+                    </div>
+                    <div className="settings-row settings-row-stack">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-backup-autopush">Auto-push backups</label>
+                        <small>Push commits to the configured remote after each backup.</small>
+                      </div>
+                      <label className="settings-checkbox">
+                        <input
+                          id="settings-backup-autopush"
+                          aria-label="Auto-push backups"
+                          type="checkbox"
+                          checked={gitBackupAutoPush}
+                          onChange={(event) => setGitBackupAutoPush(event.target.checked)}
+                        />
+                        <span>Enable auto-push</span>
+                      </label>
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-backup-remote">Push remote</label>
+                        <small>Remote name used when auto-push is enabled.</small>
+                      </div>
+                      <input
+                        id="settings-backup-remote"
+                        aria-label="Push remote"
+                        value={gitBackupPushRemote}
+                        onChange={(event) => setGitBackupPushRemote(event.target.value)}
+                      />
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label htmlFor="settings-backup-branch">Push branch</label>
+                        <small>Branch name used when auto-push is enabled.</small>
+                      </div>
+                      <input
+                        id="settings-backup-branch"
+                        aria-label="Push branch"
+                        value={gitBackupPushBranch}
+                        onChange={(event) => setGitBackupPushBranch(event.target.value)}
+                      />
+                    </div>
+                    <div className="settings-actions-row">
+                      <button type="button" onClick={() => void saveGitBackupSettings()} disabled={gitBackupBusy || !gitBackupAvailable}>
+                        Save backup settings
+                      </button>
+                    </div>
+                    {!Number.isNaN(gitBackupDelayValue) && (gitBackupDelayValue < 1 || gitBackupDelayValue > 120) ? (
+                      <p className="settings-status error">Autosave delay must be between 1 and 120 seconds.</p>
+                    ) : null}
+                  </section>
+                </>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {shortcutsHelpOpen ? (
+        <div className="overlay" onClick={() => setShortcutsHelpOpen(false)}>
+          <section
+            className="rename-modal shortcuts-help-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Keyboard shortcuts"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3>Keyboard shortcuts</h3>
+            <table className="shortcuts-table">
+              <thead>
+                <tr>
+                  <th>Shortcut</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shortcutReferenceRows.map((row) => (
+                  <tr key={`help-${row.shortcut}-${row.action}`}>
+                    <td><kbd>{row.shortcut}</kbd></td>
+                    <td>{row.action}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <footer>
+              <button type="button" onClick={() => setShortcutsHelpOpen(false)}>
+                Close
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {showWelcome ? (
+        <div className="overlay" onClick={dismissWelcome}>
+          <section
+            className="rename-modal welcome-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Welcome to PKM OpenSource"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3>Welcome to PKM OpenSource</h3>
+            <div className="welcome-body">
+              <p>Start with a simple vault, a searchable note list, and a distraction-free editor.</p>
+              <ul>
+                <li>Create notes and notebooks from the sidebar.</li>
+                <li>Use <kbd>cmd+k</kbd> for search and <kbd>cmd+/</kbd> for shortcut help.</li>
+                <li>Open Settings to configure appearance, AI providers, and backups.</li>
+              </ul>
+            </div>
+            <footer>
+              <button type="button" onClick={dismissWelcome}>Skip</button>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => {
+                  dismissWelcome();
+                  openSettings("general");
+                }}
+              >
+                Get started
               </button>
             </footer>
           </section>

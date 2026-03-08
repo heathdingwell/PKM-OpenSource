@@ -3547,6 +3547,7 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
 
     fireEvent.change(screen.getByLabelText("Primary color"), { target: { value: "#0f766e" } });
     fireEvent.change(screen.getByLabelText("UI font stack"), { target: { value: "Georgia, serif" } });
@@ -4644,7 +4645,8 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    await waitFor(() => expect(screen.getByDisplayValue("Ollama (Local)")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument());
+    expect(screen.getByDisplayValue("Ollama (Local)")).toBeInTheDocument();
   });
 
   it("opens AI settings from command palette", async () => {
@@ -4656,8 +4658,8 @@ describe("App", () => {
     });
     fireEvent.click(screen.getByText("Open AI settings"));
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "Hide settings" })).toBeInTheDocument());
-    expect(screen.getByText("Provider")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument());
+    expect(screen.getByLabelText("Provider")).toBeInTheDocument();
   });
 
   it("toggles AI pane from command palette", () => {
@@ -10142,6 +10144,7 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Backup" }));
 
     const prefixInput = await screen.findByLabelText("Commit prefix");
     fireEvent.change(prefixInput, { target: { value: "Snapshots" } });

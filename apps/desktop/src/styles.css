@@ -4112,6 +4112,574 @@ body.is-resizing .pane-resizer::after {
   color: #888;
 }
 
+
+.note-grid-empty-icon {
+  color: var(--primary);
+  opacity: 0.85;
+}
+
+.note-grid-empty strong {
+  color: var(--text);
+}
+
+.notebook-item-inner {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.notebook-item-icon {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.notebook-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slash-item-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.slash-group button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slash-group button.active .slash-item-icon,
+.slash-group button:hover .slash-item-icon {
+  color: currentColor;
+}
+
+.focus-exit-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  z-index: 6;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.focus-exit-btn:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.app-shell.focus-mode .editor-shell {
+  position: relative;
+  max-width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.app-shell.focus-mode .editor-main {
+  max-width: 920px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.save-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 74px;
+  justify-content: center;
+  border: 1px solid transparent;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.save-pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.72;
+}
+
+.save-pill.saved {
+  border-color: transparent;
+}
+
+.save-pill.dirty {
+  color: var(--primary);
+  background: var(--bg-active);
+  border-color: var(--border-strong);
+}
+
+.save-pill.saving {
+  border-color: var(--input-border);
+}
+
+.save-pill.saving::before {
+  animation: save-pulse 800ms ease-in-out infinite;
+}
+
+@keyframes save-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.overlay {
+  animation: overlay-in 160ms ease;
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.move-modal,
+.rename-modal,
+.info-modal,
+.template-modal,
+.history-modal,
+.tasks-modal,
+.files-modal,
+.calendar-modal {
+  animation: modal-enter 160ms ease;
+}
+
+.settings-modal {
+  position: relative;
+  display: grid;
+  grid-template-columns: 172px minmax(0, 1fr);
+  width: min(760px, 96vw);
+  height: min(620px, 92vh);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  background: var(--bg-panel);
+  overflow: hidden;
+  animation: modal-enter 160ms ease;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 10px;
+  border-right: 1px solid var(--border);
+  background: var(--bg-shell);
+}
+
+.settings-nav button {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  text-align: left;
+  background: transparent;
+  font: 500 13px/1 var(--font-ui);
+}
+
+.settings-nav button:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.settings-nav button.active {
+  background: var(--bg-active);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.settings-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-section {
+  margin-bottom: 8px;
+}
+
+.settings-section h3 {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 40px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-row-stack {
+  align-items: flex-start;
+}
+
+.settings-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.settings-copy label {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.settings-copy small,
+.settings-status-block small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.settings-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.settings-close:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.settings-body input:not([type="checkbox"]):not([type="range"]),
+.settings-body select,
+.settings-body textarea {
+  width: min(320px, 100%);
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--bg-input);
+}
+
+.settings-body input[type="color"] {
+  width: 56px;
+  padding: 4px;
+}
+
+.settings-body input[type="range"] {
+  width: 180px;
+}
+
+.settings-body textarea {
+  min-height: 112px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.settings-body input:focus-visible,
+.settings-body select:focus-visible,
+.settings-body textarea:focus-visible,
+.move-modal input:focus-visible,
+.move-modal select:focus-visible,
+.rename-modal input:focus-visible,
+.rename-modal select:focus-visible,
+.tag-input-wrap input:focus-visible,
+.find-note-bar input:focus-visible,
+.metadata-reminder input:focus-visible,
+.graph-filter input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  outline-offset: 1px;
+  border-color: var(--border-strong);
+}
+
+.settings-choice-group {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.settings-choice-group button,
+.settings-actions-row button {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--bg-input);
+}
+
+.settings-choice-group button.active {
+  color: var(--primary);
+  border-color: var(--border-strong);
+  background: var(--bg-active);
+}
+
+.settings-range-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-range-wrap span {
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 42px;
+  text-align: right;
+}
+
+.settings-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settings-status.success {
+  color: var(--success);
+}
+
+.settings-status.error {
+  color: var(--danger);
+}
+
+.settings-status-block {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.settings-checkbox-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.settings-checkbox input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.theme-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.theme-swatch {
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.theme-swatch.active {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.theme-swatch-preview {
+  display: grid;
+  grid-template-columns: 26% 1fr;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+}
+
+.theme-swatch-sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.theme-swatch-panel {
+  position: relative;
+  padding: 10px;
+}
+
+.theme-swatch-accent {
+  display: block;
+  width: 60%;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.theme-swatch-label {
+  display: block;
+  padding: 8px 6px 10px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.shortcuts-table th,
+.shortcuts-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 13px;
+}
+
+.shortcuts-table th {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.shortcuts-table kbd {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--bg-input);
+  font-size: 12px;
+}
+
+.shortcuts-help-modal {
+  width: min(680px, calc(100vw - 30px));
+}
+
+.shortcuts-help-modal table {
+  margin-top: 12px;
+}
+
+.welcome-modal {
+  width: min(520px, calc(100vw - 30px));
+}
+
+.welcome-body {
+  padding: 16px;
+  color: var(--text);
+}
+
+.welcome-body p {
+  margin: 0 0 10px;
+}
+
+.welcome-body ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.note-group-heading {
+  margin: 10px 2px 2px;
+  padding: 0 6px;
+}
+
+.move-modal input,
+.move-modal select,
+.rename-modal input,
+.rename-modal select,
+.task-filter-input input,
+.files-filter-input input,
+.calendar-filter-input input,
+.vault-backup-field input,
+.find-note-bar input,
+.metadata-reminder input,
+.ai-settings input,
+.ai-settings select,
+.tag-input-wrap input {
+  height: 34px;
+}
+
+@media (max-width: 900px) {
+  .settings-modal {
+    grid-template-columns: 1fr;
+    width: min(96vw, 680px);
+    height: min(88vh, 760px);
+  }
+
+  .settings-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-body input:not([type="checkbox"]):not([type="range"]),
+  .settings-body select,
+  .settings-body textarea {
+    width: 100%;
+  }
+
+  .theme-swatch-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1220px) {
   .app-shell {
     grid-template-columns: auto auto 1fr;

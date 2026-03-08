@@ -585,17 +585,71 @@ const seedNotes: SeedNote[] = [
 
 const sidePinned = ["Home", "Shortcuts", "Notes", "Reminders", "Trash", "Tasks", "Files", "Calendar", "Graph", "Templates"] as const;
 type SidebarPinnedItem = (typeof sidePinned)[number];
-const sidebarPinnedIcons: Record<SidebarPinnedItem, string> = {
-  Home: "⌂",
-  Shortcuts: "☆",
-  Notes: "☰",
-  Reminders: "⏰",
-  Trash: "⌫",
-  Tasks: "✓",
-  Files: "▣",
-  Calendar: "◫",
-  Graph: "◎",
-  Templates: "▤"
+const sidebarPinnedIcons: Record<SidebarPinnedItem, React.ReactNode> = {
+  Home: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M2 6.5L8 2l6 4.5V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M6 15v-5h4v5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  ),
+  Shortcuts: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 1.5l1.9 3.8 4.2.6-3.05 2.97.72 4.2L8 10.9l-3.77 1.98.72-4.2L2 5.9l4.2-.6L8 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
+    </svg>
+  ),
+  Notes: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M5 5.5h6M5 8h6M5 10.5h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
+  Reminders: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M8 5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  Trash: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 4h10M6 4V3h4v1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M4 4l.8 8.5a1 1 0 0 0 1 .9h4.4a1 1 0 0 0 1-.9L12 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
+  Tasks: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M5.5 8l1.75 1.75L10.5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  Files: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M9 2H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6L9 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M9 2v4h4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  ),
+  Calendar: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M2 7h12M5.5 2v2M10.5 2v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
+  Graph: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5"/>
+      <circle cx="3" cy="4" r="1.5" stroke="currentColor" strokeWidth="1.25"/>
+      <circle cx="13" cy="4" r="1.5" stroke="currentColor" strokeWidth="1.25"/>
+      <circle cx="3" cy="12" r="1.5" stroke="currentColor" strokeWidth="1.25"/>
+      <circle cx="13" cy="12" r="1.5" stroke="currentColor" strokeWidth="1.25"/>
+      <path d="M6.2 6.8L4.5 5.2M9.8 6.8l1.7-1.6M6.2 9.2L4.5 10.8M9.8 9.2l1.7 1.6" stroke="currentColor" strokeWidth="1.25"/>
+    </svg>
+  ),
+  Templates: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M2 6h12" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M7 6v8" stroke="currentColor" strokeWidth="1.5"/>
+    </svg>
+  ),
 };
 const sidebarSectionLabels: Record<SidebarSectionId, string> = {
   recent: "Recent Notes",
@@ -12784,9 +12838,17 @@ a{color:#1d4ed8}
             onClick={() => toggleSidebarSection(sectionId)}
             title={isCollapsed ? `Expand ${sidebarSectionLabels[sectionId]}` : `Collapse ${sidebarSectionLabels[sectionId]}`}
           >
-            <span className="sidebar-section-chevron" aria-hidden="true">
-              {isCollapsed ? "▸" : "▾"}
-            </span>
+            <svg
+              className="sidebar-section-chevron"
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              aria-hidden="true"
+              style={{ transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 150ms ease" }}
+            >
+              <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
             <span className="sidebar-section-title">{sidebarSectionLabels[sectionId]}</span>
           </button>
           {action}
@@ -14016,44 +14078,48 @@ a{color:#1d4ed8}
 
         <div className="sidebar-actions">
           <button type="button" className="new-note" aria-label="+ Note" onClick={createNewNote}>
-            <span className="sidebar-button-icon" aria-hidden="true">
-              +
-            </span>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+            </svg>
             <span>New Note</span>
           </button>
           <div className="sidebar-secondary-actions" role="toolbar" aria-label="Sidebar quick actions">
             <button
               type="button"
-              className="round-action"
+              className="round-action has-tooltip"
               aria-label="Create task"
               title="Task"
+              data-tooltip="Task"
               onClick={quickCreateTask}
             >
               {renderSidebarQuickActionIcon("task")}
             </button>
             <button
               type="button"
-              className="round-action"
+              className="round-action has-tooltip"
               aria-label="Open today's note"
               title="Today"
+              data-tooltip="Today"
               onClick={() => void openTodayNote()}
             >
               {renderSidebarQuickActionIcon("today")}
             </button>
             <button
               type="button"
-              className="round-action"
+              className="round-action has-tooltip"
               aria-label="New from template"
               title="Template"
+              data-tooltip="Template"
               onClick={() => openTemplateDialog(activeNote?.isTemplate ? activeNote.id : undefined)}
             >
               {renderSidebarQuickActionIcon("template")}
             </button>
             <button
               type="button"
-              className="round-action"
+              className="round-action has-tooltip"
               aria-label="Quick actions"
               title="Commands"
+              data-tooltip="Commands"
               onClick={openCommandPalette}
             >
               {renderSidebarQuickActionIcon("commands")}
@@ -14100,6 +14166,8 @@ a{color:#1d4ed8}
               key={item}
               type="button"
               aria-label={item}
+              title={item}
+              data-tooltip={item}
               className={
                 (item === "Home" &&
                   sidebarView === "notes" &&
@@ -14145,8 +14213,8 @@ a{color:#1d4ed8}
                   !filesDialogOpen &&
                   !tasksDialogOpen &&
                   !calendarDialogOpen)
-                  ? "sidebar-link active"
-                  : "sidebar-link"
+                  ? "sidebar-link has-tooltip tooltip-right active"
+                  : "sidebar-link has-tooltip tooltip-right"
               }
               onClick={() => {
                 if (item === "Home") {
@@ -14714,55 +14782,55 @@ a{color:#1d4ed8}
                   : visibleNotes.length}
             </small>
           </div>
+          {browseMode === "reminders" ? (
+            <div className="reminder-filter-chips">
+              <button
+                type="button"
+                className={reminderScopeMode === "all" ? "chip active" : "chip"}
+                onClick={() => setReminderScopeMode("all")}
+              >
+                All notes
+              </button>
+              <button
+                type="button"
+                className={reminderScopeMode === "current-note" ? "chip active" : "chip"}
+                onClick={() => setReminderScopeMode("current-note")}
+                disabled={!activeNote}
+              >
+                Current note
+              </button>
+              <button
+                type="button"
+                className={reminderDueFilter === "all" ? "chip active" : "chip"}
+                onClick={() => setReminderDueFilter("all")}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={reminderDueFilter === "overdue" ? "chip active" : "chip"}
+                onClick={() => setReminderDueFilter("overdue")}
+              >
+                Overdue
+              </button>
+              <button
+                type="button"
+                className={reminderDueFilter === "today" ? "chip active" : "chip"}
+                onClick={() => setReminderDueFilter("today")}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                className={reminderDueFilter === "upcoming" ? "chip active" : "chip"}
+                onClick={() => setReminderDueFilter("upcoming")}
+              >
+                Upcoming
+              </button>
+            </div>
+          ) : null}
           {browseMode !== "home" && browseMode !== "graph" ? (
             <div className="header-actions">
-              {browseMode === "reminders" ? (
-                <div className="reminder-filter-chips">
-                  <button
-                    type="button"
-                    className={reminderScopeMode === "all" ? "chip active" : "chip"}
-                    onClick={() => setReminderScopeMode("all")}
-                  >
-                    All notes
-                  </button>
-                  <button
-                    type="button"
-                    className={reminderScopeMode === "current-note" ? "chip active" : "chip"}
-                    onClick={() => setReminderScopeMode("current-note")}
-                    disabled={!activeNote}
-                  >
-                    Current note
-                  </button>
-                  <button
-                    type="button"
-                    className={reminderDueFilter === "all" ? "chip active" : "chip"}
-                    onClick={() => setReminderDueFilter("all")}
-                  >
-                    All
-                  </button>
-                  <button
-                    type="button"
-                    className={reminderDueFilter === "overdue" ? "chip active" : "chip"}
-                    onClick={() => setReminderDueFilter("overdue")}
-                  >
-                    Overdue
-                  </button>
-                  <button
-                    type="button"
-                    className={reminderDueFilter === "today" ? "chip active" : "chip"}
-                    onClick={() => setReminderDueFilter("today")}
-                  >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    className={reminderDueFilter === "upcoming" ? "chip active" : "chip"}
-                    onClick={() => setReminderDueFilter("upcoming")}
-                  >
-                    Upcoming
-                  </button>
-                </div>
-              ) : null}
               <button
                 type="button"
                 className={viewMode === "list" ? "active" : ""}
@@ -15408,7 +15476,7 @@ a{color:#1d4ed8}
                             <span className="note-card-actions">
                               {showQuickAction ? (
                                 <span
-                                  className="note-card-menu"
+                                  className="note-card-menu has-tooltip"
                                   role="button"
                                   tabIndex={0}
                                   aria-haspopup="menu"
@@ -15419,6 +15487,7 @@ a{color:#1d4ed8}
                                       : undefined
                                   }
                                   title="Note actions"
+                                  data-tooltip="Note actions"
                                   onClick={(event) => {
                                     event.stopPropagation();
                                     openCardMenu(note.id, event.clientX, event.clientY);
@@ -15431,7 +15500,11 @@ a{color:#1d4ed8}
                                     }
                                   }}
                                 >
-                                  ...
+                                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                                    <circle cx="3" cy="7" r="1.25" fill="currentColor"/>
+                                    <circle cx="7" cy="7" r="1.25" fill="currentColor"/>
+                                    <circle cx="11" cy="7" r="1.25" fill="currentColor"/>
+                                  </svg>
                                 </span>
                               ) : null}
                             </span>
@@ -15601,114 +15674,158 @@ a{color:#1d4ed8}
               <div className="editor-top-actions">
                 <button
                   type="button"
-                  className="topbar-icon-btn"
+                  className="topbar-icon-btn has-tooltip"
                   aria-label="Copy Link"
                   title="Copy note link"
+                  data-tooltip="Copy Link"
                   onClick={() => void copyNoteLink(activeNote.id)}
                 >
-                  <span aria-hidden="true">🔗</span>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M6.5 9.5a3.5 3.5 0 0 0 4.95 0l1.5-1.5a3.5 3.5 0 0 0-4.95-4.95L6.88 4.17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M9.5 6.5a3.5 3.5 0 0 0-4.95 0l-1.5 1.5a3.5 3.5 0 0 0 4.95 4.95l1.12-1.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
                 </button>
                 <button
                   type="button"
-                  className={metadataOpen ? "topbar-icon-btn active" : "topbar-icon-btn"}
+                  className={metadataOpen ? "topbar-icon-btn has-tooltip active" : "topbar-icon-btn has-tooltip"}
                   aria-pressed={metadataOpen}
                   aria-label="Info"
                   title="Toggle note info panel"
+                  data-tooltip="Info"
                   onClick={() => {
                     setMetadataOpen((previous) => !previous);
                     setAiPanelOpen(false);
                     setFocusMode(false);
                   }}
                 >
-                  <span aria-hidden="true">ℹ</span>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M8 7v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="8" cy="5" r="0.75" fill="currentColor"/>
+                  </svg>
                 </button>
                 <button
                   type="button"
-                  className={focusMode ? "topbar-icon-btn active" : "topbar-icon-btn"}
+                  className={focusMode ? "topbar-icon-btn has-tooltip active" : "topbar-icon-btn has-tooltip"}
                   aria-pressed={focusMode}
                   aria-label="Focus"
                   title="Toggle focus mode"
+                  data-tooltip="Focus"
                   onClick={() => setFocusMode((previous) => !previous)}
                 >
-                  <span aria-hidden="true">⛶</span>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M2.5 5.5V3a.5.5 0 0 1 .5-.5h2.5M10.5 2.5H13a.5.5 0 0 1 .5.5v2.5M13.5 10.5V13a.5.5 0 0 1-.5.5h-2.5M5.5 13.5H3a.5.5 0 0 1-.5-.5v-2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
                 </button>
                 <button
                   type="button"
-                  className={aiPanelOpen ? "topbar-icon-btn active" : "topbar-icon-btn"}
+                  className={aiPanelOpen ? "topbar-icon-btn has-tooltip active" : "topbar-icon-btn has-tooltip"}
                   aria-pressed={aiPanelOpen}
                   aria-label="AI"
                   title="Toggle AI panel"
+                  data-tooltip="AI"
                   onClick={toggleAiPanel}
                 >
-                  <span aria-hidden="true">✦</span>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M8 2.5c.4 1.5 1.5 2.6 3 3-.5.4-1.5 1.5-3 3-1.4-1.5-2.6-2.6-4.5-3 1.9-.4 3.1-1.5 4.5-3Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                    <path d="M12.5 9.5c.3.8.8 1.3 1.5 1.5-.7.2-1.2.7-1.5 1.5-.3-.8-.8-1.3-1.5-1.5.7-.2 1.2-.7 1.5-1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                  </svg>
                 </button>
                 <button
                   ref={editorMenuButtonRef}
                   type="button"
-                  className={contextMenu?.source === "editor" ? "topbar-icon-btn active" : "topbar-icon-btn"}
+                  className={contextMenu?.source === "editor" ? "topbar-icon-btn has-tooltip active" : "topbar-icon-btn has-tooltip"}
                   aria-label="More note actions"
                   aria-haspopup="menu"
                   aria-expanded={contextMenu?.source === "editor"}
                   aria-controls={contextMenu?.source === "editor" ? "note-actions-menu" : undefined}
                   title="More note actions"
+                  data-tooltip="More"
                   onClick={(event) => {
                     event.stopPropagation();
                     openEditorMenu();
                   }}
                 >
-                  <span aria-hidden="true">···</span>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <circle cx="4" cy="8" r="1.25" fill="currentColor"/>
+                    <circle cx="8" cy="8" r="1.25" fill="currentColor"/>
+                    <circle cx="12" cy="8" r="1.25" fill="currentColor"/>
+                  </svg>
                 </button>
               </div>
             </header>
 
             <div className={editorMode === "rich" ? "editor-toolbar hidden" : "editor-toolbar compact"}>
+              {/* Mode toggle group */}
               <button
                 type="button"
-                className={editorMode === "markdown" ? "active" : ""}
+                className={editorMode === "markdown" ? "has-tooltip active" : "has-tooltip"}
+                aria-label="Markdown"
                 aria-pressed={editorMode === "markdown"}
-                title="Switch to Markdown editor"
+                title="Markdown editor"
+                data-tooltip="Markdown editor"
                 onClick={() => setEditorMode("markdown")}
               >
-                Markdown
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                  <path d="M1 3.5A.5.5 0 0 1 1.5 3h12a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5v-8ZM3 6v3.5h1V7.75l1 1.25 1-1.25V9.5h1V6H6L5 7.5 4 6H3Zm5 0v1.5h-.5v1H8V10h3v-1.5h-.5V6h-1v1.5H9.5V6H8Z" fill="currentColor"/>
+                </svg>
+                <span>MD</span>
               </button>
               <button
                 type="button"
-                className={editorMode === "rich" ? "active" : ""}
+                className={editorMode === "rich" ? "has-tooltip active" : "has-tooltip"}
+                aria-label="Rich"
                 aria-pressed={editorMode === "rich"}
-                title="Switch to rich editor"
+                title="Rich text editor"
+                data-tooltip="Rich text editor"
                 onClick={() => {
                   setLiteEditMode(false);
                   setEditorMode("rich");
                   window.requestAnimationFrame(() => richEditorRef.current?.focus());
                 }}
               >
-                Rich
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                  <path d="M3 3h4.5a3 3 0 0 1 0 6H3V3Zm0 6h5.5a3 3 0 0 1 0 6H3V9Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                </svg>
+                <span>Rich</span>
               </button>
               <span className="toolbar-divider" />
+              {/* Insert + paragraph */}
               <button
                 type="button"
+                className="has-tooltip"
+                aria-label="Insert"
                 aria-haspopup="listbox"
                 aria-expanded={insertSlashMenuOpen}
                 aria-controls={insertSlashMenuOpen ? "insert-slash-menu" : undefined}
                 title="Insert block"
+                data-tooltip="Insert block"
                 onClick={(event) => {
                   event.stopPropagation();
                   openSlashMenuFromInsert();
                 }}
               >
-                Insert
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                  <path d="M7.5 2v11M2 7.5h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
               </button>
               <button
                 type="button"
-                title="Set normal text"
+                className="has-tooltip"
+                title="Normal text (paragraph)"
+                data-tooltip="Normal text"
                 onClick={() => {
                   if (editorMode === "rich") {
                     richEditorRef.current?.setParagraph();
                   }
                 }}
               >
-                Aa
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                  <path d="M3 3h5.5a3.5 3.5 0 0 1 0 7H6v2H4.5v-2H3V3Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                </svg>
               </button>
+              <span className="toolbar-divider" />
+              {/* Font selects */}
               <select
                 aria-label="Editor font family"
                 value={editorFontFamily}
@@ -15741,39 +15858,63 @@ a{color:#1d4ed8}
                   </option>
                 ))}
               </select>
-              <button type="button" aria-label="Bold" title="Bold" onClick={() => runRichToolbarAction("bold")}>
-                B
+              <span className="toolbar-divider" />
+              {/* Formatting buttons */}
+              <button type="button" className="has-tooltip" aria-label="Bold" title="Bold (cmd+B)" data-tooltip="Bold" onClick={() => runRichToolbarAction("bold")}>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                  <path d="M3.5 3H8a3 3 0 0 1 0 6H3.5V3Zm0 6H9a3 3 0 0 1 0 6H3.5V9Z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+                </svg>
               </button>
-              <button type="button" aria-label="Italic" title="Italic" onClick={() => runRichToolbarAction("italic")}>
-                I
+              <button type="button" className="has-tooltip" aria-label="Italic" title="Italic (cmd+I)" data-tooltip="Italic" onClick={() => runRichToolbarAction("italic")}>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                  <path d="M6 3h5M4 12h5M8 3 6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
               </button>
-              <button type="button" aria-label="Underline" title="Underline" onClick={() => runRichToolbarAction("underline")}>
-                U
+              <button type="button" className="has-tooltip" aria-label="Underline" title="Underline (cmd+U)" data-tooltip="Underline" onClick={() => runRichToolbarAction("underline")}>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                  <path d="M4 3v4.5a3.5 3.5 0 1 0 7 0V3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M2.5 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
               </button>
-              <button type="button" aria-label="Bullet list" title="Bullet list" onClick={() => runRichToolbarAction("bullet")}>
-                List
+              <button type="button" className="has-tooltip" aria-label="Bullet list" title="Bullet list" data-tooltip="Bullet list" onClick={() => runRichToolbarAction("bullet")}>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                  <circle cx="3" cy="4.5" r="1" fill="currentColor"/>
+                  <circle cx="3" cy="7.5" r="1" fill="currentColor"/>
+                  <circle cx="3" cy="10.5" r="1" fill="currentColor"/>
+                  <path d="M6 4.5h7M6 7.5h7M6 10.5h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
               </button>
               <button
                 type="button"
-                title="Insert link"
+                className="has-tooltip"
+                aria-label="Insert link"
+                title="Insert link (cmd+K)"
+                data-tooltip="Insert link"
                 onClick={(event) => {
                   event.stopPropagation();
                   runRichToolbarAction("link");
                 }}
               >
-                Link
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                  <path d="M6.5 8.5a3.5 3.5 0 0 0 4.95 0l1.5-1.5a3.5 3.5 0 0 0-4.95-4.95L6.88 3.17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M8.5 6.5a3.5 3.5 0 0 0-4.95 0l-1.5 1.5a3.5 3.5 0 0 0 4.95 4.95l1.12-1.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
               </button>
               <button
                 type="button"
+                className="has-tooltip"
                 aria-label="Insert code block"
                 title="Insert code block"
+                data-tooltip="Insert code block"
                 onClick={() => {
                   if (editorMode === "rich") {
                     richEditorRef.current?.toggleCodeBlock();
                   }
                 }}
               >
-                More
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                  <path d="M9.5 3.5 13 7.5l-3.5 4M5.5 3.5 2 7.5l3.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </button>
               <span className={`save-pill ${saveState}`}>
                 {saveState === "dirty" ? "Unsaved" : saveState} · {vaultMode}

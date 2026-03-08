@@ -7942,8 +7942,12 @@ describe("App", () => {
     fireEvent.mouseDown(within(slashMenu as HTMLElement).getByRole("option", { name: "Link to note" }));
 
     expect(screen.getByRole("heading", { name: "Link to note", level: 3 })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "Roadmap Hub" } });
-    fireEvent.click(screen.getByRole("button", { name: "Insert link" }));
+    const linkModal = screen.getByRole("heading", { name: "Link to note", level: 3 }).closest("section");
+    expect(linkModal).toBeTruthy();
+    fireEvent.change(within(linkModal as HTMLElement).getByLabelText("Note title"), {
+      target: { value: "Roadmap Hub" }
+    });
+    fireEvent.click(within(linkModal as HTMLElement).getByRole("button", { name: "Insert link" }));
 
     const updatedEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(updatedEditor?.value).toContain("[[Roadmap Hub]]");
@@ -7959,9 +7963,9 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
     fireEvent.click(screen.getByRole("button", { name: "Rich" }));
 
-    const toolbarLink = Array.from(document.querySelectorAll(".editor-toolbar button")).find(
-      (button) => button.textContent?.trim() === "Link"
-    ) as HTMLButtonElement | undefined;
+    const toolbar = document.querySelector(".editor-toolbar") as HTMLElement | null;
+    expect(toolbar).toBeTruthy();
+    const toolbarLink = within(toolbar as HTMLElement).getByRole("button", { name: "Insert link" });
     expect(toolbarLink).toBeTruthy();
     fireEvent.click(toolbarLink as HTMLButtonElement);
 

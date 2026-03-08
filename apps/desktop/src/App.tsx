@@ -6803,7 +6803,14 @@ export default function App() {
 
   function openLinkedNote(targetNote: AppNote): void {
     insertReciprocalLink(targetNote.id, activeNote);
-    focusNote(targetNote.id);
+    revealNoteInWorkspace(targetNote.id, {
+      browseMode: targetNote.trashedAt ? "trash" : "all",
+      notebook: targetNote.trashedAt ? "All Notes" : targetNote.notebook,
+      clearTagFilters: true,
+      resetReminderScope: true,
+      closeAuxiliaryPanels: true,
+      closeAiPanel: true
+    });
   }
 
   function openOrCreateLinkedNote(title: string): void {

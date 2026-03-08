@@ -8838,6 +8838,45 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Link Source", level: 2 })).toBeInTheDocument();
   });
 
+  it("opens a cross-notebook preview backlink target note", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+
+    const recipesNotebook = Array.from(document.querySelectorAll<HTMLButtonElement>(".notebook-item")).find((entry) =>
+      entry.textContent?.includes("Recipes")
+    );
+    expect(recipesNotebook).toBeTruthy();
+    fireEvent.click(recipesNotebook as HTMLButtonElement);
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    const sourceEditor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(sourceEditor).toBeTruthy();
+    fireEvent.change(sourceEditor as HTMLTextAreaElement, {
+      target: { value: "# Cross Notebook Source\n\n[[Agenda]]" }
+    });
+
+    const dailyNotebook = Array.from(document.querySelectorAll<HTMLButtonElement>(".notebook-item")).find((entry) =>
+      entry.textContent?.includes("Daily Notes")
+    );
+    expect(dailyNotebook).toBeTruthy();
+    fireEvent.click(dailyNotebook as HTMLButtonElement);
+
+    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
+    expect(agendaCard).toBeTruthy();
+    fireEvent.click(agendaCard as HTMLButtonElement);
+
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" });
+    const backlinksSection = within(previewPane).getByRole("heading", { name: "Backlinks", level: 5 }).closest("section");
+    expect(backlinksSection).toBeTruthy();
+
+    fireEvent.click(
+      within(backlinksSection as HTMLElement).getByRole("button", { name: "Open preview backlink Cross Notebook Source" })
+    );
+
+    expect(screen.getByRole("heading", { name: "Cross Notebook Source", level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open preview notebook Recipes" })).toBeInTheDocument();
+  });
+
   it("opens a note in lite edit mode from context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

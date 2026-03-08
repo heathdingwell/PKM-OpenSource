@@ -274,7 +274,7 @@ type NoteDensityMode = "comfortable" | "compact";
 type NoteGroupMode = "none" | "updated-date" | "notebook" | "tag";
 type SidebarView = "notes" | "tasks" | "calendar";
 type NoteBrowseMode = "all" | "templates" | "shortcuts" | "home" | "trash" | "graph" | "reminders";
-type ThemeId = "cobalt" | "sky" | "slate";
+type ThemeId = "cobalt" | "sky" | "slate" | "dark";
 type AiProvider = "openai" | "anthropic" | "gemini" | "perplexity" | "openai-compatible" | "ollama";
 type NoteSortMode =
   | "updated-desc"
@@ -451,8 +451,8 @@ const MAX_TAG_PANE_HEIGHT = 420;
 const DEFAULT_TAG_PANE_HEIGHT = 52;
 const NOTE_LIST_INITIAL_BATCH = 24;
 const NOTE_LIST_BATCH = 24;
-const themeIds: ThemeId[] = ["cobalt", "sky", "slate"];
-const defaultUiFontStack = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif';
+const themeIds: ThemeId[] = ["cobalt", "sky", "slate", "dark"];
+const defaultUiFontStack = 'system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
 const defaultEditorFontStack = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif';
 const defaultThemeSpacing = {
   panelGap: 8,
@@ -476,6 +476,12 @@ const themePreviewDefaults: Record<ThemeId, { primary: string; bgPanel: string; 
     bgPanel: "#e2e5ea",
     bgSidebar: "#dce3ee",
     text: "#1f2937"
+  },
+  dark: {
+    primary: "#4f9cf7",
+    bgPanel: "#2c2c2e",
+    bgSidebar: "#242426",
+    text: "#f2f2f7"
   }
 };
 const editorFontFamilies: Array<{ id: EditorFontFamilyId; label: string; value: string }> = [
@@ -790,6 +796,7 @@ const commandPaletteActions: CommandPaletteAction[] = [
   { id: "set-theme-cobalt", label: "Set theme: Cobalt", keywords: ["theme", "cobalt", "blue"] },
   { id: "set-theme-sky", label: "Set theme: Sky", keywords: ["theme", "sky", "light"] },
   { id: "set-theme-slate", label: "Set theme: Slate", keywords: ["theme", "slate", "gray"] },
+  { id: "set-theme-dark", label: "Set theme: Dark", keywords: ["theme", "dark", "night"] },
   { id: "toggle-git-backup", label: "Toggle Git backups", keywords: ["git", "backup", "versioning"] },
   { id: "git-backup-now", label: "Run Git backup now", keywords: ["git", "backup", "commit"] },
   { id: "export-snapshot", label: "Export vault snapshot", keywords: ["backup", "snapshot", "export", "vault"] },
@@ -10467,6 +10474,12 @@ export default function App() {
       return;
     }
 
+    if (actionId === "set-theme-dark") {
+      setTheme("dark");
+      setSearchOpen(false);
+      return;
+    }
+
     if (actionId === "toggle-git-backup") {
       setSearchOpen(false);
       void toggleGitBackups();
@@ -12788,6 +12801,39 @@ a{color:#1d4ed8}
     );
   }
 
+  function renderSidebarQuickActionIcon(kind: "task" | "today" | "template" | "commands"): ReactNode {
+    switch (kind) {
+      case "task":
+        return (
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M6.2 10.8 3.6 8.2l-.9.9 3.5 3.5 7-7-.9-.9-6.1 6.1Z" fill="currentColor" />
+            <path d="M2.5 2.5h7v1h-7zm0 10h11v1h-11z" fill="currentColor" opacity="0.7" />
+          </svg>
+        );
+      case "today":
+        return (
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <rect x="2.5" y="3.5" width="11" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M5 2.2v2.3M11 2.2v2.3M2.8 6h10.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            <circle cx="8" cy="9.6" r="1.4" fill="currentColor" />
+          </svg>
+        );
+      case "template":
+        return (
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M5 5h6M5 8h6M5 11h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+        );
+      case "commands":
+        return (
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M5.2 4.2A1.7 1.7 0 1 1 8 5.5v5.3a1.7 1.7 0 1 1-1.3-1.7V6.6a1.7 1.7 0 1 1-1.5-2.4Zm5.6 0a1.7 1.7 0 1 0-2.8 1.3v5.3a1.7 1.7 0 1 0 1.3-1.7V6.6a1.7 1.7 0 1 0 1.5-2.4Z" fill="currentColor" />
+          </svg>
+        );
+    }
+  }
+
   function renderNotebookRow(notebook: string, nested = false): ReactNode {
     const count = activeNotes.filter((note) => note.notebook === notebook).length;
     const isDropTarget = dropNotebook === notebook;
@@ -13979,52 +14025,38 @@ a{color:#1d4ed8}
             <button
               type="button"
               className="round-action"
-              aria-label="New from template"
-              title="New from template"
-              onClick={() => openTemplateDialog(activeNote?.isTemplate ? activeNote.id : undefined)}
+              aria-label="Create task"
+              title="Task"
+              onClick={quickCreateTask}
             >
-              ⧉
+              {renderSidebarQuickActionIcon("task")}
             </button>
             <button
               type="button"
               className="round-action"
               aria-label="Open today's note"
-              title="Open today's note"
+              title="Today"
               onClick={() => void openTodayNote()}
             >
-              ◷
+              {renderSidebarQuickActionIcon("today")}
+            </button>
+            <button
+              type="button"
+              className="round-action"
+              aria-label="New from template"
+              title="Template"
+              onClick={() => openTemplateDialog(activeNote?.isTemplate ? activeNote.id : undefined)}
+            >
+              {renderSidebarQuickActionIcon("template")}
             </button>
             <button
               type="button"
               className="round-action"
               aria-label="Quick actions"
-              title="Quick actions"
+              title="Commands"
               onClick={openCommandPalette}
             >
-              ✦
-            </button>
-            <button
-              type="button"
-              className="round-action"
-              aria-label="Create task"
-              title="Create task"
-              onClick={quickCreateTask}
-            >
-              ✓
-            </button>
-            <button
-              type="button"
-              className="round-action"
-              aria-label="More actions"
-              title="Search filters"
-              onClick={() => {
-                setSearchScope("everywhere");
-                setSearchFilters([]);
-                setQuickQuery("");
-                setSearchOpen(true);
-              }}
-            >
-              …
+              {renderSidebarQuickActionIcon("commands")}
             </button>
           </div>
         </div>
@@ -17350,7 +17382,12 @@ a{color:#1d4ed8}
             return row.divider ? (
               <div key={row.id} className="context-divider" role="separator" />
             ) : (
-              <button key={row.id} type="button" onClick={() => handleMenuAction(row.id)}>
+              <button
+                key={row.id}
+                type="button"
+                className={row.id === "move-trash" ? "danger" : undefined}
+                onClick={() => handleMenuAction(row.id)}
+              >
                 <span>{getContextMenuLabel(row.id, row.label)}</span>
                 {row.shortcut ? <small>{row.shortcut}</small> : null}
               </button>

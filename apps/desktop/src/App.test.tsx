@@ -133,7 +133,7 @@ describe("App", () => {
   it("exposes grouped footer actions in search modal", () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
     expect(screen.getByRole("toolbar", { name: "Search result actions" })).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {

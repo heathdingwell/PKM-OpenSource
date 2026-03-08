@@ -15305,6 +15305,10 @@ a{color:#1d4ed8}
                         const notebookPinned = notebookPinnedSet.has(note.id);
                         const visibleTagChips = note.tags.slice(0, 2);
                         const hiddenTagCount = Math.max(0, note.tags.length - visibleTagChips.length);
+                        const noteDateLabel =
+                          browseMode === "trash" && note.trashedAt
+                            ? `Trashed ${formatRelativeTime(note.trashedAt)}`
+                            : formatRelativeTime(note.updatedAt);
                         return (
                           <button
                             key={note.id}
@@ -15396,8 +15400,8 @@ a{color:#1d4ed8}
                               ) : null}
                             </span>
                             <strong>{note.title}</strong>
-                            <p>{note.snippet || "Untitled"}</p>
-                            {visibleTagChips.length ? (
+                            {viewMode !== "list" ? <p>{note.snippet || "Untitled"}</p> : null}
+                            {viewMode !== "list" && visibleTagChips.length ? (
                               <div className="note-card-chips" aria-label={`Tags ${note.tags.join(", ")}`}>
                                 {visibleTagChips.map((tag) => (
                                   <span key={`${note.id}-${tag}`} className="note-chip note-tag-chip">
@@ -15408,19 +15412,19 @@ a{color:#1d4ed8}
                               </div>
                             ) : null}
                             <footer>
-                              <span>{formatRelativeTime(note.updatedAt)}</span>
-                              {browseMode === "trash" && note.trashedAt ? (
-                                <span>Trashed {formatRelativeTime(note.trashedAt)}</span>
-                              ) : null}
-                              {note.reminderAt ? (
-                                <span className="note-chip note-reminder">{describeReminderDate(note.reminderAt)}</span>
-                              ) : null}
-                              {note.isTemplate ? <span className="note-chip note-pin">Template</span> : null}
-                              {homePinned ? <span className="note-chip note-pin">Home pin</span> : null}
-                              {notebookPinned ? <span className="note-chip note-pin">Notebook pin</span> : null}
-                              {viewMode === "list" ? <span>{note.notebook}</span> : null}
-                              {isSelected ? <em>{selectedIds.size > 1 ? "Multi" : "Selected"}</em> : null}
+                              <span className="note-card-date">{noteDateLabel}</span>
+                              {viewMode !== "list" ? <span className="note-card-notebook">{note.notebook}</span> : null}
                             </footer>
+                            {viewMode !== "list" && (note.reminderAt || note.isTemplate || homePinned || notebookPinned) ? (
+                              <div className="note-card-chips" aria-label="Note markers">
+                                {note.reminderAt ? (
+                                  <span className="note-chip note-reminder">{describeReminderDate(note.reminderAt)}</span>
+                                ) : null}
+                                {note.isTemplate ? <span className="note-chip note-pin">Template</span> : null}
+                                {homePinned ? <span className="note-chip note-pin">Home pin</span> : null}
+                                {notebookPinned ? <span className="note-chip note-pin">Notebook pin</span> : null}
+                              </div>
+                            ) : null}
                           </button>
                         );
                       })}

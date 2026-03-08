@@ -28,6 +28,7 @@ interface ContextMenuState {
   y: number;
   noteIds: string[];
   source: "card" | "editor";
+  maxHeight?: number;
 }
 
 interface NotebookMenuState {
@@ -1079,6 +1080,21 @@ function estimateContextMenuHeight(rows: ReadonlyArray<{ divider?: boolean }>): 
 
 function getMenuMaxHeight(top: number): number {
   return Math.max(160, window.innerHeight - top - 16);
+}
+
+function positionAnchoredMenu(
+  anchor: DOMRect,
+  width: number,
+  estimatedHeight: number
+): { x: number; y: number; maxHeight: number } {
+  const gap = 12;
+  const x = Math.max(16, Math.min(anchor.right - width, window.innerWidth - width - 16));
+  const spaceBelow = Math.max(96, window.innerHeight - anchor.bottom - gap - 16);
+  const spaceAbove = Math.max(96, anchor.top - gap - 16);
+  const openBelow = spaceBelow >= Math.min(estimatedHeight, 240) || spaceBelow >= spaceAbove;
+  const maxHeight = openBelow ? spaceBelow : spaceAbove;
+  const y = openBelow ? anchor.bottom + gap : Math.max(16, anchor.top - gap - maxHeight);
+  return { x, y, maxHeight };
 }
 
 function clampPaneWidth(value: number, min: number, max: number): number {
@@ -10569,15 +10585,12 @@ export default function App() {
     }
 
     const rect = editorMenuButtonRef.current.getBoundingClientRect();
-    const menuWidth = 236;
-    const menuGap = 12;
-    const estimatedHeight = Math.min(estimateContextMenuHeight(noteMenuRows), window.innerHeight - 32);
-    const preferredY =
-      rect.bottom + menuGap + estimatedHeight <= window.innerHeight - 16
-        ? rect.bottom + menuGap
-        : rect.top - estimatedHeight - menuGap;
-    const position = clampMenuPosition(rect.right - menuWidth, preferredY, menuWidth, estimatedHeight);
-    setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id], source: "editor" });
+    const position = positionAnchoredMenu(
+      rect,
+      236,
+      Math.min(estimateContextMenuHeight(noteMenuRows), window.innerHeight - 32)
+    );
+    setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id], source: "editor", maxHeight: position.maxHeight });
     setStackMenu(null);
     setEditorContextMenu(null);
   }
@@ -17179,7 +17192,7 @@ a{color:#1d4ed8}
           style={{
             left: contextMenu.x,
             top: contextMenu.y,
-            maxHeight: getMenuMaxHeight(contextMenu.y)
+            maxHeight: contextMenu.maxHeight ?? getMenuMaxHeight(contextMenu.y)
           }}
           onClick={(event) => event.stopPropagation()}
         >

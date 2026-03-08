@@ -673,7 +673,7 @@ describe("App", () => {
     fireEvent.click(actionsButton);
 
     const menu = screen.getByRole("menu", { name: "Note actions" });
-    expect(menu).toHaveStyle({ top: "16px", maxHeight: "768px" });
+    expect(menu).toHaveStyle({ top: "16px", maxHeight: "692px" });
 
     Object.defineProperty(window, "innerHeight", { configurable: true, value: originalInnerHeight });
     Object.defineProperty(window, "innerWidth", { configurable: true, value: originalInnerWidth });

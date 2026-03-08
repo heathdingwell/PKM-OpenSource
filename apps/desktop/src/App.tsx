@@ -10544,6 +10544,11 @@ export default function App() {
       return;
     }
 
+    if (contextMenu?.source === "editor" && contextMenu.noteIds.length === 1 && contextMenu.noteIds[0] === activeNote.id) {
+      setContextMenu(null);
+      return;
+    }
+
     const rect = editorMenuButtonRef.current.getBoundingClientRect();
     const position = clampMenuPosition(rect.left - 210, rect.bottom + 8);
     setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id], source: "editor" });

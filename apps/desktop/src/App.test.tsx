@@ -635,6 +635,19 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Note metadata" })).toBeInTheDocument();
   });
 
+  it("toggles the note actions menu from the header button", () => {
+    render(<App />);
+
+    const actionsButton = screen.getByRole("button", { name: "More note actions" });
+    fireEvent.click(actionsButton);
+    expect(screen.getByRole("menu", { name: "Note actions" })).toBeInTheDocument();
+    expect(actionsButton).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(actionsButton);
+    expect(screen.queryByRole("menu", { name: "Note actions" })).not.toBeInTheDocument();
+    expect(actionsButton).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("filters graph nodes by query", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));

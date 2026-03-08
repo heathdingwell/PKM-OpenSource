@@ -4701,6 +4701,20 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "AI Copilot", level: 4 })).not.toBeInTheDocument();
   });
 
+  it("docks the AI panel beside the editor instead of replacing the preview", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+
+    const aiPanel = screen.getByRole("heading", { name: "AI Copilot", level: 4 }).closest("aside");
+    const sidePanels = document.querySelector(".editor-sidepanels");
+    const previewPane = screen.getByRole("region", { name: "Rendered preview" }).closest(".preview-pane");
+
+    expect(aiPanel).toBeTruthy();
+    expect(sidePanels).toContainElement(aiPanel as HTMLElement);
+    expect(sidePanels).not.toContainElement(previewPane as HTMLElement);
+  });
+
   it("tests AI connection from command palette action", async () => {
     const testLlmConnection = vi.fn().mockResolvedValue({
       ok: true,

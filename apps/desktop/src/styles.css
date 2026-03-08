@@ -1601,7 +1601,7 @@ body.is-resizing {
 }
 
 .editor-content.with-metadata {
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  grid-template-columns: minmax(0, 1fr) clamp(240px, 28vw, 320px);
 }
 
 .editor-content-main {
@@ -1899,7 +1899,8 @@ body.is-resizing {
 
 .metadata-panel {
   position: static;
-  width: auto;
+  width: 100%;
+  min-width: 0;
   max-height: none;
   border: 1px solid #d3deee;
   border-radius: 12px;
@@ -2038,12 +2039,14 @@ body.is-resizing {
 }
 
 .ai-panel {
-  width: auto;
+  width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
 .ai-body {
+  min-width: 0;
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
@@ -2053,7 +2056,9 @@ body.is-resizing {
 
 .ai-toolbar {
   display: flex;
-  justify-content: space-between;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 6px;
 }
 
@@ -2069,6 +2074,7 @@ body.is-resizing {
 
 .ai-settings {
   display: grid;
+  min-width: 0;
   gap: 6px;
   padding: 8px;
   border: 1px solid #d3deee;
@@ -2078,6 +2084,7 @@ body.is-resizing {
 
 .ai-settings label {
   display: grid;
+  min-width: 0;
   gap: 4px;
 }
 
@@ -2094,6 +2101,7 @@ body.is-resizing {
 .ai-provider-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
   gap: 6px;
 }
 
@@ -2110,6 +2118,7 @@ body.is-resizing {
 .ai-settings-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
   gap: 6px;
 }
 
@@ -2300,6 +2309,7 @@ body.is-resizing {
 }
 
 .ai-chat-log {
+  min-width: 0;
   min-height: 0;
   overflow: auto;
   display: grid;
@@ -2334,6 +2344,7 @@ body.is-resizing {
 
 .ai-msg-head {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -2342,6 +2353,8 @@ body.is-resizing {
 
 .ai-msg-actions {
   display: inline-flex;
+  min-width: 0;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -2376,10 +2389,12 @@ body.is-resizing {
 
 .ai-input {
   display: grid;
+  min-width: 0;
   gap: 6px;
 }
 
 .ai-input textarea {
+  width: 100%;
   min-height: 64px;
   max-height: 160px;
   resize: vertical;

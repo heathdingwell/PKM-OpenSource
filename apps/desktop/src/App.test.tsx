@@ -306,6 +306,14 @@ describe("App", () => {
     expect(screen.getByText("No recent notes yet")).toBeInTheDocument();
   });
 
+  it("opens settings from the sidebar quick actions row", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument());
+  });
+
   it("shows guard toast when clearing recent notes from command palette with none saved", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -3546,7 +3554,9 @@ describe("App", () => {
     const appShell = screen.getByRole("application", { name: "PKM OpenSource Shell" });
 
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const aiPanel = screen.getByRole("heading", { name: "AI Copilot", level: 4 }).closest("aside");
+    expect(aiPanel).not.toBeNull();
+    fireEvent.click(within(aiPanel as HTMLElement).getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
 
     fireEvent.change(screen.getByLabelText("Primary color"), { target: { value: "#0f766e" } });
@@ -4644,7 +4654,9 @@ describe("App", () => {
     expect(screen.getByText("AI provider set to Ollama (Local)")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const aiPanel = screen.getByRole("heading", { name: "AI Copilot", level: 4 }).closest("aside");
+    expect(aiPanel).not.toBeNull();
+    fireEvent.click(within(aiPanel as HTMLElement).getByRole("button", { name: "Settings" }));
     await waitFor(() => expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument());
     expect(screen.getByDisplayValue("Ollama (Local)")).toBeInTheDocument();
   });
@@ -10143,7 +10155,9 @@ describe("App", () => {
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const aiPanel = screen.getByRole("heading", { name: "AI Copilot", level: 4 }).closest("aside");
+    expect(aiPanel).not.toBeNull();
+    fireEvent.click(within(aiPanel as HTMLElement).getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Backup" }));
 
     const prefixInput = await screen.findByLabelText("Commit prefix");

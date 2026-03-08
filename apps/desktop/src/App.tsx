@@ -13003,7 +13003,7 @@ a{color:#1d4ed8}
     );
   }
 
-  function renderSidebarQuickActionIcon(kind: "task" | "today" | "template" | "commands"): ReactNode {
+  function renderSidebarQuickActionIcon(kind: "task" | "today" | "template" | "commands" | "settings"): ReactNode {
     switch (kind) {
       case "task":
         return (
@@ -13031,6 +13031,13 @@ a{color:#1d4ed8}
         return (
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <path d="M5.2 4.2A1.7 1.7 0 1 1 8 5.5v5.3a1.7 1.7 0 1 1-1.3-1.7V6.6a1.7 1.7 0 1 1-1.5-2.4Zm5.6 0a1.7 1.7 0 1 0-2.8 1.3v5.3a1.7 1.7 0 1 0 1.3-1.7V6.6a1.7 1.7 0 1 0 1.5-2.4Z" fill="currentColor" />
+          </svg>
+        );
+      case "settings":
+        return (
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="8" cy="8" r="2.1" fill="none" stroke="currentColor" strokeWidth="1.25" />
+            <path d="M8 1.8v1.4M8 12.8v1.4M14.2 8h-1.4M3.2 8H1.8M12.38 3.62l-.99.99M4.61 11.39l-.99.99M12.38 12.38l-.99-.99M4.61 4.61l-.99-.99" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
           </svg>
         );
     }
@@ -14311,6 +14318,16 @@ a{color:#1d4ed8}
               onClick={openCommandPalette}
             >
               {renderSidebarQuickActionIcon("commands")}
+            </button>
+            <button
+              type="button"
+              className="round-action has-tooltip"
+              aria-label="Settings"
+              title="Settings"
+              data-tooltip="Settings"
+              onClick={() => openSettings("general")}
+            >
+              {renderSidebarQuickActionIcon("settings")}
             </button>
           </div>
         </div>

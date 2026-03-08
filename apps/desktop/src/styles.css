@@ -345,7 +345,7 @@ body.is-resizing .pane-resizer::after {
 
 .sidebar-secondary-actions {
   display: grid;
-  grid-template-columns: repeat(4, 28px);
+  grid-template-columns: repeat(5, 28px);
   gap: 8px;
 }
 

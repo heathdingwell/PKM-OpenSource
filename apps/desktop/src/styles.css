@@ -1634,7 +1634,7 @@ body.is-resizing {
 }
 
 .editor-content.with-metadata .editor-workbench {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .editor-workbench.lite {
@@ -3543,22 +3543,6 @@ body.is-resizing {
     display: none;
   }
 
-  .editor-workbench {
-    grid-template-columns: 1fr;
-  }
-
-  .editor-content.with-metadata {
-    grid-template-columns: 1fr;
-  }
-
-  .editor-sidepanels {
-    display: flex;
-  }
-
-  .metadata-panel {
-    width: 100%;
-  }
-
   .preview-document h2 {
     font-size: 34px;
   }
@@ -3573,5 +3557,23 @@ body.is-resizing {
 
   .event-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 960px) {
+  .editor-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-content.with-metadata {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-sidepanels {
+    display: flex;
+  }
+
+  .metadata-panel {
+    width: 100%;
   }
 }

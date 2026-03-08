@@ -648,6 +648,37 @@ describe("App", () => {
     expect(actionsButton).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("repositions the note actions menu when the viewport is too short", () => {
+    const originalInnerHeight = window.innerHeight;
+    const originalInnerWidth = window.innerWidth;
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+
+    render(<App />);
+
+    const actionsButton = screen.getByRole("button", { name: "More note actions" });
+    actionsButton.getBoundingClientRect = () =>
+      ({
+        left: 980,
+        right: 1080,
+        top: 720,
+        bottom: 760,
+        width: 100,
+        height: 40,
+        x: 980,
+        y: 720,
+        toJSON: () => ({})
+      }) as DOMRect;
+
+    fireEvent.click(actionsButton);
+
+    const menu = screen.getByRole("menu", { name: "Note actions" });
+    expect(menu).toHaveStyle({ top: "16px", maxHeight: "768px" });
+
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: originalInnerHeight });
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: originalInnerWidth });
+  });
+
   it("filters graph nodes by query", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));

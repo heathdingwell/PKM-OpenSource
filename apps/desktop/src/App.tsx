@@ -1067,10 +1067,18 @@ function createPathAllocator(notes: AppNote[], excludeIds: ReadonlySet<string> =
   };
 }
 
-function clampMenuPosition(x: number, y: number): { x: number; y: number } {
-  const maxX = window.innerWidth - 260;
-  const maxY = window.innerHeight - 420;
+function clampMenuPosition(x: number, y: number, width = 236, height = 420): { x: number; y: number } {
+  const maxX = window.innerWidth - width - 16;
+  const maxY = window.innerHeight - height - 16;
   return { x: Math.max(16, Math.min(x, maxX)), y: Math.max(16, Math.min(y, maxY)) };
+}
+
+function estimateContextMenuHeight(rows: ReadonlyArray<{ divider?: boolean }>): number {
+  return rows.reduce((total, row) => total + (row.divider ? 13 : 33), 16);
+}
+
+function getMenuMaxHeight(top: number): number {
+  return Math.max(160, window.innerHeight - top - 16);
 }
 
 function clampPaneWidth(value: number, min: number, max: number): number {
@@ -10550,7 +10558,8 @@ export default function App() {
     }
 
     const rect = editorMenuButtonRef.current.getBoundingClientRect();
-    const position = clampMenuPosition(rect.left - 210, rect.bottom + 8);
+    const estimatedHeight = Math.min(estimateContextMenuHeight(noteMenuRows), window.innerHeight - 32);
+    const position = clampMenuPosition(rect.right - 236, rect.bottom + 8, 236, estimatedHeight);
     setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id], source: "editor" });
     setStackMenu(null);
     setEditorContextMenu(null);
@@ -17144,7 +17153,11 @@ a{color:#1d4ed8}
           className="context-menu"
           role="menu"
           aria-label="Note actions"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+            maxHeight: getMenuMaxHeight(contextMenu.y)
+          }}
           onClick={(event) => event.stopPropagation()}
         >
           {noteMenuRows.map((row) => {

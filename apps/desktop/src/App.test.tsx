@@ -26,6 +26,7 @@ describe("App", () => {
   it("exposes clear toolbar labels and pressed states", () => {
     render(<App />);
 
+    expect(screen.getByRole("button", { name: "Info" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More note actions" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bold" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Italic" })).toBeInTheDocument();
@@ -36,17 +37,17 @@ describe("App", () => {
     const markdownButton = screen.getByRole("button", { name: "Markdown" });
     const richButton = screen.getByRole("button", { name: "Rich" });
     const insertButton = screen.getByRole("button", { name: "Insert" });
+    const infoButton = screen.getByRole("button", { name: "Info" });
     const moreActionsButton = screen.getByRole("button", { name: "More note actions" });
-    const liteButton = screen.getByRole("button", { name: "Lite" });
     const focusButton = screen.getByRole("button", { name: "Focus" });
     const aiButton = screen.getByRole("button", { name: "AI" });
     expect(markdownButton).toHaveAttribute("aria-pressed", "true");
     expect(richButton).toHaveAttribute("aria-pressed", "false");
     expect(insertButton).toHaveAttribute("aria-haspopup", "listbox");
     expect(insertButton).toHaveAttribute("aria-expanded", "false");
+    expect(infoButton).toHaveAttribute("aria-pressed", "false");
     expect(moreActionsButton).toHaveAttribute("aria-haspopup", "menu");
     expect(moreActionsButton).toHaveAttribute("aria-expanded", "false");
-    expect(liteButton).toHaveAttribute("aria-pressed", "false");
     expect(focusButton).toHaveAttribute("aria-pressed", "false");
     expect(aiButton).toHaveAttribute("aria-pressed", "false");
 
@@ -63,8 +64,8 @@ describe("App", () => {
     expect(moreActionsButton).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("menu", { name: "Note actions" })).toBeInTheDocument();
 
-    fireEvent.click(liteButton);
-    expect(liteButton).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(infoButton);
+    expect(infoButton).toHaveAttribute("aria-pressed", "true");
 
     fireEvent.click(focusButton);
     expect(focusButton).toHaveAttribute("aria-pressed", "true");
@@ -1203,7 +1204,6 @@ describe("App", () => {
     expect(refreshedMetadataPanel).toBeTruthy();
 
     fireEvent.click(within(refreshedMetadataPanel as HTMLElement).getByRole("button", { name: "Open in full editor" }));
-    expect(screen.getByRole("button", { name: "Lite" })).not.toHaveClass("active");
     expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
   });
 
@@ -2112,10 +2112,8 @@ describe("App", () => {
     });
 
     render(<App />);
-    const headerActions = document.querySelector(".editor-top-actions") as HTMLElement | null;
-    expect(headerActions).toBeTruthy();
-
-    fireEvent.click(within(headerActions as HTMLElement).getByRole("button", { name: "Share" }));
+    fireEvent.click(screen.getByRole("button", { name: "More note actions" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Share/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Share link copied")).toBeInTheDocument();
   });
@@ -2210,20 +2208,19 @@ describe("App", () => {
   it("opens note in full editor with keyboard shortcut", () => {
     render(<App />);
     fireEvent.keyDown(window, { key: "o", metaKey: true, altKey: true });
-    expect(screen.getByRole("button", { name: "Lite" })).toHaveClass("active");
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "o", metaKey: true, shiftKey: true });
-    expect(screen.getByRole("button", { name: "Lite" })).not.toHaveClass("active");
     expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
   });
 
   it("opens note in full editor using KeyO code with keyboard shortcut", () => {
     render(<App />);
     fireEvent.keyDown(window, { key: "o", metaKey: true, altKey: true });
-    expect(screen.getByRole("button", { name: "Lite" })).toHaveClass("active");
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "ø", code: "KeyO", metaKey: true, shiftKey: true });
-    expect(screen.getByRole("button", { name: "Lite" })).not.toHaveClass("active");
+    expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
   });
 
   it("opens local graph with keyboard shortcut", () => {
@@ -8927,11 +8924,10 @@ describe("App", () => {
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
     fireEvent.click(screen.getByRole("button", { name: /Open in Lite edit mode/i }));
-    expect(screen.getByRole("button", { name: "Lite" })).toHaveClass("active");
+    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
 
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
     fireEvent.click(screen.getByRole("button", { name: /Open in full editor/i }));
-    expect(screen.getByRole("button", { name: "Lite" })).not.toHaveClass("active");
     expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
   });
 

@@ -15565,8 +15565,9 @@ a{color:#1d4ed8}
               <div className="editor-top-actions">
                 <button
                   type="button"
-                  className={metadataOpen ? "link-btn active" : "link-btn"}
+                  className={metadataOpen ? "editor-icon-button active" : "editor-icon-button"}
                   aria-pressed={metadataOpen}
+                  aria-label="Info"
                   title="Toggle note info panel"
                   onClick={() => {
                     setMetadataOpen((previous) => !previous);
@@ -15574,56 +15575,32 @@ a{color:#1d4ed8}
                     setFocusMode(false);
                   }}
                 >
-                  Info
+                  <span aria-hidden="true">i</span>
                 </button>
                 <button
                   type="button"
-                  className="share-btn"
-                  title="Share note"
-                  onClick={() => void copyNoteLink(activeNote.id, "Share link copied")}
-                >
-                  Share
-                </button>
-                <button
-                  type="button"
-                  className={liteEditMode ? "link-btn active" : "link-btn"}
-                  aria-pressed={liteEditMode}
-                  title="Toggle lite edit mode"
-                  onClick={() => {
-                    if (liteEditMode) {
-                      setLiteEditMode(false);
-                    } else {
-                      setEditorMode("markdown");
-                      setLiteEditMode(true);
-                      setMetadataOpen(false);
-                      setAiPanelOpen(false);
-                    }
-                  }}
-                >
-                  Lite
-                </button>
-                <button
-                  type="button"
-                  className={focusMode ? "link-btn active" : "link-btn"}
+                  className={focusMode ? "editor-icon-button active" : "editor-icon-button"}
                   aria-pressed={focusMode}
+                  aria-label="Focus"
                   title="Toggle focus mode"
                   onClick={() => setFocusMode((previous) => !previous)}
                 >
-                  Focus
+                  <span aria-hidden="true">[]</span>
                 </button>
                 <button
                   type="button"
-                  className={aiPanelOpen ? "link-btn active" : "link-btn"}
+                  className={aiPanelOpen ? "editor-icon-button active" : "editor-icon-button"}
                   aria-pressed={aiPanelOpen}
+                  aria-label="AI"
                   title="Toggle AI panel"
                   onClick={toggleAiPanel}
                 >
-                  AI
+                  <span aria-hidden="true">AI</span>
                 </button>
                 <button
                   ref={editorMenuButtonRef}
                   type="button"
-                  className="link-btn"
+                  className="editor-icon-button"
                   aria-label="More note actions"
                   aria-haspopup="menu"
                   aria-expanded={contextMenu?.source === "editor"}
@@ -15634,12 +15611,12 @@ a{color:#1d4ed8}
                     openEditorMenu();
                   }}
                 >
-                  Actions
+                  <span aria-hidden="true">...</span>
                 </button>
               </div>
             </header>
 
-            <div className="editor-toolbar">
+            <div className={editorMode === "rich" ? "editor-toolbar hidden" : "editor-toolbar compact"}>
               <button
                 type="button"
                 className={editorMode === "markdown" ? "active" : ""}
@@ -15818,7 +15795,16 @@ a{color:#1d4ed8}
             ) : null}
 
             <div ref={editorMainRef} className="editor-main" style={editorMainStyle}>
-              <article className={metadataOpen || aiPanelOpen ? "editor-content with-metadata" : "editor-content"}>
+              <article
+                className={[
+                  "editor-content",
+                  metadataOpen || aiPanelOpen ? "with-drawer" : "",
+                  editorMode === "rich" ? "editor-mode-rich" : "editor-mode-markdown",
+                  liteEditMode ? "prose-mode" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
                 <div className="editor-content-main">
                   <div className={liteEditMode ? "editor-workbench lite" : "editor-workbench"}>
                 {editorMode === "markdown" ? (
@@ -16316,11 +16302,11 @@ a{color:#1d4ed8}
                 <div className="editor-sidepanels">
 
                 {aiPanelOpen ? (
-                  <aside className="metadata-panel ai-panel">
-                  <header>
+                  <aside className="metadata-panel ai-panel drawer-panel">
+                  <header className="drawer-panel-header">
                     <h4>AI Copilot</h4>
-                    <button type="button" onClick={() => setAiPanelOpen(false)}>
-                      Close
+                    <button type="button" className="drawer-close" aria-label="Close AI panel" onClick={() => setAiPanelOpen(false)}>
+                      x
                     </button>
                   </header>
                   <div className="ai-body">
@@ -16747,137 +16733,148 @@ a{color:#1d4ed8}
                 ) : null}
 
                 {metadataOpen && activeNote ? (
-                  <aside className="metadata-panel">
-                  <header>
+                  <aside className="metadata-panel drawer-panel">
+                  <header className="drawer-panel-header">
                     <h4>Note metadata</h4>
-                    <button type="button" onClick={() => setMetadataOpen(false)}>
-                      Close
+                    <button
+                      type="button"
+                      className="drawer-close"
+                      aria-label="Close note info panel"
+                      onClick={() => setMetadataOpen(false)}
+                    >
+                      x
                     </button>
                   </header>
-                  <dl>
-                    <div>
-                      <dt>Status</dt>
-                      <dd>{activeNote.trashedAt ? "In Trash" : "Active"}</dd>
-                    </div>
-                    <div>
-                      <dt>Title</dt>
-                      <dd>{draftPreview.title}</dd>
-                    </div>
-                    <div>
-                      <dt>Notebook</dt>
-                      <dd>
-                        <button
-                          type="button"
-                          className="preview-meta-action"
-                          aria-label={`Open metadata notebook ${activeNote.notebook}`}
-                          onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
-                        >
-                          {activeNote.notebook}
-                        </button>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Path</dt>
-                      <dd>
-                        <button
-                          type="button"
-                          className="preview-meta-action"
-                          aria-label={`Copy metadata path ${activeNote.path}`}
-                          onClick={() => void copyNotePath(activeNote.id)}
-                        >
-                          {activeNote.path}
-                        </button>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Created</dt>
-                      <dd>{new Date(activeNote.createdAt).toLocaleString()}</dd>
-                    </div>
-                    <div>
-                      <dt>Updated</dt>
-                      <dd>{new Date(activeNote.updatedAt).toLocaleString()}</dd>
-                    </div>
-                    <div>
-                      <dt>Reminder</dt>
-                      <dd>{activeNote.reminderAt ? describeReminderDate(activeNote.reminderAt) : "None"}</dd>
-                    </div>
-                    {activeNote.trashedAt ? (
+                  <section className="metadata-group">
+                    <h5>Details</h5>
+                    <dl>
                       <div>
-                        <dt>Trashed</dt>
-                        <dd>{new Date(activeNote.trashedAt).toLocaleString()}</dd>
+                        <dt>Status</dt>
+                        <dd>{activeNote.trashedAt ? "In Trash" : "Active"}</dd>
                       </div>
-                    ) : null}
-                    <div>
-                      <dt>Words</dt>
-                      <dd>{draftWordCount}</dd>
-                    </div>
-                    <div>
-                      <dt>Characters</dt>
-                      <dd>{draftCharCount}</dd>
-                    </div>
-                    <div>
-                      <dt>Outgoing</dt>
-                      <dd>
-                        <button
-                          type="button"
-                          className="preview-meta-action"
-                          aria-label="Open metadata outgoing links"
-                          onClick={openLocalGraphForActiveNote}
-                        >
-                          {outgoingLinks.length}
-                        </button>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Backlinks</dt>
-                      <dd>
-                        <button
-                          type="button"
-                          className="preview-meta-action"
-                          aria-label="Open metadata backlinks"
-                          onClick={() => setBacklinksPaneOpen(true)}
-                        >
-                          {backlinks.length}
-                        </button>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Events</dt>
-                      <dd>
-                        <button
-                          type="button"
-                          className="preview-meta-action"
-                          aria-label="Open metadata events"
-                          onClick={() => openCalendarPanel("current-note")}
-                        >
-                          {eventReferences.length}
-                        </button>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Tags</dt>
-                      <dd>
-                        {activeNote.tags.length ? (
-                          <div className="metadata-tag-strip">
-                            {activeNote.tags.map((tag) => (
-                              <button
-                                key={tag}
-                                type="button"
-                                className={tagFilters.includes(tag) ? "tag-chip active" : "tag-chip"}
-                                aria-label={`Filter metadata tag ${tag}`}
-                                onClick={() => openAllNotesWithTag(tag)}
-                              >
-                                #{tag}
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          "No tags"
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
-                  <div className="metadata-reminder">
+                      <div>
+                        <dt>Title</dt>
+                        <dd>{draftPreview.title}</dd>
+                      </div>
+                      <div>
+                        <dt>Notebook</dt>
+                        <dd>
+                          <button
+                            type="button"
+                            className="preview-meta-action"
+                            aria-label={`Open metadata notebook ${activeNote.notebook}`}
+                            onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
+                          >
+                            {activeNote.notebook}
+                          </button>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Path</dt>
+                        <dd>
+                          <button
+                            type="button"
+                            className="preview-meta-action"
+                            aria-label={`Copy metadata path ${activeNote.path}`}
+                            onClick={() => void copyNotePath(activeNote.id)}
+                          >
+                            {activeNote.path}
+                          </button>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Created</dt>
+                        <dd>{new Date(activeNote.createdAt).toLocaleString()}</dd>
+                      </div>
+                      <div>
+                        <dt>Updated</dt>
+                        <dd>{new Date(activeNote.updatedAt).toLocaleString()}</dd>
+                      </div>
+                      {activeNote.trashedAt ? (
+                        <div>
+                          <dt>Trashed</dt>
+                          <dd>{new Date(activeNote.trashedAt).toLocaleString()}</dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  </section>
+                  <section className="metadata-group">
+                    <h5>Connections</h5>
+                    <dl>
+                      <div>
+                        <dt>Words</dt>
+                        <dd>{draftWordCount}</dd>
+                      </div>
+                      <div>
+                        <dt>Characters</dt>
+                        <dd>{draftCharCount}</dd>
+                      </div>
+                      <div>
+                        <dt>Outgoing</dt>
+                        <dd>
+                          <button
+                            type="button"
+                            className="preview-meta-action"
+                            aria-label="Open metadata outgoing links"
+                            onClick={openLocalGraphForActiveNote}
+                          >
+                            {outgoingLinks.length}
+                          </button>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Backlinks</dt>
+                        <dd>
+                          <button
+                            type="button"
+                            className="preview-meta-action"
+                            aria-label="Open metadata backlinks"
+                            onClick={() => setBacklinksPaneOpen(true)}
+                          >
+                            {backlinks.length}
+                          </button>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Events</dt>
+                        <dd>
+                          <button
+                            type="button"
+                            className="preview-meta-action"
+                            aria-label="Open metadata events"
+                            onClick={() => openCalendarPanel("current-note")}
+                          >
+                            {eventReferences.length}
+                          </button>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Tags</dt>
+                        <dd>
+                          {activeNote.tags.length ? (
+                            <div className="metadata-tag-strip">
+                              {activeNote.tags.map((tag) => (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  className={tagFilters.includes(tag) ? "tag-chip active" : "tag-chip"}
+                                  aria-label={`Filter metadata tag ${tag}`}
+                                  onClick={() => openAllNotesWithTag(tag)}
+                                >
+                                  #{tag}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            "No tags"
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+                  </section>
+                  <section className="metadata-group">
+                    <h5>Reminder</h5>
+                    <div className="metadata-reminder">
                     <label>
                       <span>Reminder date</span>
                       <input
@@ -16895,8 +16892,11 @@ a{color:#1d4ed8}
                     >
                       Clear
                     </button>
-                  </div>
-                  <div className="metadata-actions">
+                    </div>
+                  </section>
+                  <section className="metadata-group metadata-group-actions">
+                    <h5>Actions</h5>
+                    <div className="metadata-actions">
                     <button
                       type="button"
                       onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
@@ -17137,7 +17137,8 @@ a{color:#1d4ed8}
                         Move to Trash
                       </button>
                     )}
-                  </div>
+                    </div>
+                  </section>
                   </aside>
                 ) : null}
                 </div>

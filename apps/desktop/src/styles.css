@@ -3119,10 +3119,14 @@ body.is-resizing {
 .search-modal {
   width: 780px;
   max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 72px);
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   border: 1px solid var(--menu-border);
   border-radius: 14px;
   box-shadow: var(--shadow);
   background: var(--menu-bg);
+  overflow: hidden;
 }
 
 .search-modal input {
@@ -3136,14 +3140,19 @@ body.is-resizing {
 
 .search-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  padding: 10px 14px 2px;
+  padding: 10px 14px 4px;
+  max-height: 108px;
+  overflow: auto;
+  align-content: flex-start;
 }
 
 .search-hint {
   margin: 2px 14px 0;
   color: var(--muted);
   font-size: 11px;
+  line-height: 1.35;
 }
 
 .chip {
@@ -3164,6 +3173,8 @@ body.is-resizing {
 }
 
 .search-results {
+  min-height: 0;
+  overflow: auto;
   padding: 4px 14px 14px;
 }
 
@@ -3290,6 +3301,7 @@ body.is-resizing {
   gap: 6px;
   padding: 8px 12px 12px;
   border-top: 1px solid var(--border);
+  background: var(--menu-bg);
 }
 
 .search-actions button {

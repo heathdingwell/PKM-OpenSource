@@ -783,6 +783,21 @@ describe("App", () => {
     expect(shell).not.toHaveClass("focus-mode");
   });
 
+  it("exits focus mode when opening the AI panel", () => {
+    render(<App />);
+    const shell = screen.getByRole("application", { name: "PKM OpenSource Shell" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Focus" }));
+    expect(shell).toHaveClass("focus-mode");
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+
+    expect(screen.getByRole("heading", { name: "AI Copilot", level: 4 })).toBeInTheDocument();
+    expect(shell).not.toHaveClass("focus-mode");
+    expect(document.querySelector(".left-sidebar")).toBeInTheDocument();
+    expect(document.querySelector(".note-column")).toBeInTheDocument();
+  });
+
   it("opens the current notebook from the editor breadcrumb", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Home" }));

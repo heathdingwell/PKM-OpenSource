@@ -5906,6 +5906,7 @@ export default function App() {
       const next = !previous;
       if (next) {
         setMetadataOpen(false);
+        setFocusMode(false);
       }
       return next;
     });
@@ -10008,6 +10009,7 @@ export default function App() {
     if (actionId === "open-ai") {
       setAiPanelOpen(true);
       setMetadataOpen(false);
+      setFocusMode(false);
       setSearchOpen(false);
       return;
     }
@@ -10017,6 +10019,7 @@ export default function App() {
       setAiPanelOpen(nextOpen);
       if (nextOpen) {
         setMetadataOpen(false);
+        setFocusMode(false);
       }
       setSearchOpen(false);
       return;
@@ -10026,6 +10029,7 @@ export default function App() {
       setAiPanelOpen(true);
       setAiShowSettings(true);
       setMetadataOpen(false);
+      setFocusMode(false);
       setSearchOpen(false);
       return;
     }
@@ -15419,6 +15423,7 @@ a{color:#1d4ed8}
                   onClick={() => {
                     setMetadataOpen((previous) => !previous);
                     setAiPanelOpen(false);
+                    setFocusMode(false);
                   }}
                 >
                   Info

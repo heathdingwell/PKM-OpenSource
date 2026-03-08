@@ -318,12 +318,25 @@ body.is-resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--input-border);
-  border-radius: 8px;
-  color: var(--chip-text);
-  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  background: var(--bg-hover);
   font-size: 13px;
   line-height: 1;
+}
+
+.round-action:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--bg-active);
+}
+
+.round-action:active,
+.round-action[aria-pressed="true"] {
+  color: var(--primary-strong);
+  border-color: var(--border-strong);
+  background: var(--bg-active);
 }
 
 .sidebar-nav {
@@ -3044,33 +3057,55 @@ body.is-resizing {
 .context-menu {
   position: fixed;
   z-index: 60;
-  width: 236px;
+  width: 200px;
   max-width: calc(100vw - 16px);
   max-height: calc(100vh - 24px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid var(--menu-border);
   border-radius: 12px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
   background: var(--menu-bg);
 }
 
 .context-menu button {
   width: 100%;
-  display: flex;
-  justify-content: space-between;
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  padding: 6px 6px;
+  gap: 8px;
+  padding: 6px 8px;
   border: 0;
   border-radius: 8px;
   color: var(--text);
   text-align: left;
   background: transparent;
+  font: 500 12px/1.2 var(--font-ui);
+}
+
+.context-menu button span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.context-menu button span::before {
+  content: "•";
+  width: 10px;
+  flex: 0 0 10px;
+  color: var(--muted);
+  text-align: center;
 }
 
 .context-menu button:hover {
   background: var(--bg-hover);
+}
+
+.context-menu button:hover span::before {
+  color: var(--primary);
 }
 
 .context-menu button.active {
@@ -3092,7 +3127,7 @@ body.is-resizing {
 .context-divider {
   height: 1px;
   margin: 6px 2px;
-  background: var(--menu-border);
+  background: var(--border);
 }
 
 .notebook-menu {
@@ -3330,43 +3365,89 @@ body.is-resizing {
 
 .move-modal,
 .rename-modal,
-.info-modal {
-  width: 430px;
+.info-modal,
+.template-modal,
+.history-modal,
+.tasks-modal,
+.files-modal,
+.calendar-modal {
+  width: 480px;
   max-width: calc(100vw - 30px);
-  padding: 14px;
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: var(--shadow);
-  background: #ffffff;
+  background: var(--menu-bg);
 }
 
 .move-modal header,
 .rename-modal h3,
-.info-modal h3 {
-  margin: 0 0 10px;
+.info-modal h3,
+.template-modal h3,
+.history-modal h3,
+.tasks-modal h3,
+.files-modal h3,
+.calendar-modal h3 {
+  margin: 0;
+  padding: 24px 24px 0;
+  color: var(--text);
+  font: 600 15px/1.3 var(--font-ui);
 }
 
 .move-modal header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  padding: 24px 24px 0;
+}
+
+.move-modal > :not(header):not(footer),
+.rename-modal > :not(h3):not(footer),
+.info-modal > :not(h3):not(footer),
+.template-modal > :not(h3):not(footer),
+.history-modal > :not(h3):not(footer),
+.tasks-modal > :not(h3):not(footer),
+.files-modal > :not(h3):not(footer),
+.calendar-modal > :not(h3):not(footer) {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.move-modal > :last-child:not(footer),
+.rename-modal > :last-child:not(footer),
+.info-modal > :last-child:not(footer),
+.template-modal > :last-child:not(footer),
+.history-modal > :last-child:not(footer),
+.tasks-modal > :last-child:not(footer),
+.files-modal > :last-child:not(footer),
+.calendar-modal > :last-child:not(footer) {
+  padding-bottom: 16px;
 }
 
 .move-modal input,
 .move-modal select,
 .rename-modal input,
-.rename-modal select {
+.rename-modal select,
+.task-filter-input input,
+.files-filter-input input,
+.calendar-filter-input input,
+.vault-backup-field input,
+.find-note-bar input,
+.metadata-reminder input,
+.ai-settings input,
+.ai-settings select,
+.tag-input-wrap input {
   width: 100%;
-  height: 38px;
+  height: 36px;
   margin-bottom: 10px;
   padding: 0 10px;
-  border: 1px solid #c9d8ef;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--input-bg);
+  color: var(--text);
 }
 
 .template-modal {
-  width: 460px;
+  width: 480px;
 }
 
 .template-field {
@@ -3588,10 +3669,6 @@ body.is-resizing {
   text-overflow: ellipsis;
 }
 
-.calendar-modal {
-  width: 560px;
-}
-
 .calendar-filter-input {
   margin-bottom: 8px;
 }
@@ -3768,27 +3845,45 @@ body.is-resizing {
 
 .move-modal footer,
 .rename-modal footer,
-.info-modal footer {
+.info-modal footer,
+.template-modal footer,
+.history-modal footer,
+.tasks-modal footer,
+.files-modal footer,
+.calendar-modal footer {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   gap: 8px;
-  margin-top: 12px;
+  padding: 0 16px 16px;
+  margin-top: 0;
 }
 
 .move-modal footer button,
 .rename-modal footer button,
-.info-modal footer button {
-  height: 34px;
+.info-modal footer button,
+.template-modal footer button,
+.history-modal footer button,
+.tasks-modal footer button,
+.files-modal footer button,
+.calendar-modal footer button {
+  height: 36px;
   padding: 0 14px;
-  border: 1px solid #c9d8ef;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
-  color: #395478;
-  background: #f4f8ff;
+  color: var(--text);
+  background: var(--bg-hover);
+  font: 500 12px/1 var(--font-ui);
 }
 
 .move-modal footer button.primary,
 .rename-modal footer button.primary,
-.info-modal footer button.primary {
+.info-modal footer button.primary,
+.template-modal footer button.primary,
+.history-modal footer button.primary,
+.tasks-modal footer button.primary,
+.files-modal footer button.primary,
+.calendar-modal footer button.primary {
+  margin-left: auto;
   border-color: var(--primary-strong);
   color: #fff;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);

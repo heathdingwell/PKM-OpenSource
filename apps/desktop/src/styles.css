@@ -1601,17 +1601,19 @@ body.is-resizing {
 }
 
 .editor-content.with-metadata {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 362px);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
 }
 
 .editor-content-main {
   position: relative;
+  min-width: 0;
   min-height: 0;
   overflow: auto;
 }
 
 .editor-sidepanels {
   display: none;
+  min-width: 0;
   min-height: 0;
   overflow: auto;
   flex-direction: column;
@@ -1626,6 +1628,7 @@ body.is-resizing {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
   gap: 12px;
+  min-width: 0;
   height: 100%;
   min-height: 0;
 }
@@ -1638,6 +1641,7 @@ body.is-resizing {
 .preview-pane {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
   border: 1px solid #d3deee;
   border-radius: 12px;
@@ -2405,6 +2409,7 @@ body.is-resizing {
 
 .preview-document {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow: auto;
   max-width: 760px;

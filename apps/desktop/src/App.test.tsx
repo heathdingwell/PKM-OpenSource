@@ -89,14 +89,14 @@ describe("App", () => {
     expect(screen.getByPlaceholderText("new-tag")).toHaveAttribute("id", "tag-input");
   });
 
-  it("exposes note list menu buttons with menu state", () => {
+  it("exposes note list controls and sort select", () => {
     render(<App />);
 
     const layoutButton = screen.getByRole("button", { name: "Cards" });
     const densityButton = screen.getByRole("button", { name: "Comfortable" });
     const groupButton = screen.getByRole("button", { name: "Group: Off" });
     const backlinksButton = screen.getByRole("button", { name: "Backlinks" });
-    const sortButton = screen.getByRole("button", { name: "Sort" });
+    const sortSelect = screen.getByRole("combobox", { name: "Sort notes by" });
     const filterButton = screen.getByRole("button", { name: "Filter" });
 
     expect(layoutButton).toHaveAttribute("title", "Toggle note list layout");
@@ -104,18 +104,14 @@ describe("App", () => {
     expect(backlinksButton).toHaveAttribute("aria-pressed", "true");
     expect(groupButton).toHaveAttribute("aria-haspopup", "menu");
     expect(groupButton).toHaveAttribute("aria-expanded", "false");
-    expect(sortButton).toHaveAttribute("aria-haspopup", "menu");
-    expect(sortButton).toHaveAttribute("aria-expanded", "false");
+    expect(sortSelect).toHaveValue("updated-desc");
     expect(filterButton).toHaveAttribute("aria-haspopup", "menu");
     expect(filterButton).toHaveAttribute("aria-expanded", "false");
-
-    fireEvent.click(sortButton);
-    expect(sortButton).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("menu", { name: "Sort notes menu" })).toBeInTheDocument();
+    fireEvent.change(sortSelect, { target: { value: "title-asc" } });
+    expect(sortSelect).toHaveValue("title-asc");
 
     fireEvent.click(groupButton);
     expect(groupButton).toHaveAttribute("aria-expanded", "true");
-    expect(sortButton).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByRole("menu", { name: "Group notes menu" })).toBeInTheDocument();
 
     fireEvent.click(filterButton);
@@ -545,7 +541,9 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
     expect((document.querySelector(".markdown-editor") as HTMLTextAreaElement).value).toContain("# To-do list");
-    expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText("To-do list")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("region", { name: "Rendered preview" })).getByText(/High priority Add your most urgent tasks/i)
+    ).toBeInTheDocument();
 
     const recipesNotebook = Array.from(document.querySelectorAll<HTMLButtonElement>(".notebook-item")).find((entry) =>
       entry.textContent?.includes("Recipes")
@@ -561,10 +559,12 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { name: "Simple soup", level: 2 })).toBeInTheDocument();
     expect((document.querySelector(".markdown-editor") as HTMLTextAreaElement).value).toContain("# Simple soup");
-    expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText("Simple soup")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("region", { name: "Rendered preview" })).getByText(/Ingredients 2 onions 1 carrot/i)
+    ).toBeInTheDocument();
   });
 
-  it("repairs blank persisted notes from note history snapshots on startup", () => {
+  it("repairs blank persisted notes on startup when history snapshots exist", () => {
     const malformedNotes = [
       {
         id: "legacy-readwise",
@@ -591,13 +591,12 @@ describe("App", () => {
       ]
     };
     window.localStorage.setItem("pkm-os.desktop.notes.v2", JSON.stringify(malformedNotes));
-    window.localStorage.setItem("pkm-os.desktop.noteHistory.v1", JSON.stringify(history));
+    window.localStorage.setItem("pkm-os.desktop.history.v1", JSON.stringify(history));
 
     render(<App />);
 
     expect(screen.getByRole("heading", { name: "Tweets From Eric Cole", level: 2 })).toBeInTheDocument();
     expect((document.querySelector(".markdown-editor") as HTMLTextAreaElement).value).toContain("# Tweets From Eric Cole");
-    expect(within(screen.getByRole("region", { name: "Rendered preview" })).getByText("Tweets From Eric Cole")).toBeInTheDocument();
     expect((window.localStorage.getItem("pkm-os.desktop.notes.v2") ?? "")).toContain("# Tweets From Eric Cole");
   });
 
@@ -719,27 +718,22 @@ describe("App", () => {
   it("supports local graph scope around active note", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
 
     let editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
     fireEvent.change(editor as HTMLTextAreaElement, {
-      target: { value: "# Target\n\nLinked target" }
+      target: { value: "# Link Source\n\n[[Agenda]]" }
     });
-
-    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
-    editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
-    expect(editor).toBeTruthy();
-    fireEvent.change(editor as HTMLTextAreaElement, {
-      target: { value: "# Source\n\n[[Target]]" }
-    });
+    fireEvent.keyDown(window, { key: "s", metaKey: true });
 
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));
     fireEvent.click(screen.getByRole("button", { name: "Local" }));
 
     const graphCanvas = screen.getByRole("img", { name: /Graph with/i });
-    expect(within(graphCanvas).getByRole("button", { name: "Source" })).toBeInTheDocument();
-    expect(within(graphCanvas).getByRole("button", { name: "Target" })).toBeInTheDocument();
-    expect(within(graphCanvas).queryByRole("button", { name: "Agenda" })).not.toBeInTheDocument();
+    expect(within(graphCanvas).getByRole("button", { name: "Link Source" })).toBeInTheDocument();
+    expect(within(graphCanvas).getByRole("button", { name: "Agenda" })).toBeInTheDocument();
+    expect(within(graphCanvas).queryByRole("button", { name: "To-do list" })).not.toBeInTheDocument();
   });
 
   it("opens local graph for active note from command palette", () => {
@@ -6634,31 +6628,7 @@ describe("App", () => {
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
 
-  it("copies note path from quick search footer action", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /Copy path/i }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
-    expect(screen.getByText("Note path copied")).toBeInTheDocument();
-  });
-
-  it("shares note link from quick search footer action", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
+  it("shows only the streamlined quick search footer actions", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     const searchInput = screen.getByPlaceholderText("Search or ask a question");
@@ -6666,114 +6636,43 @@ describe("App", () => {
 
     const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Share/i }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(screen.getByText("Share link copied")).toBeInTheDocument();
-  });
+    const buttonLabels = within(searchActions as HTMLElement)
+      .getAllByRole("button")
+      .map((button) => (button.textContent ?? "").replace(/\s+/g, " ").trim());
 
-  it("copies note markdown from quick search footer action", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
+    expect(buttonLabels).toEqual([
+      "Open ↩",
+      "Copy link ⌘L",
+      "Open in new window ⌘O",
+      "Rename ⌥⌘R",
+      "Move… ⌥⌘M",
+      "Edit tags ⌥⌘T",
+      "Duplicate ⌥⌘D",
+      "Move to Trash ⌥⌘⌫",
+      "Save Search"
+    ]);
 
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /Copy markdown/i }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(writeText.mock.calls[0]?.[0]).toContain("# Agenda");
-    expect(screen.getByText("Note markdown copied")).toBeInTheDocument();
-  });
-
-  it("copies note html from quick search footer action", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /Copy HTML/i }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("<h1>Agenda</h1>");
-    expect(screen.getByText("Note HTML copied")).toBeInTheDocument();
-  });
-
-  it("copies note text from quick search footer action", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /Copy text/i }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("Priority 1");
-    expect(screen.getByText("Note text copied")).toBeInTheDocument();
-  });
-
-  it("copies selected search result markdown with shift+cmd+m in search modal", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-    fireEvent.keyDown(searchInput, { key: "m", metaKey: true, shiftKey: true });
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(writeText.mock.calls[0]?.[0]).toContain("# Agenda");
-  });
-
-  it("copies selected search result html with shift+cmd+h in search modal", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-    fireEvent.keyDown(searchInput, { key: "h", metaKey: true, shiftKey: true });
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("<h1>Agenda</h1>");
-  });
-
-  it("copies selected search result text with shift+cmd+t in search modal", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-    fireEvent.keyDown(searchInput, { key: "t", metaKey: true, shiftKey: true });
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("Priority 1");
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Copy path/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /^Share/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Copy markdown/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Copy HTML/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Copy text/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Open in Lite edit mode/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Open local graph/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Note info/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Note history/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Find in note/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Copy to/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Open tasks/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Open files/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Open calendar/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Open reminders/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Set as template/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Add to shortcuts/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Pin to Home/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Pin to notebook/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /Export/i })).not.toBeInTheDocument();
+    expect(within(searchActions as HTMLElement).queryByRole("button", { name: /^Print/i })).not.toBeInTheDocument();
   });
 
   it("opens selected quick search result in new window from footer action", () => {
@@ -6787,65 +6686,6 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /Open in new window/i }));
     expect(openSpy).toHaveBeenCalledTimes(1);
     openSpy.mockRestore();
-  });
-
-  it("opens selected quick search result in lite edit mode from footer action", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /Open in Lite edit mode/i }));
-    expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
-  });
-
-  it("opens selected quick search result in full editor from footer action", () => {
-    render(<App />);
-    fireEvent.keyDown(window, { key: "o", metaKey: true, altKey: true });
-    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /Open in full editor/i }));
-    expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
-  });
-
-  it("opens selected quick search result local graph from footer action", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /Open local graph/i }));
-    expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
-  });
-
-  it("opens selected quick search result note info from footer action", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Note info/i }));
-    expect(screen.getByRole("heading", { name: "Note metadata", level: 4 })).toBeInTheDocument();
-  });
-
-  it("opens selected quick search result note history from footer action", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Note history/i }));
-    expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
   });
 
   it("opens selected quick search result tag editor from footer action", () => {
@@ -6869,20 +6709,8 @@ describe("App", () => {
 
     const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Rename note/i }));
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Rename/i }));
     expect(screen.getByRole("heading", { name: "Rename note", level: 3 })).toBeInTheDocument();
-  });
-
-  it("opens selected quick search result find-in-note from footer action", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Find in note/i }));
-    expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
   });
 
   it("opens selected quick search result move dialog from footer action", () => {
@@ -6893,247 +6721,9 @@ describe("App", () => {
 
     const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move note/i }));
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move…/i }));
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
-
-  it("opens selected quick search result copy dialog from footer action", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Copy to/i }));
-    expect(screen.getByRole("heading", { name: "Copy to", level: 3 })).toBeInTheDocument();
-  });
-
-  it("toggles selected quick search result template from footer action", async () => {
-    render(<App />);
-    const templatesButton = screen.getByRole("button", { name: "Templates" });
-    const templatesBadgeBefore = templatesButton.querySelector(".sidebar-link-badge")?.textContent ?? "";
-
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(
-      within(searchActions as HTMLElement).getByRole("button", { name: /^(Set as template|Remove from Templates)/i })
-    );
-    await waitFor(() => {
-      const templatesBadgeAfter = screen.getByRole("button", { name: "Templates" }).querySelector(".sidebar-link-badge")
-        ?.textContent;
-      expect(templatesBadgeAfter).not.toBe(templatesBadgeBefore);
-    });
-  });
-
-  it("toggles selected quick search result shortcut from footer action", async () => {
-    render(<App />);
-    const shortcutsButton = screen.getByRole("button", { name: "Shortcuts" });
-    const shortcutsBadgeBefore = shortcutsButton.querySelector(".sidebar-link-badge")?.textContent ?? "";
-
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(
-      within(searchActions as HTMLElement).getByRole("button", { name: /^(Add to shortcuts|Remove from shortcuts)/i })
-    );
-    await waitFor(() => {
-      const shortcutsBadgeAfter = screen.getByRole("button", { name: "Shortcuts" }).querySelector(".sidebar-link-badge")
-        ?.textContent;
-      expect(shortcutsBadgeAfter).not.toBe(shortcutsBadgeBefore);
-    });
-  });
-
-  it("toggles selected quick search result home pin from footer action", async () => {
-    render(<App />);
-    const wasPinned = Boolean(screen.queryByLabelText("Unpin from home Agenda"));
-
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^(Pin to Home|Unpin from Home)/i }));
-    await waitFor(() => {
-      expect(Boolean(screen.queryByLabelText("Unpin from home Agenda"))).toBe(!wasPinned);
-    });
-  });
-
-  it("toggles selected quick search result notebook pin from footer action", async () => {
-    render(<App />);
-    const wasPinned = Boolean(screen.queryByLabelText("Unpin from notebook Agenda"));
-
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(
-      within(searchActions as HTMLElement).getByRole("button", { name: /^(Pin to notebook|Unpin from notebook)/i })
-    );
-    await waitFor(() => {
-      expect(Boolean(screen.queryByLabelText("Unpin from notebook Agenda"))).toBe(!wasPinned);
-    });
-  });
-
-  it("exports selected quick search result markdown from footer action", () => {
-    const createObjectURL = vi.fn(() => "blob:pkm-note");
-    const revokeObjectURL = vi.fn();
-    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
-    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Export as Markdown/i }));
-    expect(createObjectURL).toHaveBeenCalledTimes(1);
-    expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
-  });
-
-  it("exports selected quick search result HTML from footer action", () => {
-    const createObjectURL = vi.fn(() => "blob:pkm-note-html");
-    const revokeObjectURL = vi.fn();
-    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
-    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Export as HTML/i }));
-    expect(createObjectURL).toHaveBeenCalledTimes(1);
-    expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported HTML "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
-  });
-
-  it("exports selected quick search result text from footer action", () => {
-    const createObjectURL = vi.fn(() => "blob:pkm-note-text");
-    const revokeObjectURL = vi.fn();
-    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
-    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Export as Text/i }));
-    expect(createObjectURL).toHaveBeenCalledTimes(1);
-    expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported text "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
-  });
-
-  it("exports selected quick search result PDF from footer action", async () => {
-    const exportNotePdf = vi.fn().mockResolvedValue({ ok: true, path: "/tmp/Agenda.pdf" });
-    (window as unknown as { pkmShell?: { exportNotePdf: typeof exportNotePdf } }).pkmShell = { exportNotePdf };
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Export as PDF/i }));
-
-    await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
-    expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
-    expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
-  });
-
-  it("prints selected quick search result from footer action", () => {
-    const printSpy = vi.spyOn(window, "print").mockImplementation(() => {});
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Print/i }));
-
-    expect(printSpy).toHaveBeenCalledTimes(1);
-    printSpy.mockRestore();
-  });
-
-  it("opens selected quick search result tasks from footer action", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Open tasks/i }));
-    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
-  });
-
-  it("opens selected quick search result files from footer action", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Open files/i }));
-    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
-    expect(screen.getByText("No attachments found")).toBeInTheDocument();
-  });
-
-  it("opens selected quick search result calendar from footer action", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Open calendar/i }));
-    expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
-  });
-
-  it("opens selected quick search result reminders from footer action", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    const searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-
-    const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Open reminders/i }));
-    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
-  });
-
   it("duplicates selected quick search result from footer action", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -7142,7 +6732,7 @@ describe("App", () => {
 
     const searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Duplicate note/i }));
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Duplicate/i }));
     expect(await screen.findByRole("heading", { name: "Agenda copy", level: 2 })).toBeInTheDocument();
   });
 
@@ -7156,50 +6746,6 @@ describe("App", () => {
     expect(searchActions).toBeTruthy();
     fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move to Trash/i }));
     expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
-  });
-
-  it("restores selected quick search result from footer action when browsing trash", () => {
-    render(<App />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    let searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-    let searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move to Trash/i }));
-    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-    searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Restore/i }));
-
-    expect(screen.getByText('"Agenda" restored from Trash')).toBeInTheDocument();
-  });
-
-  it("deletes selected quick search result permanently from footer action when browsing trash", () => {
-    render(<App />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    let searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-    let searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move to Trash/i }));
-    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-    searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Delete permanently/i }));
-
-    expect(screen.getByText('"Agenda" deleted permanently')).toBeInTheDocument();
   });
 
   it("searches trashed notes from quick actions while in trash mode", () => {
@@ -7240,34 +6786,10 @@ describe("App", () => {
     fireEvent.change(searchInput, { target: { value: "agenda" } });
     searchActions = document.querySelector(".search-actions") as HTMLElement | null;
     expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Duplicate note/i }));
+    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Duplicate/i }));
 
     expect(screen.getByText("Restore notes from Trash to use this action")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Agenda copy", level: 2 })).not.toBeInTheDocument();
-  });
-
-  it("blocks shortcut quick-search toggle for trashed notes", () => {
-    render(<App />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    let searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-    let searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(within(searchActions as HTMLElement).getByRole("button", { name: /^Move to Trash/i }));
-    expect(screen.getByText('"Agenda" moved to Trash')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
-    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
-    searchInput = screen.getByPlaceholderText("Search or ask a question");
-    fireEvent.change(searchInput, { target: { value: "agenda" } });
-    searchActions = document.querySelector(".search-actions") as HTMLElement | null;
-    expect(searchActions).toBeTruthy();
-    fireEvent.click(
-      within(searchActions as HTMLElement).getByRole("button", { name: /^(Add to shortcuts|Remove from shortcuts)/i })
-    );
-
-    expect(screen.getByText("Restore notes from Trash to use this action")).toBeInTheDocument();
   });
 
   it("clears recent searches from command palette action", () => {
@@ -7416,17 +6938,14 @@ describe("App", () => {
 
   it("supports has:backlink search filter", () => {
     render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
 
     fireEvent.change(editor as HTMLTextAreaElement, {
-      target: { value: "# Backlink Target\n\nReference me" }
+      target: { value: "# Link Source\n\n[[Agenda]]" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
-    fireEvent.change(editor as HTMLTextAreaElement, {
-      target: { value: "# Backlink Source\n\n[[Backlink Target]]" }
-    });
-    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.keyDown(window, { key: "s", metaKey: true });
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
@@ -7435,7 +6954,7 @@ describe("App", () => {
 
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
-    expect(within(searchModal as HTMLElement).getByText("Backlink Target")).toBeInTheDocument();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
   it("supports updated:today search filter", () => {
@@ -7633,16 +7152,13 @@ describe("App", () => {
 
   it("supports backlinks chip filter in search", () => {
     render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
     fireEvent.change(editor as HTMLTextAreaElement, {
-      target: { value: "# Backlink Target\n\nReference me" }
+      target: { value: "# Link Source\n\n[[Agenda]]" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
-    fireEvent.change(editor as HTMLTextAreaElement, {
-      target: { value: "# Backlink Source\n\n[[Backlink Target]]" }
-    });
-    fireEvent.click(screen.getByRole("button", { name: "+ Note" }));
+    fireEvent.keyDown(window, { key: "s", metaKey: true });
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
@@ -7654,7 +7170,7 @@ describe("App", () => {
     expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
-    expect(within(searchModal as HTMLElement).getByText("Backlink Target")).toBeInTheDocument();
+    expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
   it("supports tags chip filter in search", () => {

@@ -636,6 +636,14 @@ const sidebarSectionLabels: Record<SidebarSectionId, string> = {
   "notebook-pins": "Pinned to Notebook",
   notebooks: "Notebooks"
 };
+const sidebarSectionIcons: Partial<Record<SidebarSectionId, ReactNode>> = {
+  notebooks: (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="2" width="12" height="12" rx="2" />
+      <line x1="6" y1="2" x2="6" y2="14" />
+    </svg>
+  )
+};
 const sidebarSectionIds = Object.keys(sidebarSectionLabels) as SidebarSectionId[];
 const OPEN_SAVED_SEARCH_ACTION_PREFIX = "open-saved-search:";
 const EDIT_SAVED_SEARCH_ACTION_PREFIX = "edit-saved-search:";
@@ -985,44 +993,169 @@ const seedCalendarEvents: Array<Pick<CalendarEvent, "title" | "startAt" | "endAt
     }
   ];
 
-const editorMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
-  { id: "open-lite-edit", label: "Open in Lite edit mode", shortcut: "alt+cmd+o" },
+type ContextMenuRow = { id: string; label: string; shortcut?: string; divider?: boolean; icon?: ReactNode };
+
+function renderContextMenuIcon(
+  kind:
+    | "open"
+    | "window"
+    | "rename"
+    | "move"
+    | "copy"
+    | "duplicate"
+    | "tags"
+    | "shortcut"
+    | "pin"
+    | "history"
+    | "settings"
+    | "export"
+    | "print"
+    | "restore"
+    | "trash"
+    | "lite"
+): ReactNode {
+  switch (kind) {
+    case "open":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4 8h8M9 3l5 5-5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "window":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M6 3h7v7M13 3 7 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="3" y="6" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+        </svg>
+      );
+    case "rename":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M11 2l3 3-9 9H2v-3L11 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "move":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <polyline points="4,10 8,14 12,10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <polyline points="4,6 8,2 12,6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <line x1="8" y1="14" x2="8" y2="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      );
+    case "copy":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+          <rect x="3" y="2" width="8" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3" opacity="0.75" />
+        </svg>
+      );
+    case "duplicate":
+      return renderContextMenuIcon("copy");
+    case "tags":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M2.5 8.5V3h5.5l5.5 5.5-5 5L2.5 8.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+          <circle cx="6.2" cy="6.1" r="1" fill="currentColor" />
+        </svg>
+      );
+    case "shortcut":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4.2 5.2A1.7 1.7 0 1 1 7 6.5v3a1.7 1.7 0 1 1-1.3-1.7V7a1.7 1.7 0 1 1-1.5-1.8Zm7.6 0A1.7 1.7 0 1 0 9 6.5v3a1.7 1.7 0 1 0 1.3-1.7V7a1.7 1.7 0 1 0 1.5-1.8Z" fill="currentColor" />
+        </svg>
+      );
+    case "pin":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M5 2.5h6l-1.5 4 2 2H4.5l2-2L5 2.5Zm3 8.5V14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "history":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 4.5V1.8m0 2.7h2.7M3.6 4.6A5.5 5.5 0 1 1 2.5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M8 5.2V8l2 1.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M8 1.8v1.4M8 12.8v1.4M14.2 8h-1.4M3.2 8H1.8M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        </svg>
+      );
+    case "export":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M8 2.5v7M5.5 5 8 2.5 10.5 5M3 10.5v2h10v-2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "print":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4.5 6V2.5h7V6M4 11.5h8V9H4v2.5ZM3 6h10a1 1 0 0 1 1 1v3H2V7a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+        </svg>
+      );
+    case "restore":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M6 4H3v3M3.4 7.2A5.5 5.5 0 1 0 5 4.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "trash":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 4.5h10M6 2.5h4M5 4.5V13h6V4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "lite":
+      return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="2.5" y="3" width="11" height="10" rx="1.8" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M5.2 6h5.6M5.2 8.5h5.6M5.2 11h3.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        </svg>
+      );
+  }
+}
+
+const editorMenuRows: ContextMenuRow[] = [
+  { id: "open-lite-edit", label: "Open in Lite edit mode", shortcut: "alt+cmd+o", icon: renderContextMenuIcon("lite") },
   { id: "divider-0", label: "", divider: true },
-  { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
-  { id: "move", label: "Move…", shortcut: "cmd+alt+m" },
-  { id: "copy-to", label: "Copy to…", shortcut: "cmd+alt+y" },
-  { id: "duplicate", label: "Duplicate", shortcut: "cmd+alt+d" },
+  { id: "rename", label: "Rename", shortcut: "cmd+shift+r", icon: renderContextMenuIcon("rename") },
+  { id: "move", label: "Move…", shortcut: "cmd+alt+m", icon: renderContextMenuIcon("move") },
+  { id: "copy-to", label: "Copy to…", shortcut: "cmd+alt+y", icon: renderContextMenuIcon("copy") },
+  { id: "duplicate", label: "Duplicate", shortcut: "cmd+alt+d", icon: renderContextMenuIcon("duplicate") },
   { id: "divider-1", label: "", divider: true },
-  { id: "edit-tags", label: "Edit tags", shortcut: "cmd+alt+t" },
+  { id: "edit-tags", label: "Edit tags", shortcut: "cmd+alt+t", icon: renderContextMenuIcon("tags") },
   { id: "divider-2", label: "", divider: true },
-  { id: "add-shortcuts", label: "Add to Shortcuts", shortcut: "cmd+alt+6" },
-  { id: "pin-home", label: "Pin to Home", shortcut: "cmd+alt+7" },
+  { id: "add-shortcuts", label: "Add to Shortcuts", shortcut: "cmd+alt+6", icon: renderContextMenuIcon("shortcut") },
+  { id: "pin-home", label: "Pin to Home", shortcut: "cmd+alt+7", icon: renderContextMenuIcon("pin") },
   { id: "divider-3", label: "", divider: true },
-  { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
-  { id: "open-settings", label: "Settings…", shortcut: "cmd+," },
-  { id: "export", label: "Export…", shortcut: "cmd+alt+1" },
-  { id: "print", label: "Print", shortcut: "cmd+alt+p" },
+  { id: "note-history", label: "Note history", shortcut: "cmd+alt+h", icon: renderContextMenuIcon("history") },
+  { id: "open-settings", label: "Settings…", shortcut: "cmd+,", icon: renderContextMenuIcon("settings") },
+  { id: "export", label: "Export…", shortcut: "cmd+alt+1", icon: renderContextMenuIcon("export") },
+  { id: "print", label: "Print", shortcut: "cmd+alt+p", icon: renderContextMenuIcon("print") },
   { id: "divider-4", label: "", divider: true },
-  { id: "restore-trash", label: "Restore from Trash", shortcut: "cmd+alt+z" },
-  { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace" }
+  { id: "restore-trash", label: "Restore from Trash", shortcut: "cmd+alt+z", icon: renderContextMenuIcon("restore") },
+  { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace", icon: renderContextMenuIcon("trash") }
 ];
 
-const cardMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
-  { id: "open", label: "Open" },
-  { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
+const cardMenuRows: ContextMenuRow[] = [
+  { id: "open", label: "Open", icon: renderContextMenuIcon("open") },
+  { id: "open-window", label: "Open in new window", shortcut: "cmd+o", icon: renderContextMenuIcon("window") },
   { id: "divider-1", label: "", divider: true },
-  { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
-  { id: "move", label: "Move…", shortcut: "cmd+alt+m" },
-  { id: "copy-to", label: "Copy to…", shortcut: "cmd+alt+y" },
-  { id: "duplicate", label: "Duplicate", shortcut: "cmd+alt+d" },
-  { id: "edit-tags", label: "Edit tags", shortcut: "cmd+alt+t" },
+  { id: "rename", label: "Rename", shortcut: "cmd+shift+r", icon: renderContextMenuIcon("rename") },
+  { id: "move", label: "Move…", shortcut: "cmd+alt+m", icon: renderContextMenuIcon("move") },
+  { id: "copy-to", label: "Copy to…", shortcut: "cmd+alt+y", icon: renderContextMenuIcon("copy") },
+  { id: "duplicate", label: "Duplicate", shortcut: "cmd+alt+d", icon: renderContextMenuIcon("duplicate") },
+  { id: "edit-tags", label: "Edit tags", shortcut: "cmd+alt+t", icon: renderContextMenuIcon("tags") },
   { id: "divider-2", label: "", divider: true },
-  { id: "pin-home", label: "Pin to Home", shortcut: "cmd+alt+7" },
-  { id: "add-shortcuts", label: "Add to Shortcuts", shortcut: "cmd+alt+6" },
+  { id: "pin-home", label: "Pin to Home", shortcut: "cmd+alt+7", icon: renderContextMenuIcon("pin") },
+  { id: "add-shortcuts", label: "Add to Shortcuts", shortcut: "cmd+alt+6", icon: renderContextMenuIcon("shortcut") },
   { id: "divider-3", label: "", divider: true },
-  { id: "export", label: "Export…" },
+  { id: "export", label: "Export…", icon: renderContextMenuIcon("export") },
   { id: "divider-4", label: "", divider: true },
-  { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace" }
+  { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace", icon: renderContextMenuIcon("trash") }
 ];
 
 const slashCommands: SlashCommand[] = [
@@ -2508,17 +2641,19 @@ function deriveLegacyMarkdown(note: AppNote): string {
   return snippet ? `# ${title}\n\n${snippet}\n` : `# ${title}\n\n`;
 }
 
-function resolveRecoveredMarkdown(note: AppNote, snapshots: NoteHistoryEntry[] | undefined): string {
-  const nonEmptySnapshot = snapshots?.find((entry) => entry.markdown.trim().length > 0)?.markdown;
-  return nonEmptySnapshot ?? deriveLegacyMarkdown(note);
-}
-
 function repairLoadedNote(note: AppNote, noteHistory?: Record<string, NoteHistoryEntry[]>): AppNote {
-  if (note.markdown.trim().length > 0) {
+  const snapshotMarkdown = noteHistory?.[note.id]?.find((entry) => entry.markdown.trim().length > 0)?.markdown;
+  const legacyFallbackMarkdown = deriveLegacyMarkdown(note).trim();
+  const currentMarkdown = note.markdown.trim();
+
+  if (currentMarkdown.length > 0) {
+    if (snapshotMarkdown && currentMarkdown === legacyFallbackMarkdown) {
+      return noteFromMarkdown(note, snapshotMarkdown, note.updatedAt, { pathOverride: note.path });
+    }
     return note;
   }
 
-  const fallbackMarkdown = resolveRecoveredMarkdown(note, noteHistory?.[note.id]);
+  const fallbackMarkdown = snapshotMarkdown ?? legacyFallbackMarkdown;
   return noteFromMarkdown(note, fallbackMarkdown, note.updatedAt, { pathOverride: note.path });
 }
 
@@ -3183,7 +3318,6 @@ export default function App() {
   const [graphQuery, setGraphQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>(() => loadRecentSearches());
   const [searchSelected, setSearchSelected] = useState(0);
-  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const [tagPaneHeight, setTagPaneHeight] = useState<number>(initialPrefs.tagPaneHeight ?? DEFAULT_TAG_PANE_HEIGHT);
   const [noteListLimit, setNoteListLimit] = useState(NOTE_LIST_INITIAL_BATCH);
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
@@ -3270,7 +3404,7 @@ export default function App() {
   const [tagInput, setTagInput] = useState("");
   const [shortcutTagInput, setShortcutTagInput] = useState("");
   const [homeScratchPad, setHomeScratchPad] = useState<string>(() => loadScratchPad());
-  const [vaultReady, setVaultReady] = useState(false);
+  const [vaultReady, setVaultReady] = useState<boolean>(() => typeof window === "undefined" || !window.pkmShell?.loadVaultState);
   const [queryNoteHandled, setQueryNoteHandled] = useState(false);
   const [noteHistory, setNoteHistory] = useState<Record<string, NoteHistoryEntry[]>>(() => loadNoteHistory());
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => loadCalendarEvents());
@@ -4533,6 +4667,7 @@ export default function App() {
   }, [activeDraftMarkdown]);
 
   const draftCharCount = activeDraftMarkdown.length;
+  const isLoadingNotes = !vaultReady;
 
   useEffect(() => {
     let cancelled = false;
@@ -12955,6 +13090,23 @@ a{color:#1d4ed8}
     stackHeader?.focus();
   }
 
+  function highlightMatch(text: string, query: string): ReactNode {
+    if (!query.trim()) {
+      return text;
+    }
+    const index = text.toLowerCase().indexOf(query.toLowerCase());
+    if (index === -1) {
+      return text;
+    }
+    return (
+      <>
+        {text.slice(0, index)}
+        <mark className="search-highlight">{text.slice(index, index + query.length)}</mark>
+        {text.slice(index + query.length)}
+      </>
+    );
+  }
+
   function renderSidebarSection(
     sectionId: SidebarSectionId,
     children: ReactNode,
@@ -12989,6 +13141,7 @@ a{color:#1d4ed8}
             >
               <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
+            {sidebarSectionIcons[sectionId] ? <span className="sidebar-section-icon">{sidebarSectionIcons[sectionId]}</span> : null}
             <span className="sidebar-section-title">{sidebarSectionLabels[sectionId]}</span>
           </button>
           {action}
@@ -13052,7 +13205,13 @@ a{color:#1d4ed8}
           type="button"
           draggable
           data-sidebar-tree-item="true"
-          className={selectedNotebook === notebook ? "notebook-item active" : "notebook-item"}
+          className={[
+            "notebook-item",
+            selectedNotebook === notebook ? "active" : "",
+            isDropTarget ? "drop-target" : ""
+          ]
+            .filter(Boolean)
+            .join(" ")}
           onClick={() => {
             flushActiveDraft();
             setSidebarView("notes");
@@ -14513,6 +14672,148 @@ a{color:#1d4ed8}
         </nav>
 
         {renderSidebarSection(
+          "notebooks",
+          <>
+          <ul>
+            {stackedNotebookGroups.stacks.map((group) => {
+              const isCollapsed = collapsedStacks.has(group.stack);
+              const isStackDrop = stackDropTarget === group.stack;
+              return (
+                <li key={group.stack} className="stack-group">
+                  <button
+                    type="button"
+                    data-sidebar-tree-item="true"
+                    className={[
+                      "stack-header",
+                      isStackDrop ? "drop-active drop-target" : ""
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={() => toggleStackCollapsed(group.stack)}
+                    title={isCollapsed ? "Expand stack" : "Collapse stack"}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      openStackContextMenu(group.stack, event.clientX, event.clientY);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        focusSidebarTreeRelative(event.currentTarget, 1);
+                        return;
+                      }
+                      if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        focusSidebarTreeRelative(event.currentTarget, -1);
+                        return;
+                      }
+                      if (event.key === "ArrowLeft") {
+                        if (!isCollapsed) {
+                          event.preventDefault();
+                          toggleStackCollapsed(group.stack);
+                        }
+                        return;
+                      }
+                      if (event.key === "ArrowRight") {
+                        event.preventDefault();
+                        if (isCollapsed) {
+                          toggleStackCollapsed(group.stack);
+                          return;
+                        }
+                        const firstNotebook = event.currentTarget
+                          .closest(".stack-group")
+                          ?.querySelector<HTMLButtonElement>("button.notebook-item");
+                        firstNotebook?.focus();
+                        return;
+                      }
+                      if (event.key === "Home") {
+                        event.preventDefault();
+                        focusSidebarTreeBoundary("start");
+                        return;
+                      }
+                      if (event.key === "End") {
+                        event.preventDefault();
+                        focusSidebarTreeBoundary("end");
+                        return;
+                      }
+                      if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                        event.preventDefault();
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        openStackContextMenu(group.stack, rect.left + 12, rect.bottom - 12);
+                      }
+                    }}
+                    onDragOver={(event) => {
+                      if (!draggingNotebook) {
+                        return;
+                      }
+                      event.preventDefault();
+                      setUnstackDropTarget(false);
+                      setStackDropTarget(group.stack);
+                    }}
+                    onDragLeave={() => setStackDropTarget((previous) => (previous === group.stack ? null : previous))}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (!draggingNotebook) {
+                        return;
+                      }
+                      assignNotebookToStack(draggingNotebook, group.stack);
+                      setDraggingNotebook(null);
+                      setStackDropTarget(null);
+                      setUnstackDropTarget(false);
+                    }}
+                  >
+                    <span>{isCollapsed ? "▸" : "▾"} {group.stack}</span>
+                    <small>{group.notebooks.length}</small>
+                  </button>
+                  {!isCollapsed ? (
+                    <div className="stack-group-body">
+                      <div className="stack-group-body-inner">
+                        <ul>{group.notebooks.map((notebook) => renderNotebookRow(notebook, true))}</ul>
+                      </div>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+            {draggingNotebook ? (
+              <li className="stack-unstack-target-wrap">
+                <div
+                  className={unstackDropTarget ? "stack-unstack-target active" : "stack-unstack-target"}
+                  onDragOver={(event) => {
+                    if (!draggingNotebook) {
+                      return;
+                    }
+                    event.preventDefault();
+                    setStackDropTarget(null);
+                    setUnstackDropTarget(true);
+                  }}
+                  onDragLeave={() => setUnstackDropTarget(false)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (!draggingNotebook) {
+                      return;
+                    }
+                    removeNotebookFromStack(draggingNotebook);
+                    setDraggingNotebook(null);
+                    setStackDropTarget(null);
+                    setUnstackDropTarget(false);
+                  }}
+                >
+                  Drop to remove from stack
+                </div>
+              </li>
+            ) : null}
+            {stackedNotebookGroups.unstacked.map((notebook) => renderNotebookRow(notebook))}
+          </ul>
+          <button type="button" className="sidebar-subaction" onClick={createNotebook}>
+            + New notebook
+          </button>
+          <button type="button" className="sidebar-subaction" onClick={createStack}>
+            + New stack
+          </button>
+          </>
+        )}
+
+        {renderSidebarSection(
           "recent",
           recentNotes.length ? (
             <ul className="shortcut-list">
@@ -14798,142 +15099,6 @@ a{color:#1d4ed8}
           )
         )}
 
-        {renderSidebarSection(
-          "notebooks",
-          <>
-          <ul>
-            {stackedNotebookGroups.stacks.map((group) => {
-              const isCollapsed = collapsedStacks.has(group.stack);
-              const isStackDrop = stackDropTarget === group.stack;
-              return (
-                <li key={group.stack} className="stack-group">
-                  <button
-                    type="button"
-                    data-sidebar-tree-item="true"
-                    className={isStackDrop ? "stack-header drop-active" : "stack-header"}
-                    onClick={() => toggleStackCollapsed(group.stack)}
-                    title={isCollapsed ? "Expand stack" : "Collapse stack"}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      openStackContextMenu(group.stack, event.clientX, event.clientY);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "ArrowDown") {
-                        event.preventDefault();
-                        focusSidebarTreeRelative(event.currentTarget, 1);
-                        return;
-                      }
-                      if (event.key === "ArrowUp") {
-                        event.preventDefault();
-                        focusSidebarTreeRelative(event.currentTarget, -1);
-                        return;
-                      }
-                      if (event.key === "ArrowLeft") {
-                        if (!isCollapsed) {
-                          event.preventDefault();
-                          toggleStackCollapsed(group.stack);
-                        }
-                        return;
-                      }
-                      if (event.key === "ArrowRight") {
-                        event.preventDefault();
-                        if (isCollapsed) {
-                          toggleStackCollapsed(group.stack);
-                          return;
-                        }
-                        const firstNotebook = event.currentTarget
-                          .closest(".stack-group")
-                          ?.querySelector<HTMLButtonElement>("button.notebook-item");
-                        firstNotebook?.focus();
-                        return;
-                      }
-                      if (event.key === "Home") {
-                        event.preventDefault();
-                        focusSidebarTreeBoundary("start");
-                        return;
-                      }
-                      if (event.key === "End") {
-                        event.preventDefault();
-                        focusSidebarTreeBoundary("end");
-                        return;
-                      }
-                      if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
-                        event.preventDefault();
-                        const rect = event.currentTarget.getBoundingClientRect();
-                        openStackContextMenu(group.stack, rect.left + 12, rect.bottom - 12);
-                      }
-                    }}
-                    onDragOver={(event) => {
-                      if (!draggingNotebook) {
-                        return;
-                      }
-                      event.preventDefault();
-                      setUnstackDropTarget(false);
-                      setStackDropTarget(group.stack);
-                    }}
-                    onDragLeave={() => setStackDropTarget((previous) => (previous === group.stack ? null : previous))}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      if (!draggingNotebook) {
-                        return;
-                      }
-                      assignNotebookToStack(draggingNotebook, group.stack);
-                      setDraggingNotebook(null);
-                      setStackDropTarget(null);
-                      setUnstackDropTarget(false);
-                    }}
-                  >
-                    <span>{isCollapsed ? "▸" : "▾"} {group.stack}</span>
-                    <small>{group.notebooks.length}</small>
-                  </button>
-                  {!isCollapsed ? (
-                    <div className="stack-group-body">
-                      <div className="stack-group-body-inner">
-                        <ul>{group.notebooks.map((notebook) => renderNotebookRow(notebook, true))}</ul>
-                      </div>
-                    </div>
-                  ) : null}
-                </li>
-              );
-            })}
-            {draggingNotebook ? (
-              <li className="stack-unstack-target-wrap">
-                <div
-                  className={unstackDropTarget ? "stack-unstack-target active" : "stack-unstack-target"}
-                  onDragOver={(event) => {
-                    if (!draggingNotebook) {
-                      return;
-                    }
-                    event.preventDefault();
-                    setStackDropTarget(null);
-                    setUnstackDropTarget(true);
-                  }}
-                  onDragLeave={() => setUnstackDropTarget(false)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    if (!draggingNotebook) {
-                      return;
-                    }
-                    removeNotebookFromStack(draggingNotebook);
-                    setDraggingNotebook(null);
-                    setStackDropTarget(null);
-                    setUnstackDropTarget(false);
-                  }}
-                >
-                  Drop to remove from stack
-                </div>
-              </li>
-            ) : null}
-            {stackedNotebookGroups.unstacked.map((notebook) => renderNotebookRow(notebook))}
-          </ul>
-          <button type="button" className="sidebar-subaction" onClick={createNotebook}>
-            + New notebook
-          </button>
-          <button type="button" className="sidebar-subaction" onClick={createStack}>
-            + New stack
-          </button>
-          </>
-        )}
       </aside>
 
       <div
@@ -15074,19 +15239,24 @@ a{color:#1d4ed8}
               >
                 Backlinks
               </button>
-              <button
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={noteListMenu?.kind === "sort"}
-                title="Open sorting options"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  openNoteListMenu("sort", rect.left, rect.bottom + 8);
-                }}
-              >
-                Sort
-              </button>
+              <div className="note-sort-control">
+                <select
+                  className="note-sort-select"
+                  aria-label="Sort notes by"
+                  value={
+                    sortMode === "created-desc" || sortMode === "created-asc"
+                      ? "created-desc"
+                      : sortMode === "title-asc" || sortMode === "title-desc"
+                        ? "title-asc"
+                        : "updated-desc"
+                  }
+                  onChange={(event) => setSortMode(event.target.value as NoteSortMode)}
+                >
+                  <option value="updated-desc">Last edited</option>
+                  <option value="created-desc">Date created</option>
+                  <option value="title-asc">Title A-Z</option>
+                </select>
+              </div>
               <button
                 type="button"
                 className={tagFilters.length ? "active" : ""}
@@ -15600,16 +15770,25 @@ a{color:#1d4ed8}
 
             <div
               className={viewMode === "list" ? `note-grid list-mode ${noteDensity}` : `note-grid ${noteDensity}`}
-              aria-label="Notes list"
+              aria-label={isLoadingNotes ? "Loading notes" : "Notes list"}
+              aria-busy={isLoadingNotes}
             >
-              {visibleNotes.length ? (
+              {isLoadingNotes ? (
+                Array.from({ length: 6 }).map((_, index) => (
+                  <div key={`skeleton-${index}`} className="skeleton-card" role="presentation">
+                    <span className="skeleton skeleton-title" />
+                    <span className="skeleton skeleton-preview" />
+                    <span className="skeleton skeleton-preview-2" />
+                    <span className="skeleton skeleton-meta" />
+                  </div>
+                ))
+              ) : visibleNotes.length ? (
                 <>
                   {noteGroups.map((group) => (
                     <section key={group.id} className="note-group-section">
                       {noteGroupMode !== "none" ? <div className="note-group-heading">{group.label}</div> : null}
                       {group.notes.map((note) => {
                         const isSelected = selectedIds.has(note.id);
-                        const showQuickAction = hoveredCardId === note.id || isSelected;
                         const homePinned = homePinnedSet.has(note.id);
                         const notebookPinned = notebookPinnedSet.has(note.id);
                         const visibleTagChips = note.tags.slice(0, 2);
@@ -15624,21 +15803,27 @@ a{color:#1d4ed8}
                             type="button"
                             data-note-id={note.id}
                             draggable
-                            onMouseEnter={() => setHoveredCardId(note.id)}
-                            onMouseLeave={() => setHoveredCardId((previous) => (previous === note.id ? null : previous))}
-                            onDragStart={() => {
+                            onDragStart={(event) => {
                               const dragSet = selectedIds.has(note.id) && selectedVisibleNoteIds.length > 1
                                 ? selectedVisibleNoteIds
                                 : [note.id];
+                              event.currentTarget.classList.add("is-dragging");
                               setDraggingNoteId(note.id);
                               draggingNoteIdsRef.current = dragSet;
                             }}
-                            onDragEnd={() => {
+                            onDragEnd={(event) => {
+                              event.currentTarget.classList.remove("is-dragging");
                               setDraggingNoteId(null);
                               draggingNoteIdsRef.current = null;
                               setDropNotebook(null);
                             }}
-                            className={isSelected ? "note-card selected" : "note-card"}
+                            className={[
+                              "note-card",
+                              isSelected ? "selected" : "",
+                              draggingNoteId === note.id ? "is-dragging" : ""
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
                             onClick={(event) => onCardClick(note.id, event)}
                             onDoubleClick={() => openNoteFromList(note.id)}
                             onContextMenu={(event) => {
@@ -15679,39 +15864,37 @@ a{color:#1d4ed8}
                             }}
                           >
                             <span className="note-card-actions">
-                              {showQuickAction ? (
-                                <span
-                                  className="note-card-menu has-tooltip"
-                                  role="button"
-                                  tabIndex={0}
-                                  aria-haspopup="menu"
-                                  aria-expanded={contextMenu?.source === "card" && contextMenu.noteIds.includes(note.id)}
-                                  aria-controls={
-                                    contextMenu?.source === "card" && contextMenu.noteIds.includes(note.id)
-                                      ? "note-actions-menu"
-                                      : undefined
+                              <span
+                                className="note-card-menu has-tooltip"
+                                role="button"
+                                tabIndex={0}
+                                aria-haspopup="menu"
+                                aria-expanded={contextMenu?.source === "card" && contextMenu.noteIds.includes(note.id)}
+                                aria-controls={
+                                  contextMenu?.source === "card" && contextMenu.noteIds.includes(note.id)
+                                    ? "note-actions-menu"
+                                    : undefined
+                                }
+                                title="Note actions"
+                                data-tooltip="Note actions"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openCardMenu(note.id, event.clientX, event.clientY);
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    const target = event.currentTarget.getBoundingClientRect();
+                                    openCardMenu(note.id, target.left, target.bottom + 6);
                                   }
-                                  title="Note actions"
-                                  data-tooltip="Note actions"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    openCardMenu(note.id, event.clientX, event.clientY);
-                                  }}
-                                  onKeyDown={(event) => {
-                                    if (event.key === "Enter" || event.key === " ") {
-                                      event.preventDefault();
-                                      const target = event.currentTarget.getBoundingClientRect();
-                                      openCardMenu(note.id, target.left, target.bottom + 6);
-                                    }
-                                  }}
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                                    <circle cx="3" cy="7" r="1.25" fill="currentColor"/>
-                                    <circle cx="7" cy="7" r="1.25" fill="currentColor"/>
-                                    <circle cx="11" cy="7" r="1.25" fill="currentColor"/>
-                                  </svg>
-                                </span>
-                              ) : null}
+                                }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                                  <circle cx="3" cy="7" r="1.25" fill="currentColor"/>
+                                  <circle cx="7" cy="7" r="1.25" fill="currentColor"/>
+                                  <circle cx="11" cy="7" r="1.25" fill="currentColor"/>
+                                </svg>
+                              </span>
                             </span>
                             <strong>{note.title}</strong>
                             {viewMode !== "list" ? <p>{note.snippet || "Untitled"}</p> : null}
@@ -16240,6 +16423,34 @@ a{color:#1d4ed8}
                   .join(" ")}
               >
                 <div className="editor-content-main">
+                  <h2
+                    key={activeNote.id}
+                    contentEditable
+                    suppressContentEditableWarning
+                    className="editor-title"
+                    onBlur={(event) => {
+                      const newTitle = event.currentTarget.textContent?.trim() ?? "";
+                      if (!newTitle) {
+                        event.currentTarget.textContent = activeNote.title;
+                        return;
+                      }
+                      if (newTitle !== activeNote.title) {
+                        renameNote(activeNote.id, newTitle);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        if (editorMode === "markdown") {
+                          markdownEditorRef.current?.focus();
+                        } else {
+                          richEditorRef.current?.focus();
+                        }
+                      }
+                    }}
+                  >
+                    {draftPreview.title}
+                  </h2>
                   <div className={liteEditMode ? "editor-workbench lite" : "editor-workbench"}>
                 {editorMode === "markdown" ? (
                   <section
@@ -16535,7 +16746,6 @@ a{color:#1d4ed8}
                   <section className="preview-pane" aria-label="Rendered preview">
                     <h3>Preview</h3>
                     <div className="preview-document">
-                    <h2>{draftPreview.title}</h2>
                     {renderPreviewBody(draftPreview.body)}
 
                       <div className="link-sections">
@@ -16687,6 +16897,11 @@ a{color:#1d4ed8}
                   </section>
                 ) : null}
               </div>
+                  <footer className="editor-status-bar" aria-label="Editor status">
+                    <span>{draftWordCount} words</span>
+                    <span className="editor-status-sep">·</span>
+                    <span>{draftCharCount} characters</span>
+                  </footer>
 
                   {slashMenu ? (
                     <section
@@ -17431,7 +17646,10 @@ a{color:#1d4ed8}
                 className={row.id === "move-trash" ? "danger" : undefined}
                 onClick={() => handleMenuAction(row.id)}
               >
-                <span>{getContextMenuLabel(row.id, row.label)}</span>
+                <span>
+                  {row.icon ? <span className="context-menu-icon">{row.icon}</span> : null}
+                  <span>{getContextMenuLabel(row.id, row.label)}</span>
+                </span>
                 {row.shortcut ? <small>{row.shortcut}</small> : null}
               </button>
             );
@@ -18163,8 +18381,10 @@ a{color:#1d4ed8}
                             onClick={() => openSearchResult(note, "open")}
                           >
                             <div className="search-result-main">
-                              <strong>{note.title}</strong>
-                              <span className="search-result-snippet">{note.snippet || "No preview text"}</span>
+                              <strong>{highlightMatch(note.title, quickQuery)}</strong>
+                              <span className="search-result-snippet">
+                                {highlightMatch(note.snippet || "No preview text", quickQuery)}
+                              </span>
                             </div>
                             <div className="search-result-meta">
                               <small>{note.notebook}</small>
@@ -18206,18 +18426,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    Select <kbd>↩</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open");
-                      }
-                    }}
-                  >
-                    Open
+                    Open <kbd>↩</kbd>
                   </button>
                   <button
                     type="button"
@@ -18235,61 +18444,6 @@ a{color:#1d4ed8}
                     disabled={!selectedSearchResult}
                     onClick={() => {
                       if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "copy-path");
-                      }
-                    }}
-                  >
-                    Copy path <kbd>⌥⌘L</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "share-link");
-                      }
-                    }}
-                  >
-                    Share <kbd>⌥⌘S</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "copy-markdown");
-                      }
-                    }}
-                  >
-                    Copy markdown <kbd>⇧⌘M</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "copy-html");
-                      }
-                    }}
-                  >
-                    Copy HTML <kbd>⇧⌘H</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "copy-text");
-                      }
-                    }}
-                  >
-                    Copy text <kbd>⇧⌘T</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
                         openSearchResult(selectedSearchResult, "open-window");
                       }
                     }}
@@ -18301,55 +18455,22 @@ a{color:#1d4ed8}
                     disabled={!selectedSearchResult}
                     onClick={() => {
                       if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-lite-edit");
+                        openSearchResult(selectedSearchResult, "rename-note");
                       }
                     }}
                   >
-                    Open in Lite edit mode <kbd>⌥⌘O</kbd>
+                    Rename <kbd>⌥⌘R</kbd>
                   </button>
                   <button
                     type="button"
                     disabled={!selectedSearchResult}
                     onClick={() => {
                       if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-full-edit");
+                        openSearchResult(selectedSearchResult, "move-note");
                       }
                     }}
                   >
-                    Open in full editor <kbd>⇧⌘O</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-local-graph");
-                      }
-                    }}
-                  >
-                    Open local graph <kbd>⇧⌘G</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-note-info");
-                      }
-                    }}
-                  >
-                    Note info <kbd>⇧⌘I</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-note-history");
-                      }
-                    }}
-                  >
-                    Note history <kbd>⌥⌘H</kbd>
+                    Move… <kbd>⌥⌘M</kbd>
                   </button>
                   <button
                     type="button"
@@ -18367,218 +18488,16 @@ a{color:#1d4ed8}
                     disabled={!selectedSearchResult}
                     onClick={() => {
                       if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "rename-note");
-                      }
-                    }}
-                  >
-                    Rename note <kbd>⌥⌘R</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "find-note");
-                      }
-                    }}
-                  >
-                    Find in note <kbd>⇧⌘F</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "move-note");
-                      }
-                    }}
-                  >
-                    Move note <kbd>⌥⌘M</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "copy-note");
-                      }
-                    }}
-                  >
-                    Copy to... <kbd>⌥⌘Y</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-note-tasks");
-                      }
-                    }}
-                  >
-                    Open tasks <kbd>⌥⌘J</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-note-files");
-                      }
-                    }}
-                  >
-                    Open files <kbd>⌥⌘F</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-note-calendar");
-                      }
-                    }}
-                  >
-                    Open calendar <kbd>⌥⌘C</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-note-reminders");
-                      }
-                    }}
-                  >
-                    Open reminders <kbd>⌥⌘U</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "toggle-note-template");
-                      }
-                    }}
-                  >
-                    {selectedSearchResult?.isTemplate ? "Remove from Templates" : "Set as template"} <kbd>⌥⌘5</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "toggle-note-shortcut");
-                      }
-                    }}
-                  >
-                    {selectedSearchResult && shortcutSet.has(selectedSearchResult.id)
-                      ? "Remove from shortcuts"
-                      : "Add to shortcuts"}{" "}
-                    <kbd>⌥⌘6</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "toggle-note-pin-home");
-                      }
-                    }}
-                  >
-                    {selectedSearchResult && homePinnedSet.has(selectedSearchResult.id) ? "Unpin from Home" : "Pin to Home"}{" "}
-                    <kbd>⌥⌘7</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "toggle-note-pin-notebook");
-                      }
-                    }}
-                  >
-                    {selectedSearchResult && notebookPinnedSet.has(selectedSearchResult.id)
-                      ? "Unpin from notebook"
-                      : "Pin to notebook"}{" "}
-                    <kbd>⌥⌘8</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "export-note-markdown");
-                      }
-                    }}
-                  >
-                    Export as Markdown <kbd>⌥⌘1</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "export-note-html");
-                      }
-                    }}
-                  >
-                    Export as HTML <kbd>⌥⌘2</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "export-note-text");
-                      }
-                    }}
-                  >
-                    Export as Text <kbd>⌥⌘3</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "export-note-pdf");
-                      }
-                    }}
-                  >
-                    Export as PDF <kbd>⌥⌘4</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "print-note");
-                      }
-                    }}
-                  >
-                    Print <kbd>⌥⌘P</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSearchResult}
-                    onClick={() => {
-                      if (selectedSearchResult) {
                         openSearchResult(selectedSearchResult, "duplicate-note");
                       }
                     }}
                   >
-                    Duplicate note <kbd>⌥⌘D</kbd>
+                    Duplicate <kbd>⌥⌘D</kbd>
                   </button>
-                  {selectedSearchResult?.trashedAt ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        openSearchResult(selectedSearchResult, "restore-note");
-                      }}
-                    >
-                      Restore <kbd>⌥⌘Z</kbd>
-                    </button>
-                  ) : null}
                   <button
                     type="button"
+                    className="danger"
+                    data-action="move-trash"
                     disabled={!selectedSearchResult}
                     onClick={() => {
                       if (selectedSearchResult) {
@@ -18586,7 +18505,7 @@ a{color:#1d4ed8}
                       }
                     }}
                   >
-                    {selectedSearchResult?.trashedAt ? "Delete permanently" : "Move to Trash"} <kbd>⌥⌘⌫</kbd>
+                    Move to Trash <kbd>⌥⌘⌫</kbd>
                   </button>
                 </>
               )}

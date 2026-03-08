@@ -10569,8 +10569,14 @@ export default function App() {
     }
 
     const rect = editorMenuButtonRef.current.getBoundingClientRect();
+    const menuWidth = 236;
+    const menuGap = 12;
     const estimatedHeight = Math.min(estimateContextMenuHeight(noteMenuRows), window.innerHeight - 32);
-    const position = clampMenuPosition(rect.right - 236, rect.bottom + 10, 236, estimatedHeight);
+    const preferredY =
+      rect.bottom + menuGap + estimatedHeight <= window.innerHeight - 16
+        ? rect.bottom + menuGap
+        : rect.top - estimatedHeight - menuGap;
+    const position = clampMenuPosition(rect.right - menuWidth, preferredY, menuWidth, estimatedHeight);
     setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id], source: "editor" });
     setStackMenu(null);
     setEditorContextMenu(null);

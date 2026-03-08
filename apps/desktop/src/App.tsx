@@ -233,6 +233,7 @@ interface AppPrefs {
   notebookStacks?: Record<string, string>;
   customStacks?: string[];
   collapsedStacks?: string[];
+  collapsedSidebarSections?: SidebarSectionId[];
   themeOverrides?: ThemeOverrides;
 }
 
@@ -314,6 +315,7 @@ type TaskScopeMode = "all" | "current-note";
 type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 type ReminderScopeMode = "all" | "current-note";
 type GraphScope = "workspace" | "local";
+type SidebarSectionId = "recent" | "shortcuts" | "saved-searches" | "home-pins" | "notebook-pins" | "notebooks";
 
 interface ParsedSearchQuery {
   text: string;
@@ -577,6 +579,27 @@ const seedNotes: SeedNote[] = [
 
 const sidePinned = ["Home", "Shortcuts", "Notes", "Reminders", "Trash", "Tasks", "Files", "Calendar", "Graph", "Templates"] as const;
 type SidebarPinnedItem = (typeof sidePinned)[number];
+const sidebarPinnedIcons: Record<SidebarPinnedItem, string> = {
+  Home: "⌂",
+  Shortcuts: "☆",
+  Notes: "☰",
+  Reminders: "⏰",
+  Trash: "⌫",
+  Tasks: "✓",
+  Files: "▣",
+  Calendar: "◫",
+  Graph: "◎",
+  Templates: "▤"
+};
+const sidebarSectionLabels: Record<SidebarSectionId, string> = {
+  recent: "Recent Notes",
+  shortcuts: "Shortcuts",
+  "saved-searches": "Saved Searches",
+  "home-pins": "Pinned to Home",
+  "notebook-pins": "Pinned to Notebook",
+  notebooks: "Notebooks"
+};
+const sidebarSectionIds = Object.keys(sidebarSectionLabels) as SidebarSectionId[];
 const OPEN_SAVED_SEARCH_ACTION_PREFIX = "open-saved-search:";
 const EDIT_SAVED_SEARCH_ACTION_PREFIX = "edit-saved-search:";
 const REMOVE_SAVED_SEARCH_ACTION_PREFIX = "remove-saved-search:";
@@ -2571,6 +2594,7 @@ function defaultPrefs(): AppPrefs {
     notebookStacks: {},
     customStacks: [],
     collapsedStacks: [],
+    collapsedSidebarSections: [],
     themeOverrides: {}
   };
 }
@@ -2700,6 +2724,12 @@ function loadPrefs(): AppPrefs {
         : [],
       collapsedStacks: Array.isArray(parsed.collapsedStacks)
         ? parsed.collapsedStacks.filter((stack): stack is string => typeof stack === "string")
+        : [],
+      collapsedSidebarSections: Array.isArray(parsed.collapsedSidebarSections)
+        ? parsed.collapsedSidebarSections.filter(
+            (section): section is SidebarSectionId =>
+              typeof section === "string" && sidebarSectionIds.includes(section as SidebarSectionId)
+          )
         : [],
       themeOverrides: sanitizeThemeOverrides(parsed.themeOverrides)
     };
@@ -3062,6 +3092,9 @@ export default function App() {
   const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(
     () => new Set(initialPrefs.collapsedStacks ?? [])
   );
+  const [collapsedSidebarSections, setCollapsedSidebarSections] = useState<Set<SidebarSectionId>>(
+    () => new Set<SidebarSectionId>(initialPrefs.collapsedSidebarSections ?? [])
+  );
   const [metadataOpen, setMetadataOpen] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [aiShowSettings, setAiShowSettings] = useState(false);
@@ -3407,6 +3440,7 @@ export default function App() {
   const shortcutTagSet = useMemo(() => new Set(shortcutTags), [shortcutTags]);
 
   const collapsedStacksKey = Array.from(collapsedStacks).sort().join("|");
+  const collapsedSidebarSectionsKey = Array.from(collapsedSidebarSections).sort().join("|");
 
   const activeNote = notes.find((note) => note.id === activeId) ?? visibleNotes[0] ?? null;
   const noteHistoryNote = noteHistoryDialog ? notes.find((note) => note.id === noteHistoryDialog.noteId) ?? null : null;
@@ -4814,6 +4848,7 @@ export default function App() {
       notebookStacks,
       customStacks,
       collapsedStacks: Array.from(collapsedStacks),
+      collapsedSidebarSections: Array.from(collapsedSidebarSections),
       themeOverrides: sanitizeThemeOverrides(themeOverrides)
     };
     window.localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
@@ -4850,6 +4885,7 @@ export default function App() {
     notebookStacks,
     customStacks,
     collapsedStacksKey,
+    collapsedSidebarSectionsKey,
     themeOverrides
   ]);
 
@@ -10697,6 +10733,18 @@ export default function App() {
     });
   }
 
+  function toggleSidebarSection(section: SidebarSectionId): void {
+    setCollapsedSidebarSections((previous) => {
+      const next = new Set(previous);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      return next;
+    });
+  }
+
   function createNotebook(): void {
     setCreateNotebookDialog({ name: "" });
   }
@@ -12696,6 +12744,46 @@ a{color:#1d4ed8}
     stackHeader?.focus();
   }
 
+  function renderSidebarSection(
+    sectionId: SidebarSectionId,
+    children: ReactNode,
+    action?: ReactNode,
+    className?: string
+  ): ReactNode {
+    const isCollapsed = collapsedSidebarSections.has(sectionId);
+    const classes = ["sidebar-section"];
+    if (className) {
+      classes.push(className);
+    }
+
+    return (
+      <section className={classes.join(" ")}>
+        <div className="sidebar-section-head">
+          <button
+            type="button"
+            className="sidebar-section-toggle"
+            aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${sidebarSectionLabels[sectionId]} section`}
+            aria-expanded={!isCollapsed}
+            onClick={() => toggleSidebarSection(sectionId)}
+            title={isCollapsed ? `Expand ${sidebarSectionLabels[sectionId]}` : `Collapse ${sidebarSectionLabels[sectionId]}`}
+          >
+            <span className="sidebar-section-chevron" aria-hidden="true">
+              {isCollapsed ? "▸" : "▾"}
+            </span>
+            <span className="sidebar-section-title">{sidebarSectionLabels[sectionId]}</span>
+          </button>
+          {action}
+        </div>
+        <div
+          className={isCollapsed ? "sidebar-section-body collapsed" : "sidebar-section-body"}
+          aria-hidden={isCollapsed}
+        >
+          <div className="sidebar-section-body-inner">{children}</div>
+        </div>
+      </section>
+    );
+  }
+
   function renderNotebookRow(notebook: string, nested = false): ReactNode {
     const count = activeNotes.filter((note) => note.notebook === notebook).length;
     const isDropTarget = dropNotebook === notebook;
@@ -13868,45 +13956,73 @@ a{color:#1d4ed8}
       }}
     >
       <aside className="left-sidebar" style={{ width: sidebarWidth }}>
-        <div className="sidebar-search" onClick={() => setSearchOpen(true)}>
-          <span>Search</span>
+        <button type="button" className="sidebar-search" aria-label="Search" onClick={() => setSearchOpen(true)}>
+          <span className="sidebar-search-icon" aria-hidden="true">
+            ⌕
+          </span>
+          <span className="sidebar-search-label">Search</span>
           <kbd>cmd+k/p</kbd>
-        </div>
+        </button>
 
         <div className="sidebar-actions">
-          <button type="button" className="new-note" onClick={createNewNote}>
-            + Note
+          <button type="button" className="new-note" aria-label="+ Note" onClick={createNewNote}>
+            <span className="sidebar-button-icon" aria-hidden="true">
+              +
+            </span>
+            <span>New Note</span>
           </button>
-          <button
-            type="button"
-            className="round-action"
-            aria-label="New from template"
-            onClick={() => openTemplateDialog(activeNote?.isTemplate ? activeNote.id : undefined)}
-          >
-            ⧉
-          </button>
-          <button type="button" className="round-action" aria-label="Open today's note" onClick={() => void openTodayNote()}>
-            D
-          </button>
-          <button type="button" className="round-action" aria-label="Quick actions" onClick={openCommandPalette}>
-            +
-          </button>
-          <button type="button" className="round-action" aria-label="Create task" onClick={quickCreateTask}>
-            T
-          </button>
-          <button
-            type="button"
-            className="round-action"
-            aria-label="More actions"
-            onClick={() => {
-              setSearchScope("everywhere");
-              setSearchFilters([]);
-              setQuickQuery("");
-              setSearchOpen(true);
-            }}
-          >
-            ...
-          </button>
+          <div className="sidebar-secondary-actions" role="toolbar" aria-label="Sidebar quick actions">
+            <button
+              type="button"
+              className="round-action"
+              aria-label="New from template"
+              title="New from template"
+              onClick={() => openTemplateDialog(activeNote?.isTemplate ? activeNote.id : undefined)}
+            >
+              ⧉
+            </button>
+            <button
+              type="button"
+              className="round-action"
+              aria-label="Open today's note"
+              title="Open today's note"
+              onClick={() => void openTodayNote()}
+            >
+              ◷
+            </button>
+            <button
+              type="button"
+              className="round-action"
+              aria-label="Quick actions"
+              title="Quick actions"
+              onClick={openCommandPalette}
+            >
+              ✦
+            </button>
+            <button
+              type="button"
+              className="round-action"
+              aria-label="Create task"
+              title="Create task"
+              onClick={quickCreateTask}
+            >
+              ✓
+            </button>
+            <button
+              type="button"
+              className="round-action"
+              aria-label="More actions"
+              title="Search filters"
+              onClick={() => {
+                setSearchScope("everywhere");
+                setSearchFilters([]);
+                setQuickQuery("");
+                setSearchOpen(true);
+              }}
+            >
+              …
+            </button>
+          </div>
         </div>
 
         <nav className="sidebar-nav">
@@ -14073,7 +14189,10 @@ a{color:#1d4ed8}
                 assertNever(item);
               }}
             >
-              <span>{item}</span>
+              <span className="sidebar-link-icon" aria-hidden="true">
+                {sidebarPinnedIcons[item]}
+              </span>
+              <span className="sidebar-link-label">{item}</span>
               {badge ? (
                 <small className={badgeTone === "alert" ? "sidebar-link-badge alert" : "sidebar-link-badge"} aria-hidden="true">
                   {badge}
@@ -14084,16 +14203,9 @@ a{color:#1d4ed8}
           })}
         </nav>
 
-        <section className="sidebar-section">
-          <div className="sidebar-section-head">
-            <h2>Recent notes</h2>
-            {recentNotes.length ? (
-              <button type="button" className="sidebar-section-clear" onClick={clearRecentNotes}>
-                Clear
-              </button>
-            ) : null}
-          </div>
-          {recentNotes.length ? (
+        {renderSidebarSection(
+          "recent",
+          recentNotes.length ? (
             <ul className="shortcut-list">
               {recentNotes.map((note) => (
                 <li key={note.id} className="shortcut-row">
@@ -14130,12 +14242,17 @@ a{color:#1d4ed8}
             </ul>
           ) : (
             <p className="shortcut-empty">No recent notes yet</p>
-          )}
-        </section>
+          ),
+          recentNotes.length ? (
+            <button type="button" className="sidebar-section-clear" onClick={clearRecentNotes}>
+              Clear
+            </button>
+          ) : undefined
+        )}
 
-        <section className="sidebar-section">
-          <h2>Shortcuts</h2>
-          {shortcutNotes.length || shortcutNotebookItems.length || shortcutTags.length || allTags.length ? (
+        {renderSidebarSection(
+          "shortcuts",
+          shortcutNotes.length || shortcutNotebookItems.length || shortcutTags.length || allTags.length ? (
             <>
               {shortcutNotes.length ? (
                 <>
@@ -14253,12 +14370,12 @@ a{color:#1d4ed8}
             </>
           ) : (
             <p className="shortcut-empty">No shortcuts yet</p>
-          )}
-        </section>
+          )
+        )}
 
-        <section className="sidebar-section">
-          <h2>Saved Searches</h2>
-          {savedSearches.length ? (
+        {renderSidebarSection(
+          "saved-searches",
+          savedSearches.length ? (
             <ul className="shortcut-list">
               {savedSearches.map((saved) => (
                 <li key={saved.id} className="shortcut-row">
@@ -14289,12 +14406,12 @@ a{color:#1d4ed8}
             </ul>
           ) : (
             <p className="shortcut-empty">No saved searches yet</p>
-          )}
-        </section>
+          )
+        )}
 
-        <section className="sidebar-section">
-          <h2>Pinned to Home</h2>
-          {homePinnedNotes.length ? (
+        {renderSidebarSection(
+          "home-pins",
+          homePinnedNotes.length ? (
             <ul className="shortcut-list">
               {homePinnedNotes.map((note) => (
                 <li key={note.id} className="shortcut-row">
@@ -14328,12 +14445,12 @@ a{color:#1d4ed8}
             </ul>
           ) : (
             <p className="shortcut-empty">No Home pins yet</p>
-          )}
-        </section>
+          )
+        )}
 
-        <section className="sidebar-section">
-          <h2>{selectedNotebook === "All Notes" ? "Pinned to Notebook" : `Pinned in ${selectedNotebook}`}</h2>
-          {selectedNotebook === "All Notes" ? (
+        {renderSidebarSection(
+          "notebook-pins",
+          selectedNotebook === "All Notes" ? (
             <p className="shortcut-empty">Select a notebook to view notebook pins</p>
           ) : notebookPinnedNotes.length ? (
             <ul className="shortcut-list">
@@ -14369,11 +14486,12 @@ a{color:#1d4ed8}
             </ul>
           ) : (
             <p className="shortcut-empty">No notebook pins yet</p>
-          )}
-        </section>
+          )
+        )}
 
-        <section className="sidebar-section">
-          <h2>Notebooks</h2>
+        {renderSidebarSection(
+          "notebooks",
+          <>
           <ul>
             {stackedNotebookGroups.stacks.map((group) => {
               const isCollapsed = collapsedStacks.has(group.stack);
@@ -14459,7 +14577,13 @@ a{color:#1d4ed8}
                     <span>{isCollapsed ? "▸" : "▾"} {group.stack}</span>
                     <small>{group.notebooks.length}</small>
                   </button>
-                  {!isCollapsed ? <ul>{group.notebooks.map((notebook) => renderNotebookRow(notebook, true))}</ul> : null}
+                  {!isCollapsed ? (
+                    <div className="stack-group-body">
+                      <div className="stack-group-body-inner">
+                        <ul>{group.notebooks.map((notebook) => renderNotebookRow(notebook, true))}</ul>
+                      </div>
+                    </div>
+                  ) : null}
                 </li>
               );
             })}
@@ -14499,7 +14623,8 @@ a{color:#1d4ed8}
           <button type="button" className="sidebar-subaction" onClick={createStack}>
             + New stack
           </button>
-        </section>
+          </>
+        )}
       </aside>
 
       <div

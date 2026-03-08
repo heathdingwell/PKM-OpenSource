@@ -831,47 +831,40 @@ const seedCalendarEvents: Array<Pick<CalendarEvent, "title" | "startAt" | "endAt
     }
   ];
 
-const noteMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
-  { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
-  { id: "open-lite-edit", label: "Open in Lite edit mode", shortcut: "alt+cmd+o" },
-  { id: "open-full-edit", label: "Open in full editor", shortcut: "shift+cmd+o" },
-  { id: "open-local-graph", label: "Open local graph", shortcut: "shift+cmd+g" },
-  { id: "share", label: "Share", shortcut: "cmd+alt+s" },
-  { id: "copy-link", label: "Copy link", shortcut: "cmd+l" },
-  { id: "copy-path", label: "Copy path", shortcut: "cmd+alt+l" },
-  { id: "copy-markdown", label: "Copy markdown", shortcut: "cmd+shift+m" },
-  { id: "copy-html", label: "Copy HTML", shortcut: "cmd+shift+h" },
-  { id: "copy-text", label: "Copy text", shortcut: "cmd+shift+t" },
+const editorMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
   { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
-  { id: "divider-1", label: "", divider: true },
-  { id: "move", label: "Move", shortcut: "cmd+alt+m" },
-  { id: "copy-to", label: "Copy to", shortcut: "cmd+alt+y" },
+  { id: "move", label: "Move…", shortcut: "cmd+alt+m" },
+  { id: "copy-to", label: "Copy to…", shortcut: "cmd+alt+y" },
   { id: "duplicate", label: "Duplicate", shortcut: "cmd+alt+d" },
+  { id: "divider-1", label: "", divider: true },
   { id: "edit-tags", label: "Edit tags", shortcut: "cmd+alt+t" },
   { id: "divider-2", label: "", divider: true },
   { id: "add-shortcuts", label: "Add to Shortcuts", shortcut: "cmd+alt+6" },
-  { id: "pin-notebook", label: "Pin to Notebook", shortcut: "cmd+alt+8" },
   { id: "pin-home", label: "Pin to Home", shortcut: "cmd+alt+7" },
-  { id: "toggle-collapsible-sections", label: "Collapsible sections" },
   { id: "divider-3", label: "", divider: true },
-  { id: "find", label: "Find in note", shortcut: "cmd+f" },
-  { id: "open-tasks", label: "Open tasks", shortcut: "cmd+alt+j" },
-  { id: "open-files", label: "Open files", shortcut: "cmd+alt+f" },
-  { id: "open-calendar", label: "Open calendar", shortcut: "cmd+alt+c" },
-  { id: "open-reminders", label: "Open reminders", shortcut: "cmd+alt+u" },
-  { id: "note-info", label: "Note info", shortcut: "cmd+shift+i" },
-  { id: "toggle-template", label: "Set as template", shortcut: "cmd+alt+5" },
   { id: "note-history", label: "Note history", shortcut: "cmd+alt+h" },
-  { id: "toggle-auto-links", label: "Enable auto links" },
-  { id: "cycle-theme", label: "Cycle theme" },
-  { id: "divider-4", label: "", divider: true },
-  { id: "export", label: "Export", shortcut: "cmd+alt+1" },
-  { id: "export-text", label: "Export as Text", shortcut: "cmd+alt+3" },
-  { id: "export-html", label: "Export as HTML", shortcut: "cmd+alt+2" },
-  { id: "export-pdf", label: "Export as PDF", shortcut: "cmd+alt+4" },
+  { id: "export", label: "Export…", shortcut: "cmd+alt+1" },
   { id: "print", label: "Print", shortcut: "cmd+alt+p" },
-  { id: "divider-5", label: "", divider: true },
+  { id: "divider-4", label: "", divider: true },
   { id: "restore-trash", label: "Restore from Trash", shortcut: "cmd+alt+z" },
+  { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace" }
+];
+
+const cardMenuRows: Array<{ id: string; label: string; shortcut?: string; divider?: boolean }> = [
+  { id: "open", label: "Open" },
+  { id: "open-window", label: "Open in new window", shortcut: "cmd+o" },
+  { id: "divider-1", label: "", divider: true },
+  { id: "rename", label: "Rename", shortcut: "cmd+shift+r" },
+  { id: "move", label: "Move…", shortcut: "cmd+alt+m" },
+  { id: "copy-to", label: "Copy to…", shortcut: "cmd+alt+y" },
+  { id: "duplicate", label: "Duplicate", shortcut: "cmd+alt+d" },
+  { id: "edit-tags", label: "Edit tags", shortcut: "cmd+alt+t" },
+  { id: "divider-2", label: "", divider: true },
+  { id: "pin-home", label: "Pin to Home", shortcut: "cmd+alt+7" },
+  { id: "add-shortcuts", label: "Add to Shortcuts", shortcut: "cmd+alt+6" },
+  { id: "divider-3", label: "", divider: true },
+  { id: "export", label: "Export…" },
+  { id: "divider-4", label: "", divider: true },
   { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace" }
 ];
 
@@ -10624,7 +10617,7 @@ export default function App() {
     const position = positionAnchoredMenu(
       rect,
       236,
-      Math.min(estimateContextMenuHeight(noteMenuRows), window.innerHeight - 32)
+      Math.min(estimateContextMenuHeight(editorMenuRows), window.innerHeight - 32)
     );
     setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id], source: "editor", maxHeight: position.maxHeight });
     setStackMenu(null);
@@ -12001,6 +11994,12 @@ a{color:#1d4ed8}
 
     if (action === "duplicate") {
       void duplicateNotes(contextMenu.noteIds);
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open") {
+      openNoteFromList(targetId);
       setContextMenu(null);
       return;
     }
@@ -17326,12 +17325,12 @@ a{color:#1d4ed8}
           }}
           onClick={(event) => event.stopPropagation()}
         >
-          {noteMenuRows.map((row) => {
+          {(contextMenu.source === "editor" ? editorMenuRows : cardMenuRows).map((row) => {
             const allContextTrashed = contextMenu.noteIds.every((noteId) => {
               const note = notes.find((entry) => entry.id === noteId);
               return Boolean(note?.trashedAt);
             });
-            if (row.id === "restore-trash" && !allContextTrashed) {
+            if (row.id === "restore-trash" && (contextMenu.source !== "editor" || !allContextTrashed)) {
               return null;
             }
             return row.divider ? (

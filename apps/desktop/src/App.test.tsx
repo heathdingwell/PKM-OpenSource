@@ -1830,32 +1830,29 @@ describe("App", () => {
     expect(screen.getByText("Note link copied")).toBeInTheDocument();
   });
 
-  it("copies note link from note header action", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
+  it("shows the streamlined note header action menu", () => {
     render(<App />);
     const noteActionsMenu = openHeaderNoteActions();
-    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Copy link/i }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(screen.getByText("Note link copied")).toBeInTheDocument();
-  });
 
-  it("copies note path from note header action", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
+    expect(within(noteActionsMenu).getByRole("button", { name: /Rename/i })).toBeInTheDocument();
+    expect(within(noteActionsMenu).getByRole("button", { name: /^Move…/i })).toBeInTheDocument();
+    expect(within(noteActionsMenu).getByRole("button", { name: /Copy to/i })).toBeInTheDocument();
+    expect(within(noteActionsMenu).getByRole("button", { name: /Duplicate/i })).toBeInTheDocument();
+    expect(within(noteActionsMenu).getByRole("button", { name: /Edit tags/i })).toBeInTheDocument();
+    expect(within(noteActionsMenu).getByRole("button", { name: /Add to Shortcuts|Remove from Shortcuts/i })).toBeInTheDocument();
+    expect(within(noteActionsMenu).getByRole("button", { name: /Pin to Home|Unpin from Home/i })).toBeInTheDocument();
+    expect(within(noteActionsMenu).getByRole("button", { name: /Note history/i })).toBeInTheDocument();
+    expect(within(noteActionsMenu).getByRole("button", { name: /Export/i })).toBeInTheDocument();
+    expect(within(noteActionsMenu).getByRole("button", { name: /Print/i })).toBeInTheDocument();
+    expect(within(noteActionsMenu).getByRole("button", { name: /Move to Trash/i })).toBeInTheDocument();
 
-    render(<App />);
-    const noteActionsMenu = openHeaderNoteActions();
-    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Copy path/i }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith("Daily Notes/Agenda.md"));
-    expect(screen.getByText("Note path copied")).toBeInTheDocument();
+    expect(within(noteActionsMenu).queryByRole("button", { name: /Copy link/i })).not.toBeInTheDocument();
+    expect(within(noteActionsMenu).queryByRole("button", { name: /Copy path/i })).not.toBeInTheDocument();
+    expect(within(noteActionsMenu).queryByRole("button", { name: /Find in note/i })).not.toBeInTheDocument();
+    expect(within(noteActionsMenu).queryByRole("button", { name: /Open in new window/i })).not.toBeInTheDocument();
+    expect(within(noteActionsMenu).queryByRole("button", { name: /Set as template|Remove from Templates/i })).not.toBeInTheDocument();
+    expect(within(noteActionsMenu).queryByRole("button", { name: /Pin to Notebook|Unpin from Notebook/i })).not.toBeInTheDocument();
+    expect(within(noteActionsMenu).queryByRole("button", { name: /Enable auto links/i })).not.toBeInTheDocument();
   });
 
   it("opens rename note dialog from note header action", () => {
@@ -1880,17 +1877,10 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: /History.*Agenda/i, level: 3 })).toBeInTheDocument();
   });
 
-  it("opens find in note from note header action", () => {
-    render(<App />);
-    const noteActionsMenu = openHeaderNoteActions();
-    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Find in note/i }));
-    expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
-  });
-
   it("opens move dialog from note header action", () => {
     render(<App />);
     const noteActionsMenu = openHeaderNoteActions();
-    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: "Move cmd+alt+m" }));
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /^Move… cmd\+alt\+m$/i }));
     expect(screen.getByRole("heading", { name: "Move", level: 3 })).toBeInTheDocument();
   });
 
@@ -1907,17 +1897,6 @@ describe("App", () => {
     fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Duplicate/i }));
     expect(await screen.findByText("1 duplicated")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Agenda copy" })).toBeInTheDocument();
-  });
-
-  it("toggles template state from note header action", () => {
-    render(<App />);
-    const noteActionsMenu = openHeaderNoteActions();
-    const templateButton = within(noteActionsMenu).getByRole("button", { name: /Set as template|Remove from Templates/i });
-    fireEvent.click(templateButton);
-    const refreshedMenu = openHeaderNoteActions();
-    expect(
-      within(refreshedMenu).getByRole("button", { name: /Set as template|Remove from Templates/i }).textContent
-    ).not.toBe(templateButton.textContent);
   });
 
   it("toggles shortcut state from note header action", () => {
@@ -1942,24 +1921,21 @@ describe("App", () => {
     ).not.toBe(homePinButton.textContent);
   });
 
-  it("toggles notebook pin state from note header action", () => {
-    render(<App />);
-    const noteActionsMenu = openHeaderNoteActions();
-    const notebookPinButton = within(noteActionsMenu).getByRole("button", { name: /Pin to Notebook|Unpin from Notebook/i });
-    fireEvent.click(notebookPinButton);
-    const refreshedMenu = openHeaderNoteActions();
-    expect(
-      within(refreshedMenu).getByRole("button", { name: /Pin to Notebook|Unpin from Notebook/i }).textContent
-    ).not.toBe(notebookPinButton.textContent);
-  });
+  it("exports note markdown from note header action", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-markdown");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 
-  it("opens note in new window from note header action", () => {
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     render(<App />);
     const noteActionsMenu = openHeaderNoteActions();
-    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Open in new window/i }));
-    expect(openSpy).toHaveBeenCalledTimes(1);
-    openSpy.mockRestore();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Export/i }));
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
+    clickSpy.mockRestore();
   });
 
   it("copies note link using KeyL code with keyboard shortcut", async () => {
@@ -2100,20 +2076,6 @@ describe("App", () => {
     render(<App />);
 
     fireEvent.keyDown(window, { key: "s", metaKey: true, altKey: true });
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(screen.getByText("Share link copied")).toBeInTheDocument();
-  });
-
-  it("shares note link from note header action", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "More note actions" }));
-    fireEvent.click(screen.getByRole("button", { name: /^Share/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Share link copied")).toBeInTheDocument();
   });
@@ -8903,45 +8865,38 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Open preview notebook Recipes" })).toBeInTheDocument();
   });
 
-  it("opens a note in lite edit mode from context menu", () => {
+  it("shows the streamlined note card context menu", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
 
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Open in Lite edit mode/i }));
 
-    expect(screen.getByRole("heading", { name: "Markdown", level: 3 })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
-  });
+    const contextMenu = screen.getByRole("menu", { name: "Note actions" });
+    expect(within(contextMenu).getByRole("button", { name: /^Open$/i })).toBeInTheDocument();
+    expect(within(contextMenu).getByRole("button", { name: /Open in new window/i })).toBeInTheDocument();
+    expect(within(contextMenu).getByRole("button", { name: /Rename/i })).toBeInTheDocument();
+    expect(within(contextMenu).getByRole("button", { name: /^Move… cmd\+alt\+m$/i })).toBeInTheDocument();
+    expect(within(contextMenu).getByRole("button", { name: /Copy to/i })).toBeInTheDocument();
+    expect(within(contextMenu).getByRole("button", { name: /Duplicate/i })).toBeInTheDocument();
+    expect(within(contextMenu).getByRole("button", { name: /Edit tags/i })).toBeInTheDocument();
+    expect(within(contextMenu).getByRole("button", { name: /Pin to Home|Unpin from Home/i })).toBeInTheDocument();
+    expect(within(contextMenu).getByRole("button", { name: /Add to Shortcuts|Remove from Shortcuts/i })).toBeInTheDocument();
+    expect(within(contextMenu).getByRole("button", { name: /Export/i })).toBeInTheDocument();
+    expect(within(contextMenu).getByRole("button", { name: /Move to Trash/i })).toBeInTheDocument();
 
-  it("opens a note in full editor from context menu", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Open in Lite edit mode/i }));
-    expect(screen.queryByRole("heading", { name: "Preview", level: 3 })).not.toBeInTheDocument();
-
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Open in full editor/i }));
-    expect(screen.getByRole("heading", { name: "Preview", level: 3 })).toBeInTheDocument();
-  });
-
-  it("opens local graph scope from note context menu", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /^Open local graph/i }));
-
-    expect(screen.getByRole("heading", { name: "Graph", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Local" })).toHaveClass("active");
+    expect(within(contextMenu).queryByRole("button", { name: /Open in Lite edit mode/i })).not.toBeInTheDocument();
+    expect(within(contextMenu).queryByRole("button", { name: /Open in full editor/i })).not.toBeInTheDocument();
+    expect(within(contextMenu).queryByRole("button", { name: /Open local graph/i })).not.toBeInTheDocument();
+    expect(within(contextMenu).queryByRole("button", { name: /Copy markdown/i })).not.toBeInTheDocument();
+    expect(within(contextMenu).queryByRole("button", { name: /Copy path/i })).not.toBeInTheDocument();
+    expect(within(contextMenu).queryByRole("button", { name: /Copy HTML/i })).not.toBeInTheDocument();
+    expect(within(contextMenu).queryByRole("button", { name: /Copy text/i })).not.toBeInTheDocument();
+    expect(within(contextMenu).queryByRole("button", { name: /Open tasks/i })).not.toBeInTheDocument();
+    expect(within(contextMenu).queryByRole("button", { name: /Open files/i })).not.toBeInTheDocument();
+    expect(within(contextMenu).queryByRole("button", { name: /Open calendar/i })).not.toBeInTheDocument();
+    expect(within(contextMenu).queryByRole("button", { name: /Open reminders/i })).not.toBeInTheDocument();
   });
 
   it("copies a note to another notebook from note context menu", async () => {
@@ -8971,26 +8926,8 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Agenda copy", level: 2 })).toBeInTheDocument();
   });
 
-  it("exports a note as PDF via desktop shell from note context menu", async () => {
-    const exportNotePdf = vi.fn().mockResolvedValue({ ok: true, path: "/tmp/Agenda.pdf" });
-    (window as unknown as { pkmShell?: { exportNotePdf: typeof exportNotePdf } }).pkmShell = { exportNotePdf };
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /^Export as PDF/i }));
-
-    await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
-    expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
-    expect(String(exportNotePdf.mock.calls[0]?.[0]?.html ?? "")).toContain("<!doctype html>");
-    expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
-  });
-
-  it("exports a note as HTML from note context menu", () => {
-    const createObjectURL = vi.fn(() => "blob:pkm-note-html");
+  it("exports a note from note context menu", () => {
+    const createObjectURL = vi.fn(() => "blob:pkm-note-markdown");
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
@@ -9002,138 +8939,12 @@ describe("App", () => {
     const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
     expect(agendaCard).toBeTruthy();
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /^Export as HTML/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Export/i }));
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported HTML "Agenda"')).toBeInTheDocument();
+    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
     clickSpy.mockRestore();
-  });
-
-  it("exports a note as text from note context menu", () => {
-    const createObjectURL = vi.fn(() => "blob:pkm-note-text");
-    const revokeObjectURL = vi.fn();
-    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
-    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /^Export as Text/i }));
-
-    expect(createObjectURL).toHaveBeenCalledTimes(1);
-    expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported text "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
-  });
-
-  it("falls back to print when exporting note as PDF without desktop shell bridge", () => {
-    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /^Export as PDF/i }));
-
-    expect(printSpy).toHaveBeenCalledTimes(1);
-    printSpy.mockRestore();
-  });
-
-  it("copies markdown for multi-selected notes from note context menu", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    const todoCard = screen.getAllByText("To-do list")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    expect(todoCard).toBeTruthy();
-
-    fireEvent.click(agendaCard as HTMLButtonElement);
-    fireEvent.click(todoCard as HTMLButtonElement, { metaKey: true });
-    fireEvent.contextMenu(todoCard as HTMLButtonElement);
-    const contextMenu = document.querySelector(".context-menu");
-    expect(contextMenu).toBeTruthy();
-    fireEvent.click(within(contextMenu as HTMLElement).getByRole("button", { name: /Copy markdown/i }));
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    const payload = String(writeText.mock.calls[0]?.[0] ?? "");
-    expect(payload).toContain("# Agenda");
-    expect(payload).toContain("# To-do list");
-    expect(payload.indexOf("# To-do list")).toBeLessThan(payload.indexOf("# Agenda"));
-    expect(screen.getByText("Markdown copied for 2 notes")).toBeInTheDocument();
-  });
-
-  it("copies note path from note context menu", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Copy path/i }));
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toMatch(/agenda/i);
-    expect(screen.getByText("Note path copied")).toBeInTheDocument();
-  });
-
-  it("copies note html from note context menu", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Copy HTML/i }));
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("<h1>Agenda</h1>");
-    expect(screen.getByText("Note HTML copied")).toBeInTheDocument();
-  });
-
-  it("copies note text from note context menu", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true
-    });
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Copy text/i }));
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(String(writeText.mock.calls[0]?.[0] ?? "")).toContain("Priority 1");
-    expect(screen.getByText("Note text copied")).toBeInTheDocument();
   });
 
   it("targets the right-clicked note first when context menu opens on multi-select", () => {
@@ -9149,28 +8960,11 @@ describe("App", () => {
     fireEvent.click(todoCard as HTMLButtonElement, { metaKey: true });
 
     fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Open in Lite edit mode/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Open$/i }));
 
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
     expect(editor?.value).toContain("# Agenda");
-  });
-
-  it("toggles collapsible preview sections from note context menu", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    expect(document.querySelector(".preview-section")).toBeNull();
-
-    const agendaCard = screen.getAllByText("Agenda")[0].closest("button");
-    expect(agendaCard).toBeTruthy();
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Enable collapsible sections" }));
-    expect(document.querySelector(".preview-section")).toBeTruthy();
-
-    fireEvent.contextMenu(agendaCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: "Disable collapsible sections" }));
-    expect(document.querySelector(".preview-section")).toBeNull();
   });
 
   it("opens note context menu from keyboard context-menu key", () => {
@@ -9700,76 +9494,6 @@ describe("App", () => {
     expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
   });
 
-  it("opens find in note from note context menu", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
-    expect(noteCard).toBeTruthy();
-    fireEvent.contextMenu(noteCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Find in note/i }));
-
-    expect(screen.getByRole("search", { name: "Find in note" })).toBeInTheDocument();
-  });
-
-  it("opens tasks from note context menu", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
-    expect(noteCard).toBeTruthy();
-    fireEvent.contextMenu(noteCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Open tasks/i }));
-
-    expect(screen.getByRole("heading", { name: "Tasks", level: 3 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
-  });
-
-  it("opens files from note context menu", () => {
-    render(<App />);
-    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
-    expect(editor).toBeTruthy();
-    fireEvent.change(editor as HTMLTextAreaElement, {
-      target: { value: "# Agenda\n\n[Doc PDF](./attachments/brief.pdf)" }
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
-    expect(noteCard).toBeTruthy();
-    fireEvent.contextMenu(noteCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Open files/i }));
-
-    expect(screen.getByRole("heading", { name: "Files", level: 3 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
-  });
-
-  it("opens calendar from note context menu", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
-    expect(noteCard).toBeTruthy();
-    fireEvent.contextMenu(noteCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Open calendar/i }));
-
-    expect(screen.getByRole("heading", { name: "Calendar", level: 3 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Current note \(/ })).toHaveClass("active");
-  });
-
-  it("opens reminders from note context menu", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    const noteCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
-    expect(noteCard).toBeTruthy();
-    fireEvent.contextMenu(noteCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Open reminders/i }));
-
-    expect(screen.getByRole("heading", { name: "Reminders", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Current note" })).toHaveClass("active");
-  });
-
   it("opens tag editor for the context menu target note", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -10132,8 +9856,9 @@ describe("App", () => {
 
     const trashedCard = document.querySelector(".note-grid .note-card") as HTMLButtonElement | null;
     expect(trashedCard).toBeTruthy();
-    fireEvent.contextMenu(trashedCard as HTMLButtonElement);
-    fireEvent.click(screen.getByRole("button", { name: /Restore from Trash/i }));
+    fireEvent.click(trashedCard as HTMLButtonElement);
+    const noteActionsMenu = openHeaderNoteActions();
+    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Restore from Trash/i }));
 
     expect(screen.getByText("Trash is empty.")).toBeInTheDocument();
   });
@@ -10180,13 +9905,6 @@ describe("App", () => {
     expect(
       within(targetOutgoingSection as HTMLElement).getByRole("button", { name: "Open preview outgoing link Agenda" })
     ).toBeInTheDocument();
-  });
-
-  it("toggles auto reciprocal links from the note actions menu", () => {
-    render(<App />);
-    const noteActionsMenu = openHeaderNoteActions();
-    fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Enable auto links/i }));
-    expect(screen.getByText("Auto reciprocal links enabled")).toBeInTheDocument();
   });
 
   it("uses unsaved draft content for AI note context", async () => {

@@ -10570,7 +10570,7 @@ export default function App() {
 
     const rect = editorMenuButtonRef.current.getBoundingClientRect();
     const estimatedHeight = Math.min(estimateContextMenuHeight(noteMenuRows), window.innerHeight - 32);
-    const position = clampMenuPosition(rect.right - 236, rect.bottom + 8, 236, estimatedHeight);
+    const position = clampMenuPosition(rect.right - 236, rect.bottom + 10, 236, estimatedHeight);
     setContextMenu({ x: position.x, y: position.y, noteIds: [activeNote.id], source: "editor" });
     setStackMenu(null);
     setEditorContextMenu(null);

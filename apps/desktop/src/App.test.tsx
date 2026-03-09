@@ -14,6 +14,29 @@ describe("App", () => {
     return screen.getByRole("menu", { name: "Note actions" });
   }
 
+  function mockAnchorDownloads(): { clickSpy: ReturnType<typeof vi.fn>; restoreAnchorClickSpy: () => void } {
+    const clickSpy = vi.fn();
+    const originalCreateElement = document.createElement.bind(document);
+    const createElementSpy = vi.spyOn(document, "createElement").mockImplementation(((
+      tagName: string,
+      options?: ElementCreationOptions
+    ) => {
+      const element = originalCreateElement(tagName, options);
+      if (tagName.toLowerCase() === "a") {
+        Object.defineProperty(element, "click", {
+          value: clickSpy,
+          configurable: true
+        });
+      }
+      return element;
+    }) as typeof document.createElement);
+
+    return {
+      clickSpy,
+      restoreAnchorClickSpy: () => createElementSpy.mockRestore()
+    };
+  }
+
   it("renders the notebook view shell", () => {
     render(<App />);
     expect(screen.getByRole("application", { name: "PKM OpenSource Shell" })).toBeInTheDocument();
@@ -75,6 +98,69 @@ describe("App", () => {
 
     fireEvent.click(aiButton);
     expect(aiButton).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("keeps the formatting toolbar visible in rich mode", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rich" }));
+
+    const toolbar = document.querySelector(".editor-toolbar.rich-mode") as HTMLElement | null;
+    expect(toolbar).toBeTruthy();
+    expect(within(toolbar as HTMLElement).getByRole("button", { name: "Bold" })).toBeInTheDocument();
+    expect(within(toolbar as HTMLElement).getByRole("button", { name: "Italic" })).toBeInTheDocument();
+  });
+
+  it("updates the window title as the active note changes", () => {
+    render(<App />);
+    expect(document.title).toBe("Agenda — PKM");
+
+    const notesList = screen.getByLabelText("Notes list");
+    const todoCard = Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+      entry.textContent?.includes("To-do list")
+    );
+    expect(todoCard).toBeTruthy();
+    fireEvent.click(todoCard as HTMLButtonElement);
+
+    expect(document.title).toBe("To-do list — PKM");
+  });
+
+  it("opens settings from the sidebar footer", () => {
+    render(<App />);
+
+    const sidebarFooter = document.querySelector(".sidebar-footer") as HTMLElement | null;
+    expect(sidebarFooter).toBeTruthy();
+    fireEvent.click(within(sidebarFooter as HTMLElement).getByRole("button", { name: "Settings" }));
+
+    expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
+  });
+
+  it("navigates back and forward through note history from the topbar", () => {
+    render(<App />);
+
+    const notesList = screen.getByLabelText("Notes list");
+    const todoCard = Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+      entry.textContent?.includes("To-do list")
+    );
+    const journalCard = Array.from(notesList.querySelectorAll<HTMLButtonElement>("button.note-card")).find((entry) =>
+      entry.textContent?.includes("Daily Journal")
+    );
+    expect(todoCard).toBeTruthy();
+    expect(journalCard).toBeTruthy();
+
+    fireEvent.click(todoCard as HTMLButtonElement);
+    fireEvent.click(journalCard as HTMLButtonElement);
+
+    const backButton = screen.getByRole("button", { name: "Go back (⌘[)" });
+    const forwardButton = screen.getByRole("button", { name: "Go forward (⌘])" });
+    expect(backButton).not.toBeDisabled();
+
+    fireEvent.click(backButton);
+    expect(screen.getByRole("heading", { name: "To-do list", level: 2 })).toBeInTheDocument();
+    expect(forwardButton).not.toBeDisabled();
+
+    fireEvent.click(forwardButton);
+    expect(screen.getByRole("heading", { name: "Daily Journal", level: 2 })).toBeInTheDocument();
   });
 
   it("exposes explicit tag editor controls", () => {
@@ -305,7 +391,9 @@ describe("App", () => {
   it("opens settings from the sidebar quick actions row", async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const quickActions = document.querySelector(".sidebar-secondary-actions") as HTMLElement | null;
+    expect(quickActions).toBeTruthy();
+    fireEvent.click(within(quickActions as HTMLElement).getByRole("button", { name: "Settings" }));
 
     await waitFor(() => expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument());
   });
@@ -1155,13 +1243,13 @@ describe("App", () => {
     expect(metadataPanel).toBeTruthy();
 
     fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Export as Markdown" }));
-    expect(await screen.findByText('Exported "Agenda"')).toBeInTheDocument();
+    expect(await screen.findByText('Exported "agenda.md"')).toBeInTheDocument();
 
     fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Export as HTML" }));
-    expect(await screen.findByText('Exported HTML "Agenda"')).toBeInTheDocument();
+    expect(await screen.findByText('Exported "agenda.html"')).toBeInTheDocument();
 
     fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Export as Text" }));
-    expect(await screen.findByText('Exported text "Agenda"')).toBeInTheDocument();
+    expect(await screen.findByText('Exported "agenda.txt"')).toBeInTheDocument();
 
     expect(anchorClick).toHaveBeenCalledTimes(3);
     createElementSpy.mockRestore();
@@ -1185,7 +1273,7 @@ describe("App", () => {
     expect(metadataPanel).toBeTruthy();
 
     fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Export as PDF" }));
-    expect(await screen.findByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+    expect(await screen.findByText('Exported "Agenda.pdf"')).toBeInTheDocument();
 
     fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Print" }));
     expect(printSpy).toHaveBeenCalledTimes(1);
@@ -1932,7 +2020,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     const noteActionsMenu = openHeaderNoteActions();
@@ -1940,8 +2028,8 @@ describe("App", () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.md"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("copies note link from topbar action", async () => {
@@ -2345,15 +2433,15 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.keyDown(window, { key: "1", metaKey: true, altKey: true });
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.md"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("exports the active note as markdown using Digit1 code with keyboard shortcut", () => {
@@ -2361,15 +2449,15 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.keyDown(window, { key: "¡", code: "Digit1", metaKey: true, altKey: true });
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.md"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected notes as HTML with keyboard shortcut", () => {
@@ -2377,7 +2465,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -2391,7 +2479,7 @@ describe("App", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(2);
     expect(clickSpy).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Exported HTML for 2 notes")).toBeInTheDocument();
-    clickSpy.mockRestore();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected notes as HTML using Digit2 code with keyboard shortcut", () => {
@@ -2399,7 +2487,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -2413,7 +2501,7 @@ describe("App", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(2);
     expect(clickSpy).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Exported HTML for 2 notes")).toBeInTheDocument();
-    clickSpy.mockRestore();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected notes as text with keyboard shortcut", () => {
@@ -2421,7 +2509,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -2435,7 +2523,7 @@ describe("App", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(2);
     expect(clickSpy).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Exported text for 2 notes")).toBeInTheDocument();
-    clickSpy.mockRestore();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected notes as text using Digit3 code with keyboard shortcut", () => {
@@ -2443,7 +2531,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -2457,7 +2545,7 @@ describe("App", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(2);
     expect(clickSpy).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Exported text for 2 notes")).toBeInTheDocument();
-    clickSpy.mockRestore();
+    restoreAnchorClickSpy();
   });
 
   it("exports the active note as PDF with keyboard shortcut", async () => {
@@ -2469,7 +2557,7 @@ describe("App", () => {
 
     await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
     expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
-    expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+    expect(screen.getByText('Exported "Agenda.pdf"')).toBeInTheDocument();
   });
 
   it("exports the active note as PDF using Digit4 code with keyboard shortcut", async () => {
@@ -2481,7 +2569,7 @@ describe("App", () => {
 
     await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
     expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
-    expect(screen.getByText("Exported PDF to /tmp/Agenda-code.pdf")).toBeInTheDocument();
+    expect(screen.getByText('Exported "Agenda-code.pdf"')).toBeInTheDocument();
   });
 
   it("blocks PDF export keyboard shortcut for multi-selected notes", () => {
@@ -4159,7 +4247,7 @@ describe("App", () => {
 
     await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
     expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
-    expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+    expect(screen.getByText('Exported "Agenda.pdf"')).toBeInTheDocument();
   });
 
   it("exports note as HTML from command palette", () => {
@@ -4167,7 +4255,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -4178,8 +4266,8 @@ describe("App", () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported HTML "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.html"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected notes as HTML from command palette", () => {
@@ -4187,7 +4275,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -4205,7 +4293,7 @@ describe("App", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(2);
     expect(clickSpy).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Exported HTML for 2 notes")).toBeInTheDocument();
-    clickSpy.mockRestore();
+    restoreAnchorClickSpy();
   });
 
   it("exports note as text from command palette", () => {
@@ -4213,7 +4301,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -4224,8 +4312,8 @@ describe("App", () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported text "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.txt"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected notes as text from command palette", () => {
@@ -4233,7 +4321,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -4251,7 +4339,7 @@ describe("App", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(2);
     expect(clickSpy).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Exported text for 2 notes")).toBeInTheDocument();
-    clickSpy.mockRestore();
+    restoreAnchorClickSpy();
   });
 
   it("exports note markdown from command palette", () => {
@@ -4259,7 +4347,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -4270,8 +4358,8 @@ describe("App", () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.md"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected notes as markdown from command palette", () => {
@@ -4279,7 +4367,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -4297,7 +4385,7 @@ describe("App", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(2);
     expect(clickSpy).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Exported Markdown for 2 notes")).toBeInTheDocument();
-    clickSpy.mockRestore();
+    restoreAnchorClickSpy();
   });
 
   it("exports a vault snapshot from command palette", () => {
@@ -4305,7 +4393,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -4317,7 +4405,7 @@ describe("App", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/Snapshot exported/i)).toBeInTheDocument();
-    clickSpy.mockRestore();
+    restoreAnchorClickSpy();
   });
 
   it("reloads vault notes from disk from command palette", async () => {
@@ -5279,7 +5367,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -5289,8 +5377,8 @@ describe("App", () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.md"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected search result HTML with alt+cmd+2 in search modal", () => {
@@ -5298,7 +5386,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -5308,8 +5396,8 @@ describe("App", () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported HTML "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.html"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected search result HTML using Digit2 code in search modal", () => {
@@ -5317,7 +5405,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -5327,8 +5415,8 @@ describe("App", () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported HTML "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.html"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected search result text with alt+cmd+3 in search modal", () => {
@@ -5336,7 +5424,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -5346,8 +5434,8 @@ describe("App", () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported text "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.txt"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected search result text using Digit3 code in search modal", () => {
@@ -5355,7 +5443,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
@@ -5365,8 +5453,8 @@ describe("App", () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported text "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.txt"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("exports selected search result PDF with alt+cmd+4 in search modal", async () => {
@@ -5381,7 +5469,7 @@ describe("App", () => {
 
     await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
     expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
-    expect(screen.getByText("Exported PDF to /tmp/Agenda.pdf")).toBeInTheDocument();
+    expect(screen.getByText('Exported "Agenda.pdf"')).toBeInTheDocument();
   });
 
   it("exports selected search result PDF using Digit4 code in search modal", async () => {
@@ -5396,7 +5484,7 @@ describe("App", () => {
 
     await waitFor(() => expect(exportNotePdf).toHaveBeenCalledTimes(1));
     expect(exportNotePdf.mock.calls[0]?.[0]).toMatchObject({ title: "Agenda" });
-    expect(screen.getByText("Exported PDF to /tmp/Agenda-code.pdf")).toBeInTheDocument();
+    expect(screen.getByText('Exported "Agenda-code.pdf"')).toBeInTheDocument();
   });
 
   it("prints selected search result with alt+cmd+p in search modal", () => {
@@ -6448,24 +6536,24 @@ describe("App", () => {
     expect(screen.getByText('Removed saved search "Daily scoped"')).toBeInTheDocument();
   });
 
-  it("persists chip filters when saving and reopening a saved search", () => {
+  it("persists reduced search chips when saving and reopening a saved search", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));
     fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Saved search due task" } });
-    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: "2099-01-01" } });
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    fireEvent.change(screen.getByLabelText("Due date (optional)"), { target: { value: today } });
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     fireEvent.click(screen.getByRole("button", { name: "Info" }));
-    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2099-01-01" } });
+    fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: today } });
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
       target: { value: "agenda" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Has due tasks" }));
-    fireEvent.click(screen.getByRole("button", { name: "Upcoming tasks" }));
+    fireEvent.click(screen.getByRole("button", { name: "Due today" }));
     fireEvent.click(screen.getByRole("button", { name: "Has reminders" }));
-    fireEvent.click(screen.getByRole("button", { name: "Upcoming reminders" }));
     fireEvent.click(screen.getByRole("button", { name: "Save Search" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Due focus" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -6474,19 +6562,13 @@ describe("App", () => {
     fireEvent.keyDown(window, { key: "Escape" });
 
     fireEvent.click(screen.getByRole("button", { name: /^Due focus/i }));
-    const dueChip = screen.getByRole("button", { name: "Has due tasks" });
-    const upcomingChip = screen.getByRole("button", { name: "Upcoming tasks" });
+    const dueChip = screen.getByRole("button", { name: "Due today" });
     const reminderChip = screen.getByRole("button", { name: "Has reminders" });
-    const upcomingReminderChip = screen.getByRole("button", { name: "Upcoming reminders" });
     expect(dueChip).toHaveClass("active");
-    expect(upcomingChip).toHaveClass("active");
     expect(reminderChip).toHaveClass("active");
-    expect(upcomingReminderChip).toHaveClass("active");
     const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
-    expect(queryInput.value).toContain("has:due");
-    expect(queryInput.value).toContain("has:upcoming");
+    expect(queryInput.value).toContain("has:today");
     expect(queryInput.value).toContain("has:reminder");
-    expect(queryInput.value).toContain("has:reminder-upcoming");
   });
 
   it("applies updated date chips to the quick search query", () => {
@@ -6495,13 +6577,8 @@ describe("App", () => {
     const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
     fireEvent.change(queryInput, { target: { value: "agenda" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Updated week" }));
-    expect(queryInput.value).toContain("updated:week");
-    expect(screen.getByRole("button", { name: "Updated week" })).toHaveClass("active");
-
     fireEvent.click(screen.getByRole("button", { name: "Updated today" }));
     expect(queryInput.value).toContain("updated:today");
-    expect(queryInput.value).not.toContain("updated:week");
     expect(screen.getByRole("button", { name: "Updated today" })).toHaveClass("active");
 
     fireEvent.click(screen.getByRole("button", { name: "Updated today" }));
@@ -6509,24 +6586,12 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Updated today" })).not.toHaveClass("active");
   });
 
-  it("applies created date chips to the quick search query", () => {
+  it("preserves manually entered created date syntax in quick search", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
-    fireEvent.change(queryInput, { target: { value: "agenda" } });
-
-    fireEvent.click(screen.getByRole("button", { name: "Created week" }));
-    expect(queryInput.value).toContain("created:week");
-    expect(screen.getByRole("button", { name: "Created week" })).toHaveClass("active");
-
-    fireEvent.click(screen.getByRole("button", { name: "Created today" }));
-    expect(queryInput.value).toContain("created:today");
-    expect(queryInput.value).not.toContain("created:week");
-    expect(screen.getByRole("button", { name: "Created today" })).toHaveClass("active");
-
-    fireEvent.click(screen.getByRole("button", { name: "Created today" }));
-    expect(queryInput.value).toBe("agenda");
-    expect(screen.getByRole("button", { name: "Created today" })).not.toHaveClass("active");
+    fireEvent.change(queryInput, { target: { value: "agenda created:week" } });
+    expect(queryInput.value).toBe("agenda created:week");
   });
 
   it("clears date preset chips without removing search text", () => {
@@ -6535,21 +6600,20 @@ describe("App", () => {
     const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
     fireEvent.change(queryInput, { target: { value: "journal" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Updated month" }));
-    expect(queryInput.value).toContain("updated:month");
+    fireEvent.click(screen.getByRole("button", { name: "Updated today" }));
+    expect(queryInput.value).toContain("updated:today");
 
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(queryInput.value).toBe("journal");
   });
 
-  it("clears created date preset chips without removing search text", () => {
+  it("clears parsed created date presets without removing search text", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     const queryInput = screen.getByPlaceholderText("Search or ask a question") as HTMLInputElement;
-    fireEvent.change(queryInput, { target: { value: "journal" } });
+    fireEvent.change(queryInput, { target: { value: "journal created:month" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Created month" }));
-    expect(queryInput.value).toContain("created:month");
+    expect(screen.getByRole("button", { name: "Clear" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(queryInput.value).toBe("journal");
@@ -6987,7 +7051,7 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Untitled")).toBeInTheDocument();
   });
 
-  it("supports due-task chip filter in search", () => {
+  it("supports due-task search syntax", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));
     fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Chip due task" } });
@@ -6997,18 +7061,14 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: "" }
+      target: { value: "has:due" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Has due tasks" }));
-
-    const dueChip = screen.getByRole("button", { name: "Has due tasks" });
-    expect(dueChip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
-  it("supports overdue task chip filter in search", () => {
+  it("supports overdue task search syntax", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));
     fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Overdue task" } });
@@ -7018,12 +7078,8 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: "" }
+      target: { value: "has:overdue" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Overdue tasks" }));
-
-    const chip = screen.getByRole("button", { name: "Overdue tasks" });
-    expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
@@ -7053,7 +7109,7 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
-  it("supports undated task chip filter in search", () => {
+  it("supports undated task search syntax", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Create task" }));
     fireEvent.change(screen.getByPlaceholderText("Task text"), { target: { value: "Undated task" } });
@@ -7062,12 +7118,8 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: "" }
+      target: { value: "has:undated" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Undated tasks" }));
-
-    const chip = screen.getByRole("button", { name: "Undated tasks" });
-    expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
@@ -7092,37 +7144,29 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
-  it("supports overdue reminder chip filter in search", () => {
+  it("supports overdue reminder search syntax", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Info" }));
     fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2000-01-01" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: "" }
+      target: { value: "has:reminder-overdue" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Overdue reminders" }));
-
-    const chip = screen.getByRole("button", { name: "Overdue reminders" });
-    expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
-  it("supports upcoming reminder chip filter in search", () => {
+  it("supports upcoming reminder search syntax", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Info" }));
     fireEvent.change(screen.getByLabelText("Reminder date"), { target: { value: "2099-01-01" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: "" }
+      target: { value: "has:reminder-upcoming" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Upcoming reminders" }));
-
-    const chip = screen.getByRole("button", { name: "Upcoming reminders" });
-    expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
@@ -7173,7 +7217,7 @@ describe("App", () => {
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
-  it("supports tags chip filter in search", () => {
+  it("supports tag search syntax", () => {
     render(<App />);
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
@@ -7184,18 +7228,14 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: "" }
+      target: { value: "has:tag" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Has tags" }));
-
-    const chip = screen.getByRole("button", { name: "Has tags" });
-    expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Tagged Note")).toBeInTheDocument();
   });
 
-  it("supports image attachment chip filter in search", () => {
+  it("supports image attachment search syntax", () => {
     render(<App />);
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
@@ -7206,18 +7246,14 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: "" }
+      target: { value: "has:image" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Has images" }));
-
-    const chip = screen.getByRole("button", { name: "Has images" });
-    expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
-  it("supports pdf attachment chip filter in search", () => {
+  it("supports pdf attachment search syntax", () => {
     render(<App />);
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
@@ -7228,18 +7264,14 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: "" }
+      target: { value: "has:pdf" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Has PDFs" }));
-
-    const chip = screen.getByRole("button", { name: "Has PDFs" });
-    expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
-  it("supports video attachment chip filter in search", () => {
+  it("supports video attachment search syntax", () => {
     render(<App />);
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
@@ -7250,18 +7282,14 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: "" }
+      target: { value: "has:video" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Has videos" }));
-
-    const chip = screen.getByRole("button", { name: "Has videos" });
-    expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
   });
 
-  it("supports audio attachment chip filter in search", () => {
+  it("supports audio attachment search syntax", () => {
     render(<App />);
     const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
     expect(editor).toBeTruthy();
@@ -7272,12 +7300,8 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
     fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
-      target: { value: "" }
+      target: { value: "has:audio" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Has audio" }));
-
-    const chip = screen.getByRole("button", { name: "Has audio" });
-    expect(chip).toHaveClass("active");
     const searchModal = screen.getByPlaceholderText("Search or ask a question").closest("section");
     expect(searchModal).toBeTruthy();
     expect(within(searchModal as HTMLElement).getByText("Agenda")).toBeInTheDocument();
@@ -8485,7 +8509,7 @@ describe("App", () => {
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { clickSpy, restoreAnchorClickSpy } = mockAnchorDownloads();
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -8497,8 +8521,8 @@ describe("App", () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Exported "Agenda"')).toBeInTheDocument();
-    clickSpy.mockRestore();
+    expect(screen.getByText('Exported "agenda.md"')).toBeInTheDocument();
+    restoreAnchorClickSpy();
   });
 
   it("targets the right-clicked note first when context menu opens on multi-select", () => {

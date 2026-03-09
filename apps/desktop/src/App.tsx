@@ -2401,14 +2401,6 @@ function applyUpdatedSearchPreset(query: string, preset: SearchUpdatedPreset): s
   return `${base}${base ? " " : ""}updated:${preset}`;
 }
 
-function applyCreatedSearchPreset(query: string, preset: SearchCreatedPreset): string {
-  const base = stripCreatedSearchTokens(query);
-  if (preset === "none") {
-    return base;
-  }
-  return `${base}${base ? " " : ""}created:${preset}`;
-}
-
 function getAttachmentKind(target: string): AttachmentKind {
   const normalized = target.trim().toLowerCase().split(/[?#]/, 1)[0] ?? "";
   const extension = normalized.includes(".") ? normalized.slice(normalized.lastIndexOf(".") + 1) : "";
@@ -3273,6 +3265,8 @@ export default function App() {
   const [notes, setNotes] = useState<AppNote[]>(() => loadInitialNotes());
   const [selectedNotebook, setSelectedNotebook] = useState<string>(initialPrefs.selectedNotebook);
   const [activeId, setActiveId] = useState<string>(initialPrefs.activeId);
+  const [navHistory, setNavHistory] = useState<string[]>(() => (initialPrefs.activeId ? [initialPrefs.activeId] : []));
+  const [navIndex, setNavIndex] = useState<number>(() => (initialPrefs.activeId ? 0 : -1));
   const [browseMode, setBrowseMode] = useState<NoteBrowseMode>(initialPrefs.browseMode ?? "all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
@@ -3327,6 +3321,7 @@ export default function App() {
   const [attachmentDropTarget, setAttachmentDropTarget] = useState<"markdown" | "rich" | null>(null);
   const [dropNotebook, setDropNotebook] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<"default" | "success" | "error">("default");
   const [lastMove, setLastMove] = useState<LastMoveState | null>(null);
   const [lastTrash, setLastTrash] = useState<LastTrashState | null>(null);
   const [draftMarkdown, setDraftMarkdown] = useState<string>("");
@@ -3413,6 +3408,12 @@ export default function App() {
   );
   const [linkSuggestion, setLinkSuggestion] = useState<LinkSuggestionState | null>(null);
   const [mentionSuggestion, setMentionSuggestion] = useState<MentionSuggestionState | null>(null);
+  const [linkPreview, setLinkPreview] = useState<{
+    title: string;
+    preview: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const [slashInputDialog, setSlashInputDialog] = useState<SlashInputDialogState | null>(null);
   const [mediaInsertDialog, setMediaInsertDialog] = useState<MediaInsertDialogState | null>(null);
@@ -3438,7 +3439,10 @@ export default function App() {
   const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
   const editorMainRef = useRef<HTMLDivElement | null>(null);
   const noteColumnRef = useRef<HTMLElement | null>(null);
+  const navSkipRef = useRef(false);
   const activeResizeRef = useRef<ResizeState | null>(null);
+  const linkPreviewTimerRef = useRef<number | null>(null);
+  const toastToneLockRef = useRef(false);
   const findInNoteInputRef = useRef<HTMLInputElement | null>(null);
   const draggingNoteIdsRef = useRef<string[] | null>(null);
   const markdownImportInputRef = useRef<HTMLInputElement | null>(null);
@@ -5291,6 +5295,19 @@ export default function App() {
         }
       }
 
+      if (!searchOpen && !isTextEntryTarget && event.metaKey && !event.ctrlKey && !event.altKey) {
+        if (event.key === "[") {
+          event.preventDefault();
+          navigateBack();
+          return;
+        }
+        if (event.key === "]") {
+          event.preventDefault();
+          navigateForward();
+          return;
+        }
+      }
+
       if (!searchOpen && activeNote && (event.metaKey || event.ctrlKey)) {
         const key = event.key.toLowerCase();
         const selectedKeyboardNoteIds = selectedVisibleNoteIds.length > 1 ? selectedVisibleNoteIds : [activeNote.id];
@@ -6081,11 +6098,36 @@ export default function App() {
     }
 
     const timeout = window.setTimeout(() => {
-      setToastMessage(null);
+      showToast(null);
     }, 3500);
 
     return () => window.clearTimeout(timeout);
   }, [toastMessage]);
+
+  useEffect(() => {
+    if (!toastMessage) {
+      setToastTone("default");
+      toastToneLockRef.current = false;
+      return;
+    }
+    if (!toastToneLockRef.current) {
+      setToastTone("default");
+      return;
+    }
+    toastToneLockRef.current = false;
+  }, [toastMessage]);
+
+  useEffect(() => {
+    document.title = activeNote ? `${activeNote.title} — PKM` : "PKM";
+  }, [activeNote?.id, activeNote?.title]);
+
+  useEffect(() => {
+    return () => {
+      if (linkPreviewTimerRef.current) {
+        window.clearTimeout(linkPreviewTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -7007,6 +7049,14 @@ export default function App() {
   }
 
   function focusNote(noteId: string): void {
+    if (!navSkipRef.current && activeNote?.id !== noteId) {
+      setNavHistory((previous) => {
+        const trimmed = previous.slice(0, navIndex + 1);
+        return [...trimmed, noteId];
+      });
+      setNavIndex(navIndex + 1);
+    }
+    navSkipRef.current = false;
     flushActiveDraft();
     const target = notes.find((note) => note.id === noteId);
     if (browseMode === "templates" && target && !target.isTemplate) {
@@ -7037,6 +7087,7 @@ export default function App() {
     setLinkSuggestion(null);
     setMentionSuggestion(null);
     setSlashMenu(null);
+    setLinkPreview(null);
   }
 
   function revealNoteInWorkspace(
@@ -11041,11 +11092,6 @@ export default function App() {
     setSearchSelected(0);
   }
 
-  function setCreatedSearchPreset(preset: SearchCreatedPreset): void {
-    setQuickQuery((previous) => applyCreatedSearchPreset(previous, preset));
-    setSearchSelected(0);
-  }
-
   function clearSearchChips(): void {
     setSearchFilters([]);
     setQuickQuery((previous) => stripCreatedSearchTokens(stripUpdatedSearchTokens(previous)));
@@ -11819,7 +11865,7 @@ export default function App() {
         });
       }
       setLastTrash(null);
-      setToastMessage("Trash action undone");
+      showToast("Trash action undone");
       return;
     }
 
@@ -11843,7 +11889,7 @@ export default function App() {
       })
     );
 
-    setToastMessage("Move undone");
+    showToast("Move undone");
     setLastMove(null);
   }
 
@@ -11877,7 +11923,7 @@ export default function App() {
     }
 
     setNotes((previous) => [...duplicates, ...previous]);
-    setToastMessage(`${duplicates.length} duplicated`);
+    showToast(`${duplicates.length} duplicated`, "success");
     focusNote(duplicates[0].id);
   }
 
@@ -11936,7 +11982,7 @@ export default function App() {
     }
 
     setNoteRenameDialog(null);
-    setToastMessage(`Renamed to "${trimmedTitle}"`);
+    showToast(`Renamed to "${trimmedTitle}"`, "success");
   }
 
   async function copyNotesLinks(noteIds: string[], successToastMessage?: string): Promise<void> {
@@ -12187,7 +12233,7 @@ export default function App() {
     window.open(url.toString(), "_blank", "noopener,noreferrer");
   }
 
-  function exportNote(noteId: string, showToast = true): boolean {
+  function exportNote(noteId: string, shouldToast = true): boolean {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note || typeof document === "undefined") {
       return false;
@@ -12200,13 +12246,13 @@ export default function App() {
     link.download = toFileName(note.title);
     link.click();
     URL.revokeObjectURL(url);
-    if (showToast) {
-      setToastMessage(`Exported "${note.title}"`);
+    if (shouldToast) {
+      showToast(`Exported "${toFileName(note.title)}"`, "success");
     }
     return true;
   }
 
-  function exportNoteHtml(noteId: string, showToast = true): boolean {
+  function exportNoteHtml(noteId: string, shouldToast = true): boolean {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note || typeof document === "undefined") {
       return false;
@@ -12241,13 +12287,13 @@ a{color:#1d4ed8}
     link.download = `${toFileName(note.title).replace(/\.md$/i, "")}.html`;
     link.click();
     URL.revokeObjectURL(url);
-    if (showToast) {
-      setToastMessage(`Exported HTML "${note.title}"`);
+    if (shouldToast) {
+      showToast(`Exported "${toFileName(note.title).replace(/\.md$/i, "")}.html"`, "success");
     }
     return true;
   }
 
-  function exportNoteText(noteId: string, showToast = true): boolean {
+  function exportNoteText(noteId: string, shouldToast = true): boolean {
     const note = notes.find((entry) => entry.id === noteId);
     if (!note || typeof document === "undefined") {
       return false;
@@ -12261,8 +12307,8 @@ a{color:#1d4ed8}
     link.download = `${toFileName(note.title).replace(/\.md$/i, "")}.txt`;
     link.click();
     URL.revokeObjectURL(url);
-    if (showToast) {
-      setToastMessage(`Exported text "${note.title}"`);
+    if (shouldToast) {
+      showToast(`Exported "${toFileName(note.title).replace(/\.md$/i, "")}.txt"`, "success");
     }
     return true;
   }
@@ -12284,11 +12330,13 @@ a{color:#1d4ed8}
     });
 
     if (!result?.ok) {
-      setToastMessage(result?.error || "Failed to export PDF");
+      showToast(result?.error || "Failed to export PDF", "error");
       return;
     }
 
-    setToastMessage(`Exported PDF to ${result.path}`);
+    const exportPath = result.path ?? `${toFileName(note.title).replace(/\.md$/i, "")}.pdf`;
+    const filename = exportPath.split(/[\\/]/).pop() ?? `${toFileName(note.title).replace(/\.md$/i, "")}.pdf`;
+    showToast(`Exported "${filename}"`, "success");
   }
 
   function handleMenuAction(action: string): void {
@@ -12965,6 +13013,30 @@ a{color:#1d4ed8}
           key={`${parsed.title}-${index}`}
           type="button"
           className="inline-link"
+          onMouseEnter={(event) => {
+            if (linkPreviewTimerRef.current) {
+              window.clearTimeout(linkPreviewTimerRef.current);
+            }
+            linkPreviewTimerRef.current = window.setTimeout(() => {
+              const previewTarget = activeNotes.find((note) => note.title.toLowerCase() === parsed.title.toLowerCase());
+              if (!previewTarget) {
+                return;
+              }
+              const rect = event.currentTarget.getBoundingClientRect();
+              setLinkPreview({
+                title: previewTarget.title,
+                preview: markdownToPlainText(previewTarget.markdown).slice(0, 120),
+                x: rect.left,
+                y: rect.top
+              });
+            }, 400);
+          }}
+          onMouseLeave={() => {
+            if (linkPreviewTimerRef.current) {
+              window.clearTimeout(linkPreviewTimerRef.current);
+            }
+            setLinkPreview(null);
+          }}
           onClick={() => {
             if (target) {
               openLinkedNote(target);
@@ -14341,6 +14413,40 @@ a{color:#1d4ed8}
   const safePanelGap = typeof themeOverrides.panelGap === "number" ? themeOverrides.panelGap : 8;
   const safePanelRadius = typeof themeOverrides.panelRadius === "number" ? themeOverrides.panelRadius : 10;
 
+  function showToast(message: string | null, tone: "default" | "success" | "error" = "default"): void {
+    toastToneLockRef.current = true;
+    setToastMessage(message);
+    setToastTone(message ? tone : "default");
+  }
+
+  function navigateBack(): void {
+    if (navIndex <= 0) {
+      return;
+    }
+    const newIndex = navIndex - 1;
+    const targetId = navHistory[newIndex];
+    if (!targetId) {
+      return;
+    }
+    navSkipRef.current = true;
+    setNavIndex(newIndex);
+    focusNote(targetId);
+  }
+
+  function navigateForward(): void {
+    if (navIndex >= navHistory.length - 1) {
+      return;
+    }
+    const newIndex = navIndex + 1;
+    const targetId = navHistory[newIndex];
+    if (!targetId) {
+      return;
+    }
+    navSkipRef.current = true;
+    setNavIndex(newIndex);
+    focusNote(targetId);
+  }
+
   function loadMoreVisibleNotes(): void {
     setNoteListLimit((previous) => Math.min(visibleNotes.length, previous + NOTE_LIST_BATCH));
   }
@@ -15098,6 +15204,54 @@ a{color:#1d4ed8}
             <p className="shortcut-empty">No notebook pins yet</p>
           )
         )}
+
+        <footer className="sidebar-footer">
+          <button
+            type="button"
+            className="sidebar-footer-vault"
+            title={vaultPath}
+            onClick={() => openSettings("general")}
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2 4h12v10H2zM5 4V2.5A1.5 1.5 0 0 1 6.5 1h3A1.5 1.5 0 0 1 11 2.5V4" />
+            </svg>
+            <span className="sidebar-footer-vault-label">
+              {vaultPath ? vaultPath.split("/").pop() ?? vaultPath : "No vault"}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="sidebar-footer-settings"
+            aria-label="Settings"
+            title="Settings (⌘,)"
+            onClick={() => openSettings("general")}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="8" cy="8" r="2.5" />
+              <path d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" />
+            </svg>
+          </button>
+        </footer>
 
       </aside>
 
@@ -15896,7 +16050,45 @@ a{color:#1d4ed8}
                                 </svg>
                               </span>
                             </span>
-                            <strong>{note.title}</strong>
+                            <strong
+                              className="note-card-title"
+                              title={note.title}
+                              onDoubleClick={(event) => {
+                                event.stopPropagation();
+                                const element = event.currentTarget;
+                                element.contentEditable = "true";
+                                element.focus();
+                                const range = document.createRange();
+                                range.selectNodeContents(element);
+                                window.getSelection()?.removeAllRanges();
+                                window.getSelection()?.addRange(range);
+                              }}
+                              onBlur={(event) => {
+                                const element = event.currentTarget;
+                                element.contentEditable = "false";
+                                const newTitle = element.textContent?.trim() ?? "";
+                                if (newTitle && newTitle !== note.title) {
+                                  renameNote(note.id, newTitle);
+                                } else {
+                                  element.textContent = note.title;
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  event.currentTarget.blur();
+                                }
+                                if (event.key === "Escape") {
+                                  const element = event.currentTarget;
+                                  element.textContent = note.title;
+                                  element.contentEditable = "false";
+                                  element.blur();
+                                }
+                                event.stopPropagation();
+                              }}
+                            >
+                              {note.title}
+                            </strong>
                             {viewMode !== "list" ? <p>{note.snippet || "Untitled"}</p> : null}
                             {viewMode !== "list" && visibleTagChips.length ? (
                               <div className="note-card-chips" aria-label={`Tags ${note.tags.join(", ")}`}>
@@ -16084,15 +16276,43 @@ a{color:#1d4ed8}
             ) : null}
             <header className="editor-topbar">
               <div className="editor-top-meta">
-                <div className="crumbs">
-                  <button
-                    type="button"
-                    className="crumb-link"
-                    onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
-                  >
-                    {activeNote.notebook}
-                  </button>
-                  <span aria-current="page">{draftPreview.title}</span>
+                <div className="editor-top-route">
+                  <div className="topbar-nav-buttons">
+                    <button
+                      type="button"
+                      className="topbar-icon-btn"
+                      onClick={navigateBack}
+                      disabled={navIndex <= 0}
+                      aria-label="Go back (⌘[)"
+                      title="Back (⌘[)"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="10,3 5,8 10,13" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="topbar-icon-btn"
+                      onClick={navigateForward}
+                      disabled={navIndex >= navHistory.length - 1}
+                      aria-label="Go forward (⌘])"
+                      title="Forward (⌘])"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="6,3 11,8 6,13" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="crumbs">
+                    <button
+                      type="button"
+                      className="crumb-link"
+                      onClick={() => openNotebookView(activeNote.notebook, activeNote.trashedAt ? "trash" : "all")}
+                    >
+                      {activeNote.notebook}
+                    </button>
+                    <span aria-current="page">{draftPreview.title}</span>
+                  </div>
                 </div>
                 <button type="button" className="editor-edited" onClick={() => openNoteHistory(activeNote.id)}>
                   Edited {formatRelativeTime(activeNote.updatedAt)}
@@ -16182,7 +16402,7 @@ a{color:#1d4ed8}
               </div>
             </header>
 
-            <div className={editorMode === "rich" ? "editor-toolbar hidden" : "editor-toolbar compact"}>
+            <div className={editorMode === "rich" ? "editor-toolbar rich-mode" : "editor-toolbar compact"}>
               {/* Mode toggle group */}
               <button
                 type="button"
@@ -17522,7 +17742,17 @@ a{color:#1d4ed8}
             </div>
           </>
         ) : (
-          <p className="empty-editor">Select a note.</p>
+          <div className="empty-editor">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true" className="empty-editor-icon">
+              <rect x="13" y="17" width="24" height="21" rx="3" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
+              <rect x="10" y="12" width="24" height="21" rx="3" stroke="currentColor" strokeWidth="1.5" opacity="0.18" />
+              <path d="M18 22h12M18 27h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <p>Select a note to start editing</p>
+            <span className="empty-editor-hint">
+              or press <kbd>⌘N</kbd> to create one
+            </span>
+          </div>
         )}
       </main>
 
@@ -18149,52 +18379,10 @@ a{color:#1d4ed8}
               </button>
               <button
                 type="button"
-                className={searchFilters.includes("image") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("image")}
-              >
-                Has images
-              </button>
-              <button
-                type="button"
-                className={searchFilters.includes("pdf") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("pdf")}
-              >
-                Has PDFs
-              </button>
-              <button
-                type="button"
-                className={searchFilters.includes("video") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("video")}
-              >
-                Has videos
-              </button>
-              <button
-                type="button"
-                className={searchFilters.includes("audio") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("audio")}
-              >
-                Has audio
-              </button>
-              <button
-                type="button"
                 className={searchFilters.includes("tasks") ? "chip active" : "chip"}
                 onClick={() => toggleSearchFilter("tasks")}
               >
                 Has open tasks
-              </button>
-              <button
-                type="button"
-                className={searchFilters.includes("due") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("due")}
-              >
-                Has due tasks
-              </button>
-              <button
-                type="button"
-                className={searchFilters.includes("due-overdue") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("due-overdue")}
-              >
-                Overdue tasks
               </button>
               <button
                 type="button"
@@ -18205,45 +18393,10 @@ a{color:#1d4ed8}
               </button>
               <button
                 type="button"
-                className={searchFilters.includes("due-upcoming") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("due-upcoming")}
-              >
-                Upcoming tasks
-              </button>
-              <button
-                type="button"
-                className={searchFilters.includes("due-undated") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("due-undated")}
-              >
-                Undated tasks
-              </button>
-              <button
-                type="button"
                 className={searchFilters.includes("reminders") ? "chip active" : "chip"}
                 onClick={() => toggleSearchFilter("reminders")}
               >
                 Has reminders
-              </button>
-              <button
-                type="button"
-                className={searchFilters.includes("reminders-overdue") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("reminders-overdue")}
-              >
-                Overdue reminders
-              </button>
-              <button
-                type="button"
-                className={searchFilters.includes("reminders-today") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("reminders-today")}
-              >
-                Today reminders
-              </button>
-              <button
-                type="button"
-                className={searchFilters.includes("reminders-upcoming") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("reminders-upcoming")}
-              >
-                Upcoming reminders
               </button>
               <button
                 type="button"
@@ -18261,52 +18414,10 @@ a{color:#1d4ed8}
               </button>
               <button
                 type="button"
-                className={searchFilters.includes("tags") ? "chip active" : "chip"}
-                onClick={() => toggleSearchFilter("tags")}
-              >
-                Has tags
-              </button>
-              <button
-                type="button"
                 className={updatedSearchPreset === "today" ? "chip active" : "chip"}
                 onClick={() => setUpdatedSearchPreset(updatedSearchPreset === "today" ? "none" : "today")}
               >
                 Updated today
-              </button>
-              <button
-                type="button"
-                className={updatedSearchPreset === "week" ? "chip active" : "chip"}
-                onClick={() => setUpdatedSearchPreset(updatedSearchPreset === "week" ? "none" : "week")}
-              >
-                Updated week
-              </button>
-              <button
-                type="button"
-                className={updatedSearchPreset === "month" ? "chip active" : "chip"}
-                onClick={() => setUpdatedSearchPreset(updatedSearchPreset === "month" ? "none" : "month")}
-              >
-                Updated month
-              </button>
-              <button
-                type="button"
-                className={createdSearchPreset === "today" ? "chip active" : "chip"}
-                onClick={() => setCreatedSearchPreset(createdSearchPreset === "today" ? "none" : "today")}
-              >
-                Created today
-              </button>
-              <button
-                type="button"
-                className={createdSearchPreset === "week" ? "chip active" : "chip"}
-                onClick={() => setCreatedSearchPreset(createdSearchPreset === "week" ? "none" : "week")}
-              >
-                Created week
-              </button>
-              <button
-                type="button"
-                className={createdSearchPreset === "month" ? "chip active" : "chip"}
-                onClick={() => setCreatedSearchPreset(createdSearchPreset === "month" ? "none" : "month")}
-              >
-                Created month
               </button>
               {searchFilters.length || updatedSearchPreset !== "none" || createdSearchPreset !== "none" ? (
                 <button type="button" className="chip" onClick={clearSearchChips}>
@@ -20550,8 +20661,19 @@ a{color:#1d4ed8}
         </div>
       ) : null}
 
+      {linkPreview ? (
+        <div className="link-preview-tooltip" style={{ left: linkPreview.x, top: linkPreview.y }} role="tooltip">
+          <strong className="link-preview-title">{linkPreview.title}</strong>
+          {linkPreview.preview ? (
+            <p className="link-preview-body">{linkPreview.preview}…</p>
+          ) : (
+            <p className="link-preview-empty">Empty note</p>
+          )}
+        </div>
+      ) : null}
+
       {toastMessage ? (
-        <div className="toast">
+        <div className={`toast ${toastTone}`} role="status" aria-live="polite">
           <span>{toastMessage}</span>
           {lastMove || lastTrash ? (
             <button type="button" onClick={undoLastAction}>

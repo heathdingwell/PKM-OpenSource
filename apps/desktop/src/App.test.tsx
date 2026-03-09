@@ -125,6 +125,28 @@ describe("App", () => {
     expect(document.title).toBe("To-do list — PKM");
   });
 
+  it("keeps note list order stable when renaming a note title in the editor", () => {
+    render(<App />);
+
+    const notesList = screen.getByLabelText("Notes list");
+    const beforeButtons = within(notesList).getAllByRole("button");
+    const firstBefore = beforeButtons[0];
+    expect(firstBefore).toBeTruthy();
+
+    const journalCard = beforeButtons.find((entry) => entry.textContent?.includes("Daily Journal"));
+    expect(journalCard).toBeTruthy();
+    fireEvent.click(journalCard as HTMLButtonElement);
+
+    const title = screen.getByRole("heading", { name: "Daily Journal", level: 2 });
+    title.textContent = "Journal renamed";
+    fireEvent.blur(title);
+
+    expect(screen.getByRole("heading", { name: "Journal renamed", level: 2 })).toBeInTheDocument();
+    const afterButtons = within(notesList).getAllByRole("button");
+    expect(afterButtons[0]).toHaveTextContent(firstBefore?.textContent ?? "");
+    expect(afterButtons[0]).not.toHaveTextContent("Journal renamed");
+  });
+
   it("opens settings from the sidebar footer", () => {
     render(<App />);
 
@@ -9542,6 +9564,21 @@ describe("App", () => {
     expect(trashedCards.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("uses a neutral toast for trash actions while duplicate remains success", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.keyDown(window, { key: "Backspace", metaKey: true });
+
+    const trashToast = await screen.findByText('"Agenda" moved to Trash');
+    expect(trashToast.closest(".toast")).not.toHaveClass("success");
+
+    fireEvent.keyDown(window, { key: "z", metaKey: true });
+    fireEvent.keyDown(window, { key: "d", metaKey: true, altKey: true });
+
+    const duplicateToast = await screen.findByText("1 duplicated");
+    expect(duplicateToast.closest(".toast")).toHaveClass("success");
+  });
+
   it("restores a trashed note with cmd+z undo", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));
@@ -9571,6 +9608,64 @@ describe("App", () => {
     fireEvent.click(within(noteActionsMenu).getByRole("button", { name: /Restore from Trash/i }));
 
     expect(screen.getByText("Trash is empty.")).toBeInTheDocument();
+  });
+
+  it("persists trash and undo operations immediately", async () => {
+    const saveVaultState = vi.fn().mockResolvedValue(true);
+    window.pkmShell = {
+      ...window.pkmShell,
+      getPlatform: window.pkmShell?.getPlatform ?? (() => "mac"),
+      saveVaultState,
+      getVaultPath: vi.fn().mockResolvedValue("/tmp/vault")
+    };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.keyDown(window, { key: "Backspace", metaKey: true });
+
+    await waitFor(() => expect(saveVaultState).toHaveBeenCalled());
+    const trashedPayload = saveVaultState.mock.calls.at(-1)?.[0] as Array<{ title: string; trashedAt?: string }>;
+    expect(trashedPayload.find((note) => note.title === "Agenda")?.trashedAt).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+    await waitFor(() => {
+      const restoredPayload = saveVaultState.mock.calls.at(-1)?.[0] as Array<{ title: string; trashedAt?: string }>;
+      const restoredAgenda = restoredPayload.find((note) => note.title === "Agenda");
+      expect(restoredAgenda).toBeTruthy();
+      expect(restoredAgenda?.trashedAt).toBeFalsy();
+    });
+  });
+
+  it("persists permanent deletes immediately", async () => {
+    const saveVaultState = vi.fn().mockResolvedValue(true);
+    window.pkmShell = {
+      ...window.pkmShell,
+      getPlatform: window.pkmShell?.getPlatform ?? (() => "mac"),
+      saveVaultState,
+      getVaultPath: vi.fn().mockResolvedValue("/tmp/vault")
+    };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">trash note" }
+    });
+    fireEvent.click(screen.getByText("Move note to trash"));
+    await waitFor(() => expect(saveVaultState).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick actions" }));
+    fireEvent.change(screen.getByPlaceholderText("Search or ask a question"), {
+      target: { value: ">delete note permanently" }
+    });
+    fireEvent.click(screen.getByText("Delete note permanently"));
+
+    await waitFor(() =>
+      expect((saveVaultState.mock.calls.at(-1)?.[0] as Array<{ title: string }>).some((note) => note.title === "Agenda")).toBe(
+        false
+      )
+    );
   });
 
   it("empties trash from trash header action", () => {

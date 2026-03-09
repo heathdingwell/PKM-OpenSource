@@ -4770,7 +4770,7 @@ mark.search-highlight {
   z-index: 80;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   min-width: 260px;
   padding: 9px 11px;
   border-radius: 10px;
@@ -4787,10 +4787,21 @@ mark.search-highlight {
 }
 
 .toast button {
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   color: #fff;
-  text-decoration: underline;
-  background: transparent;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms ease;
+}
+
+.toast button:hover {
+  background: rgba(255, 255, 255, 0.26);
 }
 
 .empty-editor {

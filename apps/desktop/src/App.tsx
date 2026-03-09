@@ -3489,6 +3489,8 @@ export default function App() {
   const activeResizeRef = useRef<ResizeState | null>(null);
   const linkPreviewTimerRef = useRef<number | null>(null);
   const toastToneLockRef = useRef(false);
+  const isTitleEditingRef = useRef(false);
+  const visibleNoteOrderRef = useRef<string[]>([]);
   const findInNoteInputRef = useRef<HTMLInputElement | null>(null);
   const draggingNoteIdsRef = useRef<string[] | null>(null);
   const markdownImportInputRef = useRef<HTMLInputElement | null>(null);
@@ -3584,49 +3586,66 @@ export default function App() {
         : reminderFiltered;
 
     const sorted = [...reminderScopeFiltered];
-    if (browseMode === "reminders") {
+    const preserveVisibleOrder = isTitleEditingRef.current && Boolean(activeId) && visibleNoteOrderRef.current.length > 0;
+    const sortByVisibleOrder = (): void => {
+      const order = new Map(visibleNoteOrderRef.current.map((noteId, index) => [noteId, index]));
       sorted.sort((left, right) => {
-        if (!left.reminderAt && !right.reminderAt) {
-          return right.updatedAt.localeCompare(left.updatedAt);
-        }
-        if (!left.reminderAt) {
-          return 1;
-        }
-        if (!right.reminderAt) {
-          return -1;
-        }
-        const order = { overdue: 0, today: 1, upcoming: 2 } as const;
-        const leftBucket = getReminderBucket(left.reminderAt, today);
-        const rightBucket = getReminderBucket(right.reminderAt, today);
-        if (leftBucket !== rightBucket) {
-          return order[leftBucket] - order[rightBucket];
-        }
-        if (left.reminderAt !== right.reminderAt) {
-          return left.reminderAt.localeCompare(right.reminderAt);
-        }
-        return right.updatedAt.localeCompare(left.updatedAt);
+        const leftIndex = order.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+        const rightIndex = order.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+        return leftIndex - rightIndex;
       });
+    };
+    if (browseMode === "reminders") {
+      if (preserveVisibleOrder) {
+        sortByVisibleOrder();
+      } else {
+        sorted.sort((left, right) => {
+          if (!left.reminderAt && !right.reminderAt) {
+            return right.updatedAt.localeCompare(left.updatedAt);
+          }
+          if (!left.reminderAt) {
+            return 1;
+          }
+          if (!right.reminderAt) {
+            return -1;
+          }
+          const order = { overdue: 0, today: 1, upcoming: 2 } as const;
+          const leftBucket = getReminderBucket(left.reminderAt, today);
+          const rightBucket = getReminderBucket(right.reminderAt, today);
+          if (leftBucket !== rightBucket) {
+            return order[leftBucket] - order[rightBucket];
+          }
+          if (left.reminderAt !== right.reminderAt) {
+            return left.reminderAt.localeCompare(right.reminderAt);
+          }
+          return right.updatedAt.localeCompare(left.updatedAt);
+        });
+      }
       return sorted;
     }
 
-    sorted.sort((left, right) => {
-      if (sortMode === "updated-desc") {
-        return right.updatedAt.localeCompare(left.updatedAt);
-      }
-      if (sortMode === "updated-asc") {
-        return left.updatedAt.localeCompare(right.updatedAt);
-      }
-      if (sortMode === "created-desc") {
-        return right.createdAt.localeCompare(left.createdAt);
-      }
-      if (sortMode === "created-asc") {
-        return left.createdAt.localeCompare(right.createdAt);
-      }
-      if (sortMode === "title-asc") {
-        return left.title.localeCompare(right.title);
-      }
-      return right.title.localeCompare(left.title);
-    });
+    if (preserveVisibleOrder) {
+      sortByVisibleOrder();
+    } else {
+      sorted.sort((left, right) => {
+        if (sortMode === "updated-desc") {
+          return right.updatedAt.localeCompare(left.updatedAt);
+        }
+        if (sortMode === "updated-asc") {
+          return left.updatedAt.localeCompare(right.updatedAt);
+        }
+        if (sortMode === "created-desc") {
+          return right.createdAt.localeCompare(left.createdAt);
+        }
+        if (sortMode === "created-asc") {
+          return left.createdAt.localeCompare(right.createdAt);
+        }
+        if (sortMode === "title-asc") {
+          return left.title.localeCompare(right.title);
+        }
+        return right.title.localeCompare(left.title);
+      });
+    }
 
     return sorted;
   }, [
@@ -3643,6 +3662,10 @@ export default function App() {
     reminderScopeMode,
     activeId
   ]);
+
+  useEffect(() => {
+    visibleNoteOrderRef.current = visibleNotes.map((note) => note.id);
+  }, [visibleNotes]);
 
   const availableTags = useMemo(() => {
     const sourceNotes = browseMode === "trash" ? trashedNotes : activeNotes;
@@ -7509,6 +7532,28 @@ Be specific. Reference actual note titles and quote content when relevant. Under
       )
     );
     touchRecent(activeNote.id);
+  }
+
+  function saveVaultNow(updatedNotes: AppNote[]): void {
+    if (autosaveTimerRef.current) {
+      window.clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    if (!window.pkmShell?.saveVaultState) {
+      return;
+    }
+
+    setSaveState("saving");
+    void window.pkmShell.saveVaultState(updatedNotes).then((ok) => {
+      if (ok === false) {
+        setSaveState("failed");
+        return;
+      }
+      setSaveState("saved");
+    }).catch(() => {
+      setSaveState("failed");
+    });
   }
 
   function touchRecent(noteId: string): void {
@@ -12614,17 +12659,17 @@ Be specific. Reference actual note titles and quote content when relevant. Under
     const trashedAt = new Date().toISOString();
     setLastTrash({ mode: "trash", notes: selected });
     setLastMove(null);
-    setNotes((previous) =>
-      previous.map((note) =>
-        noteIds.includes(note.id)
-          ? {
-              ...note,
-              trashedAt,
-              updatedAt: trashedAt
-            }
-          : note
-      )
+    const updatedNotes = notes.map((note) =>
+      noteIds.includes(note.id)
+        ? {
+            ...note,
+            trashedAt,
+            updatedAt: trashedAt
+          }
+        : note
     );
+    setNotes(updatedNotes);
+    saveVaultNow(updatedNotes);
     return selected.length;
   }
 
@@ -12659,26 +12704,28 @@ Be specific. Reference actual note titles and quote content when relevant. Under
 
     setLastTrash({ mode: "delete", notes: selected });
     setLastMove(null);
-    setNotes((previous) => previous.filter((note) => !noteIds.includes(note.id)));
+    const updatedNotes = notes.filter((note) => !noteIds.includes(note.id));
+    setNotes(updatedNotes);
+    saveVaultNow(updatedNotes);
     return selected.length;
   }
 
   function undoLastAction(): void {
     if (lastTrash) {
       if (lastTrash.mode === "trash") {
-        setNotes((previous) => {
-          const snapshotById = new Map(lastTrash.notes.map((note) => [note.id, note]));
-          const next = previous.map((note) => snapshotById.get(note.id) ?? note);
-          const existingIds = new Set(next.map((note) => note.id));
-          const missing = lastTrash.notes.filter((note) => !existingIds.has(note.id));
-          return missing.length ? [...missing, ...next] : next;
-        });
+        const snapshotById = new Map(lastTrash.notes.map((note) => [note.id, note]));
+        const next = notes.map((note) => snapshotById.get(note.id) ?? note);
+        const existingIds = new Set(next.map((note) => note.id));
+        const missing = lastTrash.notes.filter((note) => !existingIds.has(note.id));
+        const restored = missing.length ? [...missing, ...next] : next;
+        setNotes(restored);
+        saveVaultNow(restored);
       } else {
-        setNotes((previous) => {
-          const existingIds = new Set(previous.map((note) => note.id));
-          const restored = lastTrash.notes.filter((note) => !existingIds.has(note.id));
-          return [...restored, ...previous];
-        });
+        const existingIds = new Set(notes.map((note) => note.id));
+        const restored = lastTrash.notes.filter((note) => !existingIds.has(note.id));
+        const updatedNotes = [...restored, ...notes];
+        setNotes(updatedNotes);
+        saveVaultNow(updatedNotes);
       }
       setLastTrash(null);
       showToast("Trash action undone");
@@ -12770,7 +12817,7 @@ Be specific. Reference actual note titles and quote content when relevant. Under
               path: renamedPath
             },
             renamedMarkdown,
-            now,
+            entry.updatedAt,
             { pathOverride: renamedPath }
           );
           if (entry.id === activeId) {
@@ -13296,7 +13343,7 @@ a{color:#1d4ed8}
       }
       const restored = restoreNotesFromTrash(contextMenu.noteIds);
       if (restored > 0) {
-        showToast(`${restored === 1 ? "1 note" : `${restored} notes`} restored from Trash`, "success");
+        showToast(`${restored === 1 ? "1 note" : `${restored} notes`} restored from Trash`, "default");
       }
       setContextMenu(null);
       return;
@@ -13314,7 +13361,7 @@ a{color:#1d4ed8}
 
       const moved = moveNotesToTrash(contextMenu.noteIds);
       if (moved > 0) {
-        showToast(`${moved === 1 ? "1 note" : `${moved} notes`} moved to Trash`, "success");
+        showToast(`${moved === 1 ? "1 note" : `${moved} notes`} moved to Trash`, "default");
       }
       setContextMenu(null);
       return;
@@ -17606,7 +17653,11 @@ a{color:#1d4ed8}
                     contentEditable
                     suppressContentEditableWarning
                     className="editor-title"
+                    onFocus={() => {
+                      isTitleEditingRef.current = true;
+                    }}
                     onBlur={(event) => {
+                      isTitleEditingRef.current = false;
                       const newTitle = event.currentTarget.textContent?.trim() ?? "";
                       if (!newTitle) {
                         event.currentTarget.textContent = activeNote.title;
@@ -17619,6 +17670,7 @@ a{color:#1d4ed8}
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
                         event.preventDefault();
+                        isTitleEditingRef.current = false;
                         if (editorMode === "markdown") {
                           markdownEditorRef.current?.focus();
                         } else {

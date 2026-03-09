@@ -5459,7 +5459,7 @@ describe("App", () => {
     fireEvent.keyDown(searchInput, { key: "7", metaKey: true, altKey: true });
 
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
-    expect(screen.getByText(/(pinned to Home|unpinned from Home)/i)).toBeInTheDocument();
+    expect(within(screen.getByRole("status")).getByText(/^(1 pinned to Home|1 unpinned from Home)$/i)).toBeInTheDocument();
   });
 
   it("toggles selected search result notebook pin with alt+cmd+8 in search modal", async () => {

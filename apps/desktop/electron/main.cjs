@@ -21,6 +21,8 @@ const GIT_BACKUP_DEFAULT_PUSH_REMOTE = "origin";
 const GIT_BACKUP_DEFAULT_PUSH_BRANCH = "main";
 const STARTUP_LOG_NAME = "startup.log";
 const CONFIG_NAME = "config.json";
+const EMBEDDINGS_FILE_NAME = "vault-embeddings.json";
+const READWISE_STATE_NAME = "readwise-sync-state.json";
 
 let _resolvedVaultPath = null;
 
@@ -65,6 +67,14 @@ function configFilePath() {
   return path.join(app.getPath("userData"), CONFIG_NAME);
 }
 
+function embeddingsFilePath() {
+  return path.join(app.getPath("userData"), EMBEDDINGS_FILE_NAME);
+}
+
+function readwiseStatePath() {
+  return path.join(app.getPath("userData"), READWISE_STATE_NAME);
+}
+
 async function resolveVaultPath() {
   try {
     const raw = await fs.readFile(configFilePath(), "utf8");
@@ -88,6 +98,18 @@ function vaultIndexPath() {
 
 function gitBackupStatePath() {
   return path.join(app.getPath("userData"), GIT_BACKUP_STATE_NAME);
+}
+
+async function readReadwiseState() {
+  try {
+    return JSON.parse(await fs.readFile(readwiseStatePath(), "utf8"));
+  } catch {
+    return { lastSyncAt: null, bookMap: {} };
+  }
+}
+
+async function writeReadwiseState(state) {
+  await fs.writeFile(readwiseStatePath(), JSON.stringify(state, null, 2), "utf8");
 }
 
 let cachedGitBackupState = null;
@@ -1069,10 +1091,104 @@ function normalizeChatMessages(payload) {
         .filter((entry) => isObject(entry))
         .map((entry) => ({
           role: ["system", "user", "assistant"].includes(asString(entry.role).trim()) ? asString(entry.role).trim() : "",
-          content: asString(entry.content)
+          content: Array.isArray(entry.content) ? entry.content : asString(entry.content)
         }))
-        .filter((entry) => entry.role && entry.content.trim())
+        .filter((entry) => {
+          if (!entry.role) {
+            return false;
+          }
+          if (typeof entry.content === "string") {
+            return entry.content.trim().length > 0;
+          }
+          return Array.isArray(entry.content) && entry.content.length > 0;
+        })
     : [];
+}
+
+function normalizeOpenAiContent(content) {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (!Array.isArray(content)) {
+    return "";
+  }
+  return content
+    .filter((part) => isObject(part))
+    .map((part) => {
+      const type = asString(part.type).trim();
+      if (type === "text") {
+        return { type: "text", text: asString(part.text) };
+      }
+      if (type === "image_url" && isObject(part.image_url)) {
+        return {
+          type: "image_url",
+          image_url: { url: asString(part.image_url.url) }
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
+
+function normalizeAnthropicContent(content) {
+  if (typeof content === "string") {
+    return [{ type: "text", text: content }];
+  }
+  if (!Array.isArray(content)) {
+    return [];
+  }
+  return content
+    .filter((part) => isObject(part))
+    .map((part) => {
+      const type = asString(part.type).trim();
+      if (type === "text") {
+        return { type: "text", text: asString(part.text) };
+      }
+      if (type === "image" && isObject(part.source)) {
+        return {
+          type: "image",
+          source: {
+            type: asString(part.source.type) || "base64",
+            media_type: asString(part.source.media_type),
+            data: asString(part.source.data)
+          }
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
+
+function normalizeGeminiContent(content) {
+  if (typeof content === "string") {
+    return [{ text: content }];
+  }
+  if (!Array.isArray(content)) {
+    return [];
+  }
+  return content
+    .filter((part) => isObject(part))
+    .map((part) => {
+      const type = asString(part.type).trim();
+      if (type === "text") {
+        return { text: asString(part.text) };
+      }
+      if (type === "image_url" && isObject(part.image_url)) {
+        const rawUrl = asString(part.image_url.url);
+        const match = rawUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!match) {
+          return null;
+        }
+        return {
+          inlineData: {
+            mimeType: match[1],
+            data: match[2]
+          }
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
 }
 
 function responseErrorMessage(response, raw, data) {
@@ -1325,7 +1441,10 @@ async function callLlmProvider(payload) {
         headers,
         body: JSON.stringify({
           model,
-          messages,
+          messages: messages.map((entry) => ({
+            role: entry.role,
+            content: normalizeOpenAiContent(entry.content)
+          })),
           temperature
         }),
         signal: controller.signal
@@ -1343,13 +1462,13 @@ async function callLlmProvider(payload) {
       const endpoint = `${baseUrl}/v1/messages`;
       const system = messages
         .filter((entry) => entry.role === "system")
-        .map((entry) => entry.content)
+        .map((entry) => (typeof entry.content === "string" ? entry.content : ""))
         .join("\n\n");
       const anthropicMessages = messages
         .filter((entry) => entry.role !== "system")
         .map((entry) => ({
           role: entry.role === "assistant" ? "assistant" : "user",
-          content: [{ type: "text", text: entry.content }]
+          content: normalizeAnthropicContent(entry.content)
         }));
 
       const { response, raw, data } = await fetchJson(endpoint, {
@@ -1386,13 +1505,13 @@ async function callLlmProvider(payload) {
       const endpoint = `${baseUrl}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
       const system = messages
         .filter((entry) => entry.role === "system")
-        .map((entry) => entry.content)
+        .map((entry) => (typeof entry.content === "string" ? entry.content : ""))
         .join("\n\n");
       const geminiMessages = messages
         .filter((entry) => entry.role !== "system")
         .map((entry) => ({
           role: entry.role === "assistant" ? "model" : "user",
-          parts: [{ text: entry.content }]
+          parts: normalizeGeminiContent(entry.content)
         }));
 
       const { response, raw, data } = await fetchJson(endpoint, {
@@ -1427,11 +1546,11 @@ async function callLlmProvider(payload) {
         .filter((entry) => entry.role !== "system")
         .map((entry) => ({
           role: entry.role === "assistant" ? "assistant" : "user",
-          content: entry.content
+          content: typeof entry.content === "string" ? entry.content : normalizeOpenAiMessage(entry.content)
         }));
       const system = messages
         .filter((entry) => entry.role === "system")
-        .map((entry) => entry.content)
+        .map((entry) => (typeof entry.content === "string" ? entry.content : ""))
         .join("\n\n");
       if (system) {
         ollamaMessages.unshift({ role: "system", content: system });
@@ -1468,6 +1587,66 @@ async function callLlmProvider(payload) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function generateEmbedding(text, payload) {
+  const provider = normalizeProvider(payload);
+  const baseUrl = providerBaseUrl(provider, payload?.baseUrl);
+  const apiKey = asString(payload?.apiKey).trim();
+  const model = asString(payload?.model).trim();
+  const input = asString(text).slice(0, 8000);
+
+  if (provider === "openai" || provider === "openai-compatible") {
+    const endpoint = baseUrl.endsWith("/v1") ? `${baseUrl}/embeddings` : `${baseUrl}/v1/embeddings`;
+    const { response, raw, data } = await fetchJson(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
+      },
+      body: JSON.stringify({ model: model || "text-embedding-3-small", input }),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!response.ok) {
+      throw new Error(responseErrorMessage(response, raw, data));
+    }
+    return Array.isArray(data?.data?.[0]?.embedding) ? data.data[0].embedding : [];
+  }
+
+  if (provider === "ollama") {
+    const { response, raw, data } = await fetchJson(`${baseUrl}/api/embeddings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: model || "nomic-embed-text", prompt: input }),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!response.ok) {
+      throw new Error(responseErrorMessage(response, raw, data));
+    }
+    return Array.isArray(data?.embedding) ? data.embedding : [];
+  }
+
+  throw new Error(`Provider "${provider}" does not support embeddings`);
+}
+
+function cosineSimilarity(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || a.length === 0) {
+    return -1;
+  }
+  let dot = 0;
+  let magA = 0;
+  let magB = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    const left = Number(a[index]) || 0;
+    const right = Number(b[index]) || 0;
+    dot += left * right;
+    magA += left * left;
+    magB += right * right;
+  }
+  if (!magA || !magB) {
+    return -1;
+  }
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
 }
 
 function createWindow() {
@@ -1774,6 +1953,20 @@ app.whenReady().then(async () => {
     app.exit(0);
   });
 
+  ipcMain.handle("shell:open-url", async (_event, url) => {
+    const value = asString(url).trim();
+    if (!value || (!value.startsWith("https://") && !value.startsWith("http://") && !value.startsWith("obsidian://"))) {
+      return { ok: false, error: "Invalid URL" };
+    }
+    await shell.openExternal(value);
+    return { ok: true };
+  });
+
+  ipcMain.handle("clipboard:write", async (_event, text) => {
+    require("electron").clipboard.writeText(asString(text));
+    return { ok: true };
+  });
+
   ipcMain.handle("vault:git-status", async () => {
     try {
       return await gitBackupStatus();
@@ -1858,6 +2051,241 @@ app.whenReady().then(async () => {
     } catch (error) {
       console.error("Failed to list llm models", error);
       return { error: "LLM model discovery failed" };
+    }
+  });
+
+  ipcMain.handle("readwise:test", async (_event, token) => {
+    try {
+      const response = await fetch("https://readwise.io/api/v2/auth/", {
+        headers: { Authorization: `Token ${asString(token).trim()}` },
+        signal: AbortSignal.timeout(10000)
+      });
+      return { ok: response.status === 204 };
+    } catch (error) {
+      return { ok: false, error: asString(error?.message) || "Readwise auth failed" };
+    }
+  });
+
+  ipcMain.handle("readwise:status", async () => {
+    const state = await readReadwiseState();
+    return { lastSyncAt: state.lastSyncAt ?? null, bookCount: Object.keys(state.bookMap || {}).length };
+  });
+
+  ipcMain.handle("readwise:sync", async (_event, payload) => {
+    const token = asString(payload?.token).trim();
+    const fullSync = Boolean(payload?.fullSync);
+    const state = await readReadwiseState();
+    const since = !fullSync && state.lastSyncAt ? state.lastSyncAt : null;
+    const bookMap = isObject(state.bookMap) ? { ...state.bookMap } : {};
+    const importedNotes = [];
+
+    try {
+      let booksUrl = "https://readwise.io/api/v2/books/?page_size=100";
+      if (since) {
+        booksUrl += `&last_highlight_at__gt=${encodeURIComponent(since)}`;
+      }
+
+      const allBooks = [];
+      while (booksUrl) {
+        const response = await fetch(booksUrl, {
+          headers: { Authorization: `Token ${token}` },
+          signal: AbortSignal.timeout(15000)
+        });
+        if (!response.ok) {
+          return { ok: false, error: `Books fetch failed: ${response.status}` };
+        }
+        const data = await response.json();
+        allBooks.push(...(Array.isArray(data?.results) ? data.results : []));
+        booksUrl = asString(data?.next);
+        if (booksUrl) {
+          await new Promise((resolve) => setTimeout(resolve, 3100));
+        }
+      }
+
+      for (const book of allBooks) {
+        const highlights = [];
+        let highlightsUrl = `https://readwise.io/api/v2/highlights/?page_size=1000&book_id=${book.id}`;
+        if (since) {
+          highlightsUrl += `&updated__gt=${encodeURIComponent(since)}`;
+        }
+
+        while (highlightsUrl) {
+          const response = await fetch(highlightsUrl, {
+            headers: { Authorization: `Token ${token}` },
+            signal: AbortSignal.timeout(15000)
+          });
+          if (!response.ok) {
+            break;
+          }
+          const data = await response.json();
+          highlights.push(...(Array.isArray(data?.results) ? data.results : []));
+          highlightsUrl = asString(data?.next);
+          if (highlightsUrl) {
+            await new Promise((resolve) => setTimeout(resolve, 3100));
+          }
+        }
+
+        if (!highlights.length) {
+          continue;
+        }
+
+        const categoryLabel = {
+          books: "Book",
+          articles: "Article",
+          tweets: "Tweet",
+          podcasts: "Podcast"
+        }[asString(book.category)] || asString(book.category) || "Source";
+
+        const highlightLines = highlights
+          .slice()
+          .sort((left, right) => (Number(left.location) || 0) - (Number(right.location) || 0))
+          .map((highlight) => {
+            const location = Number(highlight.location) || 0;
+            const locationLabel = location
+              ? ` *(${asString(highlight.location_type) === "page" ? "p." : "loc."} ${location})*`
+              : "";
+            const note = asString(highlight.note).trim();
+            const tags = Array.isArray(highlight.tags) ? highlight.tags.map((tag) => `#${asString(tag?.name)}`).filter(Boolean) : [];
+            return [
+              `> ${asString(highlight.text)}${locationLabel}`,
+              note ? `> *Note: ${note}*` : "",
+              tags.length ? `> *Tags: ${tags.join(", ")}*` : ""
+            ]
+              .filter(Boolean)
+              .join("\n");
+          })
+          .join("\n\n");
+
+        const noteName = asString(book.title).replace(/[/\\:*?"<>|]/g, "_") || `Readwise-${book.id}`;
+        const noteContent = `# ${asString(book.title) || noteName}
+
+**${categoryLabel}** · ${asString(book.author) || "Unknown author"}${asString(book.source) ? ` · ${asString(book.source)}` : ""}
+
+${asString(book.source_url) ? `[Source](${asString(book.source_url)})\n\n` : ""}---
+
+## Highlights (${highlights.length})
+
+${highlightLines}
+
+---
+
+*Synced from Readwise · ${new Date().toLocaleDateString()}*`;
+
+        importedNotes.push({
+          bookId: book.id,
+          noteName,
+          noteContent,
+          coverImageUrl: asString(book.cover_image_url)
+        });
+        bookMap[book.id] = noteName;
+      }
+
+      await writeReadwiseState({
+        lastSyncAt: new Date().toISOString(),
+        bookMap
+      });
+
+      return { ok: true, notes: importedNotes, bookCount: allBooks.length };
+    } catch (error) {
+      return { ok: false, error: asString(error?.message) || "Readwise sync failed" };
+    }
+  });
+
+  ipcMain.handle("cli:gemini", async (_event, payload) => {
+    const os = require("node:os");
+    const tmpFile = path.join(os.tmpdir(), "pkm-gemini-context.md");
+    const prompt = asString(payload?.prompt).trim() || "Analyze this note and share your thoughts.";
+    const fileContent = `# ${asString(payload?.noteTitle) || "Untitled"}\n\n${asString(payload?.noteContent)}`;
+    await fs.writeFile(tmpFile, fileContent, "utf8");
+    const command = `gemini -p "${prompt.replace(/"/g, '\\"')}" < "${tmpFile}"`;
+    require("electron").clipboard.writeText(command);
+    if (process.platform === "darwin") {
+      execFile("osascript", ["-e", `tell application "Terminal" to do script "${command.replace(/"/g, '\\"')}"`], () => {});
+    }
+    return { ok: true, command, tmpFile };
+  });
+
+  ipcMain.handle("cli:codex", async (_event, payload) => {
+    const os = require("node:os");
+    const tmpFile = path.join(os.tmpdir(), "pkm-codex-context.md");
+    const task = asString(payload?.task).trim() || "Help me with the content of this note.";
+    const fileContent = `# ${asString(payload?.noteTitle) || "Untitled"}\n\n${asString(payload?.noteContent)}`;
+    await fs.writeFile(tmpFile, fileContent, "utf8");
+    const command = `codex --context "${tmpFile}" "${task.replace(/"/g, '\\"')}"`;
+    require("electron").clipboard.writeText(command);
+    if (process.platform === "darwin") {
+      execFile("osascript", ["-e", `tell application "Terminal" to do script "${command.replace(/"/g, '\\"')}"`], () => {});
+    }
+    return { ok: true, command, tmpFile };
+  });
+
+  ipcMain.handle("embed:index", async (_event, payload) => {
+    try {
+      let stored = {};
+      try {
+        stored = JSON.parse(await fs.readFile(embeddingsFilePath(), "utf8"));
+      } catch {
+        stored = {};
+      }
+      const results = { ...stored };
+      const noteIds = new Set();
+      let generated = 0;
+
+      for (const note of Array.isArray(payload?.notes) ? payload.notes : []) {
+        const noteId = asString(note?.id);
+        if (!noteId) {
+          continue;
+        }
+        noteIds.add(noteId);
+        if (results[noteId]?.hash === asString(note?.hash)) {
+          continue;
+        }
+        const text = `${asString(note?.title)}\n\n${asString(note?.content)}`;
+        const embedding = await generateEmbedding(text, payload);
+        results[noteId] = {
+          embedding,
+          hash: asString(note?.hash),
+          title: asString(note?.title)
+        };
+        generated += 1;
+      }
+
+      for (const id of Object.keys(results)) {
+        if (!noteIds.has(id)) {
+          delete results[id];
+        }
+      }
+
+      await fs.writeFile(embeddingsFilePath(), JSON.stringify(results), "utf8");
+      return { ok: true, generated, total: Object.keys(results).length };
+    } catch (error) {
+      return { ok: false, error: asString(error?.message) || "Embedding index failed" };
+    }
+  });
+
+  ipcMain.handle("embed:search", async (_event, payload) => {
+    try {
+      const stored = JSON.parse(await fs.readFile(embeddingsFilePath(), "utf8"));
+      const queryEmbedding = await generateEmbedding(asString(payload?.query), payload);
+      const topK = Math.max(1, Number(payload?.topK) || 10);
+      const scored = Object.entries(stored).map(([id, data]) => ({
+        id,
+        title: asString(data?.title),
+        score: cosineSimilarity(queryEmbedding, data?.embedding)
+      }));
+      scored.sort((left, right) => right.score - left.score);
+      return { ok: true, results: scored.slice(0, topK) };
+    } catch (error) {
+      return { ok: false, error: asString(error?.message) || "Semantic search failed" };
+    }
+  });
+
+  ipcMain.handle("embed:status", async () => {
+    try {
+      const stored = JSON.parse(await fs.readFile(embeddingsFilePath(), "utf8"));
+      return { ok: true, count: Object.keys(stored).length };
+    } catch {
+      return { ok: true, count: 0 };
     }
   });
 

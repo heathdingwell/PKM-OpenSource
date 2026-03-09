@@ -317,7 +317,7 @@ type ReminderDueFilter = "all" | "overdue" | "today" | "upcoming";
 type ReminderScopeMode = "all" | "current-note";
 type GraphScope = "workspace" | "local";
 type SidebarSectionId = "recent" | "shortcuts" | "saved-searches" | "home-pins" | "notebook-pins" | "notebooks";
-type SettingsTab = "general" | "editor" | "appearance" | "shortcuts" | "ai" | "backup";
+type SettingsTab = "general" | "editor" | "appearance" | "shortcuts" | "ai" | "integrations" | "backup";
 type SaveState = "saved" | "dirty" | "saving" | "failed";
 
 interface ParsedSearchQuery {
@@ -387,6 +387,7 @@ interface AiSettings {
   includeRelatedNotes: boolean;
   relatedCount: number;
   systemPrompt: string;
+  vaultMode: "related" | "full";
 }
 
 interface AiChatMessage {
@@ -439,6 +440,12 @@ interface ResizeState {
   startListWidth: number;
 }
 
+interface AiInlineRange {
+  start: number;
+  end: number;
+  mode: EditorMode;
+}
+
 const NOTES_STORAGE_KEY = "pkm-os.desktop.notes.v2";
 const PREFS_STORAGE_KEY = "pkm-os.desktop.prefs.v1";
 const SEARCH_RECENTS_KEY = "pkm-os.desktop.search-recents.v1";
@@ -446,6 +453,7 @@ const SCRATCHPAD_STORAGE_KEY = "pkm-os.desktop.home-scratchpad.v1";
 const HISTORY_STORAGE_KEY = "pkm-os.desktop.history.v1";
 const CALENDAR_STORAGE_KEY = "pkm-os.desktop.calendar.v1";
 const AI_SETTINGS_STORAGE_KEY = "pkm-os.desktop.ai-settings.v1";
+const READWISE_TOKEN_KEY = "pkm-os.readwise.token";
 const MIN_SIDEBAR_WIDTH = 210;
 const MAX_SIDEBAR_WIDTH = 420;
 const MIN_LIST_WIDTH = 320;
@@ -1136,6 +1144,10 @@ const editorMenuRows: ContextMenuRow[] = [
   { id: "open-settings", label: "Settings…", shortcut: "cmd+,", icon: renderContextMenuIcon("settings") },
   { id: "export", label: "Export…", shortcut: "cmd+alt+1", icon: renderContextMenuIcon("export") },
   { id: "print", label: "Print", shortcut: "cmd+alt+p", icon: renderContextMenuIcon("print") },
+  { id: "open-claude", label: "Open in Claude", icon: renderContextMenuIcon("open") },
+  { id: "open-gemini-cli", label: "Send to Gemini CLI", icon: renderContextMenuIcon("open") },
+  { id: "open-codex-cli", label: "Open in Codex CLI", icon: renderContextMenuIcon("open") },
+  { id: "open-obsidian", label: "Open in Obsidian", icon: renderContextMenuIcon("open") },
   { id: "divider-4", label: "", divider: true },
   { id: "restore-trash", label: "Restore from Trash", shortcut: "cmd+alt+z", icon: renderContextMenuIcon("restore") },
   { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace", icon: renderContextMenuIcon("trash") }
@@ -1154,6 +1166,11 @@ const cardMenuRows: ContextMenuRow[] = [
   { id: "pin-home", label: "Pin to Home", shortcut: "cmd+alt+7", icon: renderContextMenuIcon("pin") },
   { id: "add-shortcuts", label: "Add to Shortcuts", shortcut: "cmd+alt+6", icon: renderContextMenuIcon("shortcut") },
   { id: "divider-3", label: "", divider: true },
+  { id: "open-claude", label: "Open in Claude", icon: renderContextMenuIcon("open") },
+  { id: "open-gemini-cli", label: "Send to Gemini CLI", icon: renderContextMenuIcon("open") },
+  { id: "open-codex-cli", label: "Open in Codex CLI", icon: renderContextMenuIcon("open") },
+  { id: "open-obsidian", label: "Open in Obsidian", icon: renderContextMenuIcon("open") },
+  { id: "divider-3b", label: "", divider: true },
   { id: "export", label: "Export…", icon: renderContextMenuIcon("export") },
   { id: "divider-4", label: "", divider: true },
   { id: "move-trash", label: "Move to Trash", shortcut: "cmd+backspace", icon: renderContextMenuIcon("trash") }
@@ -3020,7 +3037,8 @@ function defaultAiSettings(): AiSettings {
     includeRelatedNotes: true,
     relatedCount: 4,
     systemPrompt:
-      "You are a note-taking copilot. Be concise and practical. Use note context when relevant and cite note titles in brackets."
+      "You are a note-taking copilot. Be concise and practical. Use note context when relevant and cite note titles in brackets.",
+    vaultMode: "related"
   };
 }
 
@@ -3134,7 +3152,8 @@ function loadAiSettings(): AiSettings {
       relatedCount:
         typeof parsed.relatedCount === "number" ? Math.max(1, Math.min(Math.round(parsed.relatedCount), 8)) : defaults.relatedCount,
       systemPrompt:
-        typeof parsed.systemPrompt === "string" && parsed.systemPrompt.trim() ? parsed.systemPrompt : defaults.systemPrompt
+        typeof parsed.systemPrompt === "string" && parsed.systemPrompt.trim() ? parsed.systemPrompt : defaults.systemPrompt,
+      vaultMode: parsed.vaultMode === "full" ? "full" : defaults.vaultMode
     };
   } catch {
     return defaultAiSettings();
@@ -3385,10 +3404,34 @@ export default function App() {
   const [aiInput, setAiInput] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiInlineOpen, setAiInlineOpen] = useState(false);
+  const [aiInlinePos, setAiInlinePos] = useState({ x: 0, y: 0 });
+  const [aiInlineSelection, setAiInlineSelection] = useState("");
+  const [aiInlineBusy, setAiInlineBusy] = useState(false);
+  const [aiInlineRange, setAiInlineRange] = useState<AiInlineRange | null>(null);
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [suggestedTagsNoteId, setSuggestedTagsNoteId] = useState<string | null>(null);
+  const [dailyBriefOpen, setDailyBriefOpen] = useState(false);
+  const [dailyBriefContent, setDailyBriefContent] = useState("");
+  const [dailyBriefBusy, setDailyBriefBusy] = useState(false);
+  const [dailyBriefDate, setDailyBriefDate] = useState<string | null>(null);
+  const [vaultInsightsOpen, setVaultInsightsOpen] = useState(false);
+  const [vaultInsightsContent, setVaultInsightsContent] = useState("");
+  const [vaultInsightsBusy, setVaultInsightsBusy] = useState(false);
+  const [vaultInsightsScope, setVaultInsightsScope] = useState<"notebook" | "all">("notebook");
   const [aiConnectionBusy, setAiConnectionBusy] = useState(false);
   const [aiModelFetchBusy, setAiModelFetchBusy] = useState(false);
   const [aiConnectionState, setAiConnectionState] = useState<AiConnectionState | null>(null);
   const [aiModels, setAiModels] = useState<string[]>([]);
+  const [semanticSearchEnabled, setSemanticSearchEnabled] = useState(false);
+  const [embeddingIndexStatus, setEmbeddingIndexStatus] = useState<{ count: number } | null>(null);
+  const [semanticSearchResults, setSemanticSearchResults] = useState<Array<{ id: string; score: number }>>([]);
+  const [readwiseToken, setReadwiseToken] = useState<string>(
+    () => (typeof window === "undefined" ? "" : window.localStorage.getItem(READWISE_TOKEN_KEY) ?? "")
+  );
+  const [readwiseStatus, setReadwiseStatus] = useState<{ lastSyncAt: string | null; bookCount: number } | null>(null);
+  const [readwiseSyncing, setReadwiseSyncing] = useState(false);
+  const [readwiseTestState, setReadwiseTestState] = useState<"idle" | "ok" | "error">("idle");
   const [gitBackupStatus, setGitBackupStatus] = useState<GitBackupStatus | null>(null);
   const [gitBackupBusy, setGitBackupBusy] = useState(false);
   const [gitBackupCommitPrefix, setGitBackupCommitPrefix] = useState("Vault backup");
@@ -3436,6 +3479,8 @@ export default function App() {
   const autosaveTimerRef = useRef<number | null>(null);
   const previousNotesRef = useRef<AppNote[] | null>(null);
   const editorMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const aiInlineRef = useRef<HTMLDivElement>(null);
+  const lastTagSuggestionKeyRef = useRef<string>("");
   const markdownEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
   const editorMainRef = useRef<HTMLDivElement | null>(null);
@@ -4319,12 +4364,20 @@ export default function App() {
       .slice(0, 8);
   }, [activeNotes, browseMode, commandMode, parsedQuickQuery, searchIndex, searchScope, selectedNotebook, searchFilters, trashedNotes]);
 
-  const selectedSearchResult = quickResults[searchSelected] ?? null;
+  const displayedSearchResults = useMemo(() => {
+    if (!semanticSearchEnabled || !semanticSearchResults.length) {
+      return quickResults;
+    }
+    return semanticSearchResults
+      .map((result) => notes.find((note) => note.id === result.id))
+      .filter((note): note is AppNote => Boolean(note));
+  }, [notes, quickResults, semanticSearchEnabled, semanticSearchResults]);
+  const selectedDisplayedSearchResult = displayedSearchResults[searchSelected] ?? null;
   const selectedPaletteAction = paletteResults[searchSelected] ?? null;
   const quickResultGroups = useMemo(() => {
     const groups: Array<{ label: string; entries: Array<{ note: AppNote; index: number }> }> = [];
 
-    quickResults.forEach((note, index) => {
+    displayedSearchResults.forEach((note, index) => {
       const label = toDateBucketLabel(note.updatedAt);
       const existing = groups.find((group) => group.label === label);
       if (existing) {
@@ -4335,7 +4388,7 @@ export default function App() {
     });
 
     return groups;
-  }, [quickResults]);
+  }, [displayedSearchResults]);
 
   const liveDerivedNotes = useMemo(() => {
     if (!liveActiveNote || liveActiveNote.trashedAt) {
@@ -5030,6 +5083,24 @@ export default function App() {
   }, [notes]);
 
   useEffect(() => {
+    if (!activeNote || saveState !== "saved") {
+      return;
+    }
+    const key = `${activeNote.id}:${activeNote.updatedAt}:${activeNote.markdown.length}`;
+    if (lastTagSuggestionKeyRef.current === key) {
+      return;
+    }
+    lastTagSuggestionKeyRef.current = key;
+    const timer = window.setTimeout(() => {
+      const fresh = notes.find((note) => note.id === activeNote.id);
+      if (fresh) {
+        void fetchTagSuggestions(fresh);
+      }
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [activeNote, notes, saveState]);
+
+  useEffect(() => {
     const validIds = new Set(notes.map((note) => note.id));
     setNoteHistory((previous) => {
       let changed = false;
@@ -5090,6 +5161,52 @@ export default function App() {
     }
     window.localStorage.setItem(AI_SETTINGS_STORAGE_KEY, JSON.stringify(aiSettings));
   }, [aiSettings]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(READWISE_TOKEN_KEY, readwiseToken);
+  }, [readwiseToken]);
+
+  useEffect(() => {
+    void window.pkmShell?.readwiseStatus?.().then((status) => {
+      if (status) {
+        setReadwiseStatus(status);
+      }
+    });
+    void window.pkmShell?.getEmbeddingStatus?.().then((status) => {
+      if (status) {
+        setEmbeddingIndexStatus({ count: status.count });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (semanticSearchEnabled && quickQuery.trim()) {
+      void runSemanticSearch(quickQuery);
+      return;
+    }
+    if (!semanticSearchEnabled) {
+      setSemanticSearchResults([]);
+    }
+  }, [semanticSearchEnabled, quickQuery, aiSettings.provider, aiSettings.baseUrl, aiSettings.apiKey, aiSettings.model]);
+
+  useEffect(() => {
+    setSuggestedTags([]);
+    setSuggestedTagsNoteId(null);
+  }, [activeNote?.id]);
+
+  useEffect(() => {
+    const hide = (event: globalThis.MouseEvent) => {
+      if (aiInlineRef.current && !aiInlineRef.current.contains(event.target as Node)) {
+        setAiInlineOpen(false);
+        setAiInlineRange(null);
+      }
+    };
+    document.addEventListener("mousedown", hide);
+    return () => document.removeEventListener("mousedown", hide);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -5969,6 +6086,17 @@ export default function App() {
 
       if (
         (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        !event.altKey &&
+        (event.key.toLowerCase() === "d" || event.code === "KeyD")
+      ) {
+        event.preventDefault();
+        void generateDailyBrief();
+        return;
+      }
+
+      if (
+        (event.metaKey || event.ctrlKey) &&
         !event.shiftKey &&
         !event.altKey &&
         (event.key.toLowerCase() === "s" || event.code === "KeyS")
@@ -6035,6 +6163,7 @@ export default function App() {
     activeDraftMarkdown,
     activeNote?.id,
     activeNote?.markdown,
+    activeNote?.isTemplate,
     slashMenu,
     slashResults,
     searchOpen,
@@ -6054,6 +6183,11 @@ export default function App() {
     showWelcome,
     sidebarView,
     browseMode,
+    notes,
+    selectedVisibleNoteIds,
+    shortcutNoteIds,
+    homePinnedNoteIds,
+    notebookPinnedNoteIds,
     visibleNotes,
     activeId,
     lastSelectedId
@@ -6185,12 +6319,12 @@ export default function App() {
   }, [searchOpen, quickQuery, searchScope, searchFilters]);
 
   useEffect(() => {
-    const length = commandMode ? paletteResults.length : quickResults.length;
+    const length = commandMode ? paletteResults.length : displayedSearchResults.length;
     if (searchSelected < length) {
       return;
     }
     setSearchSelected(Math.max(0, length - 1));
-  }, [searchSelected, quickResults.length, commandMode, paletteResults.length]);
+  }, [searchSelected, displayedSearchResults.length, commandMode, paletteResults.length]);
 
   useEffect(() => {
     if (!slashMenu) {
@@ -6698,6 +6832,571 @@ export default function App() {
     return sections.join("\n\n---\n\n");
   }
 
+  function buildFullVaultContext(): string {
+    if (!notes.length) {
+      return "";
+    }
+    const maxChars = 900_000;
+    const chunks: string[] = [];
+    let total = 0;
+    for (const note of notes) {
+      if (!note.markdown && !note.title) {
+        continue;
+      }
+      const block = `## ${note.title}\nNotebook: ${note.notebook || "—"}\nPath: ${note.path}\n\n${note.markdown.slice(0, 8000)}\n`;
+      if (total + block.length > maxChars) {
+        break;
+      }
+      chunks.push(block);
+      total += block.length;
+    }
+    return `# Your entire vault (${chunks.length} of ${notes.length} notes)\n\n${chunks.join("\n---\n")}`;
+  }
+
+  async function runSemanticSearch(query: string): Promise<void> {
+    if (!query.trim() || !window.pkmShell?.semanticSearch) {
+      setSemanticSearchResults([]);
+      return;
+    }
+
+    const result = await window.pkmShell.semanticSearch({
+      query,
+      provider: aiSettings.provider,
+      baseUrl: aiSettings.baseUrl,
+      apiKey: aiSettings.apiKey,
+      model: aiSettings.model,
+      topK: 15
+    });
+
+    if (result?.ok && Array.isArray(result.results)) {
+      setSemanticSearchResults(
+        result.results
+          .filter((entry): entry is { id: string; score: number } => typeof entry.id === "string" && typeof entry.score === "number")
+      );
+    } else {
+      setSemanticSearchResults([]);
+    }
+  }
+
+  async function copyTextToClipboard(value: string): Promise<boolean> {
+    if (!value.trim()) {
+      return false;
+    }
+    if (window.pkmShell?.writeClipboard) {
+      const result = await window.pkmShell.writeClipboard(value);
+      return Boolean(result?.ok);
+    }
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+    return false;
+  }
+
+  function noteContextForExternalTool(note: AppNote): string {
+    return `# ${note.title}
+Notebook: ${note.notebook || "—"}
+Tags: ${note.tags.length ? note.tags.map((tag) => `#${tag}`).join(", ") : "none"}
+Path: ${note.path}
+
+---
+
+${note.markdown || "(empty note)"}
+`;
+  }
+
+  async function openInClaudeCode(note: AppNote): Promise<void> {
+    const context = `${noteContextForExternalTool(note)}
+
+---
+
+I'd like your help with the above note/code.`;
+    await copyTextToClipboard(context);
+    await window.pkmShell?.openUrl?.("https://claude.ai/new");
+    showToast("Note copied to clipboard — paste into Claude to start a conversation", "success");
+  }
+
+  async function sendToGeminiCli(note: AppNote, prompt?: string): Promise<void> {
+    const result = await window.pkmShell?.runGeminiCli?.({
+      noteTitle: note.title,
+      noteContent: note.markdown || "",
+      prompt: prompt || "Analyze this note."
+    });
+    if (result?.ok) {
+      const platform = window.pkmShell?.getPlatform?.() ?? "unknown";
+      showToast(
+        platform === "darwin" ? "Sent to Terminal — Gemini is running" : "Command copied — paste in your terminal to run Gemini",
+        "success"
+      );
+    }
+  }
+
+  async function openInCodexCli(note: AppNote): Promise<void> {
+    const result = await window.pkmShell?.runCodexCli?.({
+      noteTitle: note.title,
+      noteContent: note.markdown || "",
+      task: "Help me understand and work with this note."
+    });
+    if (result?.ok) {
+      const platform = window.pkmShell?.getPlatform?.() ?? "unknown";
+      showToast(
+        platform === "darwin" ? "Opened in Codex CLI — Terminal is ready" : "Command copied — paste in your terminal to open Codex",
+        "success"
+      );
+    }
+  }
+
+  async function openInObsidian(note: AppNote): Promise<void> {
+    const vaultName = vaultPath ? vaultPath.split(/[\\/]/).filter(Boolean).pop() ?? "" : "";
+    if (!vaultName) {
+      showToast("Vault location not set — configure it in Settings", "error");
+      return;
+    }
+    const notebook = note.notebook ?? "";
+    const filePath = notebook ? `${notebook}/${note.title}` : note.title;
+    const obsidianUrl = `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(filePath)}`;
+    const result = await window.pkmShell?.openUrl?.(obsidianUrl);
+    if (result?.ok) {
+      showToast(`Opening "${note.title}" in Obsidian`, "success");
+    } else {
+      showToast("Could not open Obsidian — is it installed?", "error");
+    }
+  }
+
+  async function exportForAi(scope: "all" | "notebook" | "tag", filter?: string): Promise<void> {
+    const scopeNotes =
+      scope === "notebook"
+        ? notes.filter((note) => note.notebook === filter)
+        : scope === "tag"
+          ? notes.filter((note) => note.tags.includes(filter ?? ""))
+          : notes;
+
+    const header = `# PKM Vault Export for AI Context
+Exported: ${new Date().toLocaleString()}
+Notes: ${scopeNotes.length}
+${scope !== "all" ? `Scope: ${scope} — ${filter}` : "Scope: Full vault"}
+
+---
+
+`;
+
+    const body = scopeNotes
+      .slice()
+      .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+      .map((note) => {
+        const meta = [
+          note.notebook ? `Notebook: ${note.notebook}` : null,
+          note.tags.length ? `Tags: ${note.tags.map((tag) => `#${tag}`).join(", ")}` : null,
+          note.updatedAt ? `Updated: ${new Date(note.updatedAt).toLocaleDateString()}` : null
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        return `## ${note.title}\n${meta ? `*${meta}*\n\n` : ""}${note.markdown || ""}`;
+      })
+      .join("\n\n---\n\n");
+
+    const fullExport = header + body;
+    const copied = await copyTextToClipboard(fullExport);
+    if (copied) {
+      showToast(`${scopeNotes.length} notes copied to clipboard — paste into Claude, ChatGPT, or a Claude Project`, "success");
+    } else {
+      showToast("Could not copy vault export to clipboard", "error");
+    }
+  }
+
+  async function fetchTagSuggestions(note: AppNote): Promise<void> {
+    if ((!aiSettings.apiKey || !aiSettings.model) && aiSettings.provider !== "ollama") {
+      return;
+    }
+    if (!window.pkmShell?.chatWithLlm) {
+      return;
+    }
+    if (!note.markdown || note.markdown.length < 80) {
+      return;
+    }
+
+    const allTags = Array.from(new Set(notes.flatMap((entry) => entry.tags ?? []))).slice(0, 60);
+    const prompt = `Given these existing tags: ${allTags.map((tag) => `#${tag}`).join(", ")}
+
+Analyze this note and suggest 1–3 relevant tags. Prefer existing tags when appropriate. Only suggest a new tag if it is clearly warranted and not already covered.
+
+Note title: ${note.title}
+Note content (first 1200 chars): ${note.markdown.slice(0, 1200)}
+
+Return ONLY a JSON array of tag strings (without # symbol), e.g. ["tag1", "tag2"]. No explanation.`;
+
+    const result = await window.pkmShell.chatWithLlm({
+      provider: aiSettings.provider,
+      baseUrl: aiSettings.baseUrl,
+      model: aiSettings.model,
+      apiKey: aiSettings.apiKey,
+      temperature: 0,
+      messages: [
+        { role: "system", content: "You are a tagging assistant. Respond only with a JSON array." },
+        { role: "user", content: prompt }
+      ]
+    });
+
+    if (!result?.message) {
+      return;
+    }
+
+    try {
+      const match = result.message.match(/\[.*?\]/s);
+      if (!match) {
+        return;
+      }
+      const parsed = JSON.parse(match[0]) as unknown;
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+      const existing = new Set(note.tags ?? []);
+      const newTags = parsed
+        .filter((tag): tag is string => typeof tag === "string")
+        .map((tag) => tag.trim().replace(/^#/, ""))
+        .filter((tag) => tag.length > 0 && !existing.has(tag));
+      if (newTags.length > 0) {
+        setSuggestedTags(Array.from(new Set(newTags)).slice(0, 3));
+        setSuggestedTagsNoteId(note.id);
+      }
+    } catch {
+      // Ignore malformed JSON.
+    }
+  }
+
+  async function generateDailyBrief(force = false): Promise<void> {
+    if (dailyBriefBusy) {
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    if (!force && dailyBriefDate === today && dailyBriefContent) {
+      setDailyBriefOpen(true);
+      return;
+    }
+
+    setDailyBriefBusy(true);
+    setDailyBriefOpen(true);
+
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recentNotes = notes
+      .filter((note) => new Date(note.updatedAt ?? note.createdAt ?? 0).getTime() > sevenDaysAgo)
+      .sort((left, right) => new Date(right.updatedAt ?? 0).getTime() - new Date(left.updatedAt ?? 0).getTime())
+      .slice(0, 30);
+
+    const notesSummary = recentNotes
+      .map((note) => `### ${note.title}\n${note.markdown.slice(0, 600)}`)
+      .join("\n\n---\n\n");
+
+    const prompt = `Today is ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}.
+
+Here are the notes I've worked on in the last 7 days:
+
+${notesSummary}
+
+Please generate a short daily brief with these sections:
+1. **This week's focus** (2–3 sentences summarizing what I've been working on)
+2. **Open threads** (bullet list of unfinished ideas, questions, or tasks mentioned in the notes)
+3. **Worth revisiting** (1–2 older ideas or notes that seem relevant to current work)
+4. **Reflection prompts** (2 short questions to think about today)
+
+Keep the whole brief under 350 words. Be specific to the actual note content, not generic.`;
+
+    const result = await window.pkmShell?.chatWithLlm?.({
+      provider: aiSettings.provider,
+      baseUrl: aiSettings.baseUrl,
+      model: aiSettings.model,
+      apiKey: aiSettings.apiKey,
+      temperature: 0.5,
+      messages: [
+        { role: "system", content: "You are a thoughtful PKM assistant helping with reflection and review." },
+        { role: "user", content: prompt }
+      ]
+    });
+
+    setDailyBriefBusy(false);
+    if (result?.message) {
+      setDailyBriefContent(result.message);
+      setDailyBriefDate(today);
+    } else {
+      setDailyBriefContent("Could not generate brief. Check your AI settings.");
+    }
+  }
+
+  async function generateVaultInsights(force = false, scopeOverride?: "notebook" | "all"): Promise<void> {
+    if (vaultInsightsBusy) {
+      return;
+    }
+    const scope = scopeOverride ?? vaultInsightsScope;
+    setVaultInsightsBusy(true);
+    setVaultInsightsOpen(true);
+
+    const scopeNotes =
+      scope === "notebook" && activeNote?.notebook
+        ? notes.filter((note) => note.notebook === activeNote.notebook).slice(0, 40)
+        : notes.slice(0, 50);
+
+    const notesSummary = scopeNotes
+      .map((note) => `### ${note.title}\n${note.markdown.slice(0, 800)}`)
+      .join("\n\n---\n\n");
+
+    const scopeLabel = scope === "notebook" && activeNote?.notebook ? `"${activeNote.notebook}" notebook` : "your full vault";
+    const prompt = `Analyze the following notes from ${scopeLabel} and provide vault insights.
+
+${notesSummary}
+
+Return your analysis in these sections:
+1. **Recurring themes** (3–5 major topics you see across these notes)
+2. **Tensions or contradictions** (specific cases where notes seem to conflict — quote the conflicting ideas and name the note titles)
+3. **Underexplored threads** (ideas that appear briefly but never get developed — worth coming back to)
+4. **Knowledge gaps** (questions implied by the notes that don't seem to have answers yet)
+
+Be specific. Reference actual note titles and quote content when relevant. Under 500 words total.`;
+
+    const result = await window.pkmShell?.chatWithLlm?.({
+      provider: aiSettings.provider,
+      baseUrl: aiSettings.baseUrl,
+      model: aiSettings.model,
+      apiKey: aiSettings.apiKey,
+      temperature: 0.4,
+      messages: [
+        { role: "system", content: "You are a thoughtful knowledge analyst. Be honest, specific, and constructive." },
+        { role: "user", content: prompt }
+      ]
+    });
+
+    setVaultInsightsBusy(false);
+    setVaultInsightsContent(result?.message ?? "Could not generate insights. Check AI settings.");
+    if (!force) {
+      setVaultInsightsScope(scope);
+    }
+  }
+
+  function isImageAttachmentItem(file: AttachmentItem): boolean {
+    return /\.(png|jpe?g|gif|webp|svg)$/i.test(file.label) || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.target);
+  }
+
+  function resolveAttachmentUrl(note: AppNote, attachmentTarget: string): string {
+    const trimmed = attachmentTarget.trim();
+    if (/^(https?:|data:|file:)/i.test(trimmed)) {
+      return trimmed;
+    }
+
+    const normalizedVaultPath = vaultPath.replace(/\\/g, "/");
+    const noteDir = note.path.includes("/") ? note.path.split("/").slice(0, -1).join("/") : "";
+    const basePath = `${normalizedVaultPath.replace(/\/+$/, "")}/${noteDir ? `${noteDir}/` : ""}`;
+    try {
+      return new URL(trimmed.replace(/^\.\//, ""), `file://${basePath}`).toString();
+    } catch {
+      return trimmed;
+    }
+  }
+
+  async function describeAttachmentImage(attachmentUrl: string, note: AppNote, mode: "describe" | "ocr"): Promise<void> {
+    if (!window.pkmShell?.chatWithLlm) {
+      return;
+    }
+    const visionProviders: AiProvider[] = ["openai", "anthropic", "gemini"];
+    if (!visionProviders.includes(aiSettings.provider)) {
+      showToast("Image AI requires OpenAI, Anthropic, or Gemini", "error");
+      return;
+    }
+
+    try {
+      const response = await fetch(resolveAttachmentUrl(note, attachmentUrl));
+      const blob = await response.blob();
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+        reader.readAsDataURL(blob);
+      });
+      const mimeType = blob.type || "image/png";
+      const userPrompt =
+        mode === "ocr"
+          ? "Extract all visible text from this image exactly as it appears. Return only the extracted text, preserving line breaks."
+          : "Describe this image concisely in 1–3 sentences. Focus on what's shown, any text, diagrams, or key details.";
+
+      const messages =
+        aiSettings.provider === "anthropic"
+          ? [
+              {
+                role: "user" as const,
+                content: [
+                  { type: "image" as const, source: { type: "base64", media_type: mimeType, data: base64 } },
+                  { type: "text" as const, text: userPrompt }
+                ]
+              }
+            ]
+          : [
+              {
+                role: "user" as const,
+                content: [
+                  { type: "image_url" as const, image_url: { url: `data:${mimeType};base64,${base64}` } },
+                  { type: "text" as const, text: userPrompt }
+                ]
+              }
+            ];
+
+      const result = await window.pkmShell.chatWithLlm({
+        provider: aiSettings.provider,
+        baseUrl: aiSettings.baseUrl,
+        model: aiSettings.model,
+        apiKey: aiSettings.apiKey,
+        temperature: 0.1,
+        messages
+      });
+
+      if (result?.message) {
+        const label = mode === "ocr" ? "Extracted text" : "AI description";
+        const insertion = `\n\n> **[${label}]** ${result.message.trim()}\n`;
+        const fileName = attachmentUrl.split("/").pop() || "";
+        const pattern = new RegExp(`(!\\[[^\\]]*\\]\\([^)]*${escapeRegExp(fileName)}[^)]*\\))`, "i");
+        const applyInsertion = (markdown: string) => (pattern.test(markdown) ? markdown.replace(pattern, `$1${insertion}`) : `${markdown}${insertion}`);
+        if (activeNote?.id === note.id) {
+          setDraftMarkdown((previous) => applyInsertion(previous));
+        } else {
+          const updatedAt = new Date().toISOString();
+          setNotes((previous) =>
+            previous.map((entry) =>
+              entry.id === note.id ? applyNoteMarkdownWithUniquePath(entry, applyInsertion(entry.markdown), previous, updatedAt) : entry
+            )
+          );
+        }
+        setSaveState("dirty");
+        showToast(`${label} inserted`, "success");
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Image AI failed", "error");
+    }
+  }
+
+  function handleEditorMouseUp(event: MouseEvent | UIEvent): void {
+    const selection = window.getSelection();
+    const target = event.target as Node | null;
+
+    if (editorMode === "markdown" && markdownEditorRef.current && target && markdownEditorRef.current.contains(target)) {
+      const start = markdownEditorRef.current.selectionStart;
+      const end = markdownEditorRef.current.selectionEnd;
+      if (start === end) {
+        setAiInlineOpen(false);
+        setAiInlineRange(null);
+        return;
+      }
+      const text = draftMarkdown.slice(start, end).trim();
+      if (text.length < 10) {
+        setAiInlineOpen(false);
+        setAiInlineRange(null);
+        return;
+      }
+      const rect = markdownEditorRef.current.getBoundingClientRect();
+      setAiInlineSelection(text);
+      setAiInlineRange({ start, end, mode: "markdown" });
+      setAiInlinePos({ x: rect.left + rect.width / 2, y: rect.top + 8 });
+      setAiInlineOpen(true);
+      return;
+    }
+
+    if (!selection || selection.isCollapsed) {
+      setAiInlineOpen(false);
+      setAiInlineRange(null);
+      return;
+    }
+    const text = selection.toString().trim();
+    if (text.length < 10) {
+      setAiInlineOpen(false);
+      setAiInlineRange(null);
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    setAiInlineSelection(text);
+    setAiInlineRange({ start: 0, end: 0, mode: editorMode });
+    setAiInlinePos({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 8
+    });
+    setAiInlineOpen(true);
+  }
+
+  async function runAiInlineCommand(command: string): Promise<void> {
+    if (!aiInlineSelection || aiInlineBusy || !window.pkmShell?.chatWithLlm) {
+      return;
+    }
+
+    setAiInlineBusy(true);
+
+    const prompts: Record<string, string> = {
+      improve: `Improve the writing quality and clarity of the following text. Return only the improved version, no explanation:\n\n${aiInlineSelection}`,
+      concise: `Make the following text more concise — keep the meaning, cut unnecessary words. Return only the revised version:\n\n${aiInlineSelection}`,
+      bullets: `Convert the following text into a clear bullet-point list. Return only the list:\n\n${aiInlineSelection}`,
+      continue: `Continue writing naturally from the following text for 1–3 sentences. Return only the continuation, nothing else:\n\n${aiInlineSelection}`,
+      explain: `Explain the following in simpler terms a non-expert would understand. Return only the explanation:\n\n${aiInlineSelection}`,
+      fix: `Fix any grammar, spelling, or punctuation errors in the following text. Return only the corrected version:\n\n${aiInlineSelection}`
+    };
+
+    const prompt = prompts[command];
+    if (!prompt) {
+      setAiInlineBusy(false);
+      return;
+    }
+
+    const result = await window.pkmShell.chatWithLlm({
+      provider: aiSettings.provider,
+      baseUrl: aiSettings.baseUrl,
+      model: aiSettings.model,
+      apiKey: aiSettings.apiKey,
+      temperature: 0.3,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a writing assistant. Follow the instruction exactly. Return only the requested output, no preamble or explanation."
+        },
+        { role: "user", content: prompt }
+      ]
+    });
+
+    setAiInlineBusy(false);
+    setAiInlineOpen(false);
+
+    if (result?.message && activeNote) {
+      const replacement = result.message.trim();
+      if (aiInlineRange?.mode === "markdown") {
+        setDraftMarkdown((previous) =>
+          `${previous.slice(0, aiInlineRange.start)}${replacement}${previous.slice(aiInlineRange.end)}`
+        );
+      } else {
+        setDraftMarkdown((previous) => previous.replace(aiInlineSelection, replacement));
+      }
+      setSaveState("dirty");
+      showToast("Selection updated", "success");
+    }
+    setAiInlineRange(null);
+  }
+
+  async function syncReadwise(fullSync = false): Promise<void> {
+    if (!readwiseToken || readwiseSyncing) {
+      return;
+    }
+
+    setReadwiseSyncing(true);
+    const result = await window.pkmShell?.readwiseSync?.({ token: readwiseToken, fullSync });
+    if (!result?.ok) {
+      showToast(`Readwise sync failed: ${result?.error ?? "unknown error"}`, "error");
+      setReadwiseSyncing(false);
+      return;
+    }
+
+    for (const item of result.notes ?? []) {
+      upsertNoteMarkdownByNotebookTitle("Readwise", item.noteName, item.noteContent);
+    }
+
+    const status = await window.pkmShell?.readwiseStatus?.();
+    setReadwiseStatus(status ?? null);
+    setReadwiseSyncing(false);
+    showToast(`Readwise: synced ${result.notes?.length ?? 0} sources${fullSync ? " (full sync)" : ""}`, "success");
+  }
+
   async function submitAiPrompt(): Promise<void> {
     const prompt = aiInput.trim();
     if (!prompt || aiBusy) {
@@ -6716,7 +7415,7 @@ export default function App() {
     setAiBusy(true);
     setAiError(null);
 
-    const context = buildAiContext(prompt);
+    const context = aiSettings.vaultMode === "full" ? buildFullVaultContext() : buildAiContext(prompt);
     const history = [...aiMessages, userMessage]
       .slice(-10)
       .map((entry) => ({ role: entry.role as "user" | "assistant", content: entry.content }));
@@ -11296,28 +11995,96 @@ export default function App() {
     showToast(`Created note "${title}"`, "success");
   }
 
+  function createNoteWithMarkdown(options: {
+    title: string;
+    notebook: string;
+    markdown: string;
+    isTemplate?: boolean;
+  }): AppNote {
+    const now = new Date().toISOString();
+    const allocatePath = createPathAllocator(notes);
+    const created = noteFromMarkdown(
+      {
+        id: crypto.randomUUID(),
+        title: options.title.trim() || "Untitled",
+        snippet: "",
+        tags: [],
+        linksOut: [],
+        createdAt: now,
+        updatedAt: now,
+        notebook: options.notebook.trim() || resolveDefaultNotebook(),
+        path: allocatePath(options.notebook.trim() || resolveDefaultNotebook(), options.title.trim() || "Untitled"),
+        markdown: options.markdown,
+        isTemplate: options.isTemplate
+      },
+      options.markdown,
+      now
+    );
+    setNotes((previous) => [created, ...previous]);
+    return created;
+  }
+
+  function upsertNoteMarkdownByNotebookTitle(notebook: string, title: string, markdown: string): AppNote {
+    const existing = notes.find((note) => note.notebook === notebook && note.title === title);
+    const now = new Date().toISOString();
+    if (existing) {
+      setNotes((previous) =>
+        previous.map((note) =>
+          note.id === existing.id ? applyNoteMarkdownWithUniquePath({ ...note, title }, markdown, previous, now) : note
+        )
+      );
+      return noteFromMarkdown(existing, markdown, now);
+    }
+
+    return createNoteWithMarkdown({
+      title,
+      notebook,
+      markdown
+    });
+  }
+
+  function updateNoteTags(noteId: string, nextTags: string[]): void {
+    const normalized = Array.from(
+      new Set(
+        nextTags
+          .map((tag) => tag.trim().replace(/^#/, ""))
+          .filter((tag) => tag.length > 0)
+      )
+    ).sort((left, right) => left.localeCompare(right));
+    const updatedAt = new Date().toISOString();
+    setNotes((previous) =>
+      previous.map((note) =>
+        note.id === noteId
+          ? {
+              ...note,
+              tags: normalized,
+              updatedAt
+            }
+          : note
+      )
+    );
+  }
+
   function toggleShortcutNotes(noteIds: string[]): { added: number; removed: number } {
     const validIds = new Set(notes.map((note) => note.id));
+    const next = [...shortcutNoteIds];
     let added = 0;
     let removed = 0;
-    setShortcutNoteIds((previous) => {
-      const next = [...previous];
-      for (const noteId of noteIds) {
-        if (!validIds.has(noteId)) {
-          continue;
-        }
-
-        const index = next.indexOf(noteId);
-        if (index >= 0) {
-          next.splice(index, 1);
-          removed += 1;
-        } else {
-          next.push(noteId);
-          added += 1;
-        }
+    for (const noteId of noteIds) {
+      if (!validIds.has(noteId)) {
+        continue;
       }
-      return next;
-    });
+
+      const index = next.indexOf(noteId);
+      if (index >= 0) {
+        next.splice(index, 1);
+        removed += 1;
+      } else {
+        next.push(noteId);
+        added += 1;
+      }
+    }
+    setShortcutNoteIds(next);
     return { added, removed };
   }
 
@@ -11387,30 +12154,28 @@ export default function App() {
 
   function togglePinnedNotes(noteIds: string[], scope: "home" | "notebook"): { pinned: number; unpinned: number } {
     const validIds = new Set(notes.map((note) => note.id));
+    const previous = scope === "home" ? homePinnedNoteIds : notebookPinnedNoteIds;
+    const next = [...previous];
     let pinned = 0;
     let unpinned = 0;
-    const apply = (previous: string[]): string[] => {
-      const next = [...previous];
-      for (const noteId of noteIds) {
-        if (!validIds.has(noteId)) {
-          continue;
-        }
-        const index = next.indexOf(noteId);
-        if (index >= 0) {
-          next.splice(index, 1);
-          unpinned += 1;
-        } else {
-          next.push(noteId);
-          pinned += 1;
-        }
+    for (const noteId of noteIds) {
+      if (!validIds.has(noteId)) {
+        continue;
       }
-      return next;
-    };
+      const index = next.indexOf(noteId);
+      if (index >= 0) {
+        next.splice(index, 1);
+        unpinned += 1;
+      } else {
+        next.push(noteId);
+        pinned += 1;
+      }
+    }
 
     if (scope === "home") {
-      setHomePinnedNoteIds(apply);
+      setHomePinnedNoteIds(next);
     } else {
-      setNotebookPinnedNoteIds(apply);
+      setNotebookPinnedNoteIds(next);
     }
 
     return { pinned, unpinned };
@@ -11422,29 +12187,29 @@ export default function App() {
     let marked = 0;
     let unmarked = 0;
 
-    setNotes((previous) =>
-      previous.map((note) => {
-        if (!noteIds.includes(note.id)) {
-          return note;
-        }
+    const nextNotes = notes.map((note) => {
+      if (!noteIds.includes(note.id)) {
+        return note;
+      }
 
-        const nextTemplate = setTemplate;
-        if (Boolean(note.isTemplate) === nextTemplate) {
-          return note;
-        }
+      const nextTemplate = setTemplate;
+      if (Boolean(note.isTemplate) === nextTemplate) {
+        return note;
+      }
 
-        if (nextTemplate) {
-          marked += 1;
-        } else {
-          unmarked += 1;
-        }
+      if (nextTemplate) {
+        marked += 1;
+      } else {
+        unmarked += 1;
+      }
 
-        return {
-          ...note,
-          isTemplate: nextTemplate
-        };
-      })
-    );
+      return {
+        ...note,
+        isTemplate: nextTemplate
+      };
+    });
+
+    setNotes(nextNotes);
 
     return { marked, unmarked };
   }
@@ -12725,6 +13490,42 @@ a{color:#1d4ed8}
 
     if (action === "print") {
       window.print();
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-claude") {
+      const note = notes.find((entry) => entry.id === targetId);
+      if (note) {
+        void openInClaudeCode(note);
+      }
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-gemini-cli") {
+      const note = notes.find((entry) => entry.id === targetId);
+      if (note) {
+        void sendToGeminiCli(note);
+      }
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-codex-cli") {
+      const note = notes.find((entry) => entry.id === targetId);
+      if (note) {
+        void openInCodexCli(note);
+      }
+      setContextMenu(null);
+      return;
+    }
+
+    if (action === "open-obsidian") {
+      const note = notes.find((entry) => entry.id === targetId);
+      if (note) {
+        void openInObsidian(note);
+      }
       setContextMenu(null);
       return;
     }
@@ -16426,6 +17227,19 @@ a{color:#1d4ed8}
                 </button>
                 <button
                   type="button"
+                  className="topbar-icon-btn has-tooltip"
+                  aria-label="Daily Brief"
+                  title="Generate AI daily brief from recent notes (⌘⇧D)"
+                  data-tooltip="Daily Brief"
+                  onClick={() => void generateDailyBrief()}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.4" />
+                    <path d="M8 1.75v1.5M8 12.75v1.5M14.25 8h-1.5M3.25 8h-1.5M12.6 3.4l-1.05 1.05M4.45 11.55 3.4 12.6M12.6 12.6l-1.05-1.05M4.45 4.45 3.4 3.4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
                   className={aiPanelOpen ? "topbar-icon-btn has-tooltip active" : "topbar-icon-btn has-tooltip"}
                   aria-pressed={aiPanelOpen}
                   aria-label="AI"
@@ -16438,6 +17252,26 @@ a{color:#1d4ed8}
                     <path d="M12.5 9.5c.3.8.8 1.3 1.5 1.5-.7.2-1.2.7-1.5 1.5-.3-.8-.8-1.3-1.5-1.5.7-.2 1.2-.7 1.5-1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
                   </svg>
                 </button>
+                {activeNote ? (
+                  <>
+                    <button type="button" className="topbar-mini-btn" onClick={() => void openInClaudeCode(activeNote)} title="Copy note and open Claude.ai">
+                      Claude
+                    </button>
+                    {window.pkmShell?.runGeminiCli ? (
+                      <button type="button" className="topbar-mini-btn" onClick={() => void sendToGeminiCli(activeNote)} title="Send this note to Gemini CLI">
+                        Gemini
+                      </button>
+                    ) : null}
+                    {window.pkmShell?.runCodexCli ? (
+                      <button type="button" className="topbar-mini-btn" onClick={() => void openInCodexCli(activeNote)} title="Open this note in Codex CLI">
+                        Codex
+                      </button>
+                    ) : null}
+                    <button type="button" className="topbar-mini-btn" onClick={() => void openInObsidian(activeNote)} title="Open this note in Obsidian">
+                      Obsidian
+                    </button>
+                  </>
+                ) : null}
                 <button
                   ref={editorMenuButtonRef}
                   type="button"
@@ -16703,6 +17537,47 @@ a{color:#1d4ed8}
               </div>
             ) : null}
 
+            {suggestedTags.length > 0 && suggestedTagsNoteId === activeNote?.id ? (
+              <div className="ai-tag-suggestions">
+                <span className="ai-tag-suggestions-label">✦ Suggested tags:</span>
+                {suggestedTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className="ai-tag-chip"
+                    onClick={() => {
+                      if (activeNote) {
+                        updateNoteTags(activeNote.id, [...(activeNote.tags ?? []), tag]);
+                        setSuggestedTags((previous) => previous.filter((entry) => entry !== tag));
+                      }
+                    }}
+                  >
+                    + #{tag}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="ai-tag-add-all"
+                  onClick={() => {
+                    if (activeNote) {
+                      updateNoteTags(activeNote.id, [...(activeNote.tags ?? []), ...suggestedTags]);
+                      setSuggestedTags([]);
+                    }
+                  }}
+                >
+                  Add all
+                </button>
+                <button
+                  type="button"
+                  className="ai-tag-dismiss"
+                  onClick={() => setSuggestedTags([])}
+                  aria-label="Dismiss tag suggestions"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
+
             <div ref={editorMainRef} className="editor-main" style={editorMainStyle}>
               <article
                 className={[
@@ -16748,6 +17623,7 @@ a{color:#1d4ed8}
                   <section
                     className={attachmentDropTarget === "markdown" ? "markdown-pane drop-active" : "markdown-pane"}
                     aria-label="Markdown editor"
+                    onMouseUp={handleEditorMouseUp}
                   >
                     <h3>Markdown</h3>
                     <textarea
@@ -16980,6 +17856,7 @@ a{color:#1d4ed8}
                   <section
                     className={attachmentDropTarget === "rich" ? "markdown-pane rich-pane drop-active" : "markdown-pane rich-pane"}
                     aria-label="Rich editor"
+                    onMouseUp={handleEditorMouseUp}
                     onDragOver={(event) => {
                       if (!event.dataTransfer?.files?.length) {
                         return;
@@ -17270,9 +18147,54 @@ a{color:#1d4ed8}
                       <button type="button" onClick={insertAiTranscriptIntoNote}>
                         Insert chat
                       </button>
+                      <button type="button" className="ai-toolbar-btn" onClick={() => void generateDailyBrief()}>
+                        Daily Brief
+                      </button>
+                      <button
+                        type="button"
+                        className="ai-toolbar-btn"
+                        onClick={() => {
+                          setVaultInsightsOpen(true);
+                          void generateVaultInsights();
+                        }}
+                        title="Analyze notes for themes, contradictions, and gaps"
+                      >
+                        Insights
+                      </button>
+                      <button
+                        type="button"
+                        className="ai-toolbar-btn"
+                        title="Copy vault context to clipboard for Claude, ChatGPT, or Claude Projects"
+                        onClick={() => void exportForAi("all")}
+                      >
+                        Export vault
+                      </button>
                       <button type="button" onClick={clearAiChat}>
                         Clear chat
                       </button>
+                    </div>
+                    <div className="ai-vault-mode">
+                      <button
+                        type="button"
+                        className={`ai-vault-mode-btn${aiSettings.vaultMode !== "full" ? " active" : ""}`}
+                        onClick={() => setAiSettings((previous) => ({ ...previous, vaultMode: "related" }))}
+                        title="Use active note + related notes as context"
+                      >
+                        Note context
+                      </button>
+                      <button
+                        type="button"
+                        className={`ai-vault-mode-btn${aiSettings.vaultMode === "full" ? " active" : ""}`}
+                        onClick={() => setAiSettings((previous) => ({ ...previous, vaultMode: "full" }))}
+                        title="Send your entire vault as context — best with Gemini or large-context models"
+                      >
+                        Full vault
+                      </button>
+                      {aiSettings.vaultMode === "full" ? (
+                        <span className="ai-vault-mode-hint">
+                          {notes.length} notes · best with Gemini 1.5 / 2.0
+                        </span>
+                      ) : null}
                     </div>
                     <div className="ai-chat-log">
                       {aiMessages.length ? (
@@ -18165,9 +19087,9 @@ a{color:#1d4ed8}
               value={quickQuery}
               onChange={(event) => setQuickQuery(event.target.value)}
               onKeyDown={(event) => {
-                const resultLength = commandMode ? paletteResults.length : quickResults.length;
+                const resultLength = commandMode ? paletteResults.length : displayedSearchResults.length;
                 const lowerKey = event.key.toLowerCase();
-                const selectedNote = !commandMode ? quickResults[searchSelected] : null;
+                const selectedNote = !commandMode ? displayedSearchResults[searchSelected] : null;
                 const hasMeta = event.metaKey || event.ctrlKey;
                 const matchesMetaAltDigit = (digit: string): boolean =>
                   hasMeta && event.altKey && (event.key === digit || event.code === `Digit${digit}`);
@@ -18420,13 +19342,33 @@ a{color:#1d4ed8}
                     }
                     return;
                   }
-                  const note = quickResults[searchSelected];
+                  const note = displayedSearchResults[searchSelected];
                   if (note) {
                     openSearchResult(note, "open");
                   }
                 }
               }}
             />
+            {(aiSettings.provider === "openai" ||
+              aiSettings.provider === "openai-compatible" ||
+              aiSettings.provider === "ollama") ? (
+              <label className="search-semantic-toggle">
+                <input
+                  type="checkbox"
+                  checked={semanticSearchEnabled}
+                  onChange={(event) => {
+                    setSemanticSearchEnabled(event.target.checked);
+                    if (event.target.checked && quickQuery.trim()) {
+                      void runSemanticSearch(quickQuery);
+                    }
+                  }}
+                />
+                <span>Semantic search</span>
+                {embeddingIndexStatus ? (
+                  <span className="search-semantic-count">({embeddingIndexStatus.count} notes indexed)</span>
+                ) : null}
+              </label>
+            ) : null}
             <div className="search-chips quick-search-chips">
               <button
                 type="button"
@@ -18602,10 +19544,10 @@ a{color:#1d4ed8}
                 <>
                   <button
                     type="button"
-                    disabled={!selectedSearchResult}
+                    disabled={!selectedDisplayedSearchResult}
                     onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open");
+                      if (selectedDisplayedSearchResult) {
+                        openSearchResult(selectedDisplayedSearchResult, "open");
                       }
                     }}
                   >
@@ -18613,10 +19555,10 @@ a{color:#1d4ed8}
                   </button>
                   <button
                     type="button"
-                    disabled={!selectedSearchResult}
+                    disabled={!selectedDisplayedSearchResult}
                     onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "copy-link");
+                      if (selectedDisplayedSearchResult) {
+                        openSearchResult(selectedDisplayedSearchResult, "copy-link");
                       }
                     }}
                   >
@@ -18624,10 +19566,10 @@ a{color:#1d4ed8}
                   </button>
                   <button
                     type="button"
-                    disabled={!selectedSearchResult}
+                    disabled={!selectedDisplayedSearchResult}
                     onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-window");
+                      if (selectedDisplayedSearchResult) {
+                        openSearchResult(selectedDisplayedSearchResult, "open-window");
                       }
                     }}
                   >
@@ -18635,10 +19577,10 @@ a{color:#1d4ed8}
                   </button>
                   <button
                     type="button"
-                    disabled={!selectedSearchResult}
+                    disabled={!selectedDisplayedSearchResult}
                     onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "rename-note");
+                      if (selectedDisplayedSearchResult) {
+                        openSearchResult(selectedDisplayedSearchResult, "rename-note");
                       }
                     }}
                   >
@@ -18646,10 +19588,10 @@ a{color:#1d4ed8}
                   </button>
                   <button
                     type="button"
-                    disabled={!selectedSearchResult}
+                    disabled={!selectedDisplayedSearchResult}
                     onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "move-note");
+                      if (selectedDisplayedSearchResult) {
+                        openSearchResult(selectedDisplayedSearchResult, "move-note");
                       }
                     }}
                   >
@@ -18657,10 +19599,10 @@ a{color:#1d4ed8}
                   </button>
                   <button
                     type="button"
-                    disabled={!selectedSearchResult}
+                    disabled={!selectedDisplayedSearchResult}
                     onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "open-note-tags");
+                      if (selectedDisplayedSearchResult) {
+                        openSearchResult(selectedDisplayedSearchResult, "open-note-tags");
                       }
                     }}
                   >
@@ -18668,10 +19610,10 @@ a{color:#1d4ed8}
                   </button>
                   <button
                     type="button"
-                    disabled={!selectedSearchResult}
+                    disabled={!selectedDisplayedSearchResult}
                     onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "duplicate-note");
+                      if (selectedDisplayedSearchResult) {
+                        openSearchResult(selectedDisplayedSearchResult, "duplicate-note");
                       }
                     }}
                   >
@@ -18681,10 +19623,10 @@ a{color:#1d4ed8}
                     type="button"
                     className="danger"
                     data-action="move-trash"
-                    disabled={!selectedSearchResult}
+                    disabled={!selectedDisplayedSearchResult}
                     onClick={() => {
-                      if (selectedSearchResult) {
-                        openSearchResult(selectedSearchResult, "trash-note");
+                      if (selectedDisplayedSearchResult) {
+                        openSearchResult(selectedDisplayedSearchResult, "trash-note");
                       }
                     }}
                   >
@@ -18697,6 +19639,181 @@ a{color:#1d4ed8}
               </button>
             </footer>
           </section>
+        </div>
+      ) : null}
+
+      {aiInlineOpen ? (
+        <div
+          ref={aiInlineRef}
+          className="ai-inline-toolbar"
+          style={{
+            position: "fixed",
+            left: aiInlinePos.x,
+            top: aiInlinePos.y,
+            transform: "translate(-50%, -100%)",
+            zIndex: 2000
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          {aiInlineBusy ? (
+            <span className="ai-inline-busy">Rewriting…</span>
+          ) : (
+            <>
+              <button type="button" onClick={() => void runAiInlineCommand("improve")} title="Improve writing">✨ Improve</button>
+              <button type="button" onClick={() => void runAiInlineCommand("concise")} title="Make more concise">✂ Concise</button>
+              <button type="button" onClick={() => void runAiInlineCommand("bullets")} title="Convert to bullet list">• Bullets</button>
+              <button type="button" onClick={() => void runAiInlineCommand("continue")} title="Continue writing">→ Continue</button>
+              <button type="button" onClick={() => void runAiInlineCommand("explain")} title="Explain simply">💡 Explain</button>
+              <button type="button" onClick={() => void runAiInlineCommand("fix")} title="Fix grammar">ABC Fix</button>
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {dailyBriefOpen ? (
+        <div className="modal-backdrop" onClick={() => setDailyBriefOpen(false)}>
+          <div className="daily-brief-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="daily-brief-header">
+              <div>
+                <h2>Daily Brief</h2>
+                <span className="daily-brief-date">
+                  {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                </span>
+              </div>
+              <div className="daily-brief-actions">
+                <button
+                  type="button"
+                  className="daily-brief-refresh"
+                  onClick={() => {
+                    setDailyBriefDate(null);
+                    void generateDailyBrief(true);
+                  }}
+                  disabled={dailyBriefBusy}
+                  title="Regenerate"
+                >
+                  ↺
+                </button>
+                <button type="button" className="modal-close" onClick={() => setDailyBriefOpen(false)} aria-label="Close">
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="daily-brief-body">
+              {dailyBriefBusy ? (
+                <div className="daily-brief-loading">
+                  <div className="spinner" />
+                  <p>Reading your recent notes…</p>
+                </div>
+              ) : (
+                <div className="daily-brief-content markdown-body">
+                  {dailyBriefContent.split("\n").map((line, index) => {
+                    if (line.startsWith("## ") || (line.startsWith("**") && line.endsWith("**"))) {
+                      return <h3 key={index}>{line.replace(/\*\*/g, "").replace(/^##\s+/, "")}</h3>;
+                    }
+                    if (line.startsWith("- ") || line.startsWith("• ")) {
+                      return <li key={index}>{line.slice(2)}</li>;
+                    }
+                    if (line.trim() === "") {
+                      return <br key={index} />;
+                    }
+                    return <p key={index}>{line}</p>;
+                  })}
+                </div>
+              )}
+            </div>
+            {!dailyBriefBusy && dailyBriefContent ? (
+              <div className="daily-brief-footer">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeNote) {
+                      setDraftMarkdown(
+                        (previous) =>
+                          `${previous}\n\n---\n\n## Daily Brief — ${new Date().toLocaleDateString()}\n\n${dailyBriefContent}`
+                      );
+                      setSaveState("dirty");
+                      setDailyBriefOpen(false);
+                    }
+                  }}
+                >
+                  Insert into active note
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {vaultInsightsOpen ? (
+        <div className="modal-backdrop" onClick={() => setVaultInsightsOpen(false)}>
+          <div className="vault-insights-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="daily-brief-header">
+              <div>
+                <h2>Vault Insights</h2>
+                <div className="vault-insights-scope-toggle">
+                  <button
+                    type="button"
+                    className={vaultInsightsScope === "notebook" ? "active" : ""}
+                    onClick={() => {
+                      setVaultInsightsScope("notebook");
+                      void generateVaultInsights(true, "notebook");
+                    }}
+                  >
+                    Current notebook
+                  </button>
+                  <button
+                    type="button"
+                    className={vaultInsightsScope === "all" ? "active" : ""}
+                    onClick={() => {
+                      setVaultInsightsScope("all");
+                      void generateVaultInsights(true, "all");
+                    }}
+                  >
+                    Entire vault
+                  </button>
+                </div>
+              </div>
+              <div className="daily-brief-actions">
+                <button
+                  type="button"
+                  className="daily-brief-refresh"
+                  onClick={() => {
+                    setVaultInsightsContent("");
+                    void generateVaultInsights(true);
+                  }}
+                  disabled={vaultInsightsBusy}
+                >
+                  ↺
+                </button>
+                <button type="button" className="modal-close" onClick={() => setVaultInsightsOpen(false)} aria-label="Close">
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="daily-brief-body">
+              {vaultInsightsBusy ? (
+                <div className="daily-brief-loading">
+                  <div className="spinner" />
+                  <p>Analyzing your notes…</p>
+                </div>
+              ) : (
+                <div className="daily-brief-content">
+                  {vaultInsightsContent.split("\n").map((line, index) => {
+                    if (line.startsWith("**") && line.endsWith("**")) {
+                      return <h3 key={index}>{line.replace(/\*\*/g, "")}</h3>;
+                    }
+                    if (line.startsWith("- ")) {
+                      return <li key={index}>{line.slice(2)}</li>;
+                    }
+                    if (line.trim() === "") {
+                      return <br key={index} />;
+                    }
+                    return <p key={index}>{line}</p>;
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -19092,6 +20209,36 @@ a{color:#1d4ed8}
                         >
                           {file.isEmbed ? "Insert embed" : "Insert link"}
                         </button>
+                        {isImageAttachmentItem(file) ? (
+                          <div className="attachment-ai-actions">
+                            <button
+                              type="button"
+                              className="attachment-ai-btn"
+                              onClick={() => {
+                                const targetNote = notes.find((note) => note.id === file.noteId);
+                                if (targetNote) {
+                                  void describeAttachmentImage(file.target, targetNote, "describe");
+                                }
+                              }}
+                              title="AI describe this image"
+                            >
+                              ✦ Describe
+                            </button>
+                            <button
+                              type="button"
+                              className="attachment-ai-btn"
+                              onClick={() => {
+                                const targetNote = notes.find((note) => note.id === file.noteId);
+                                if (targetNote) {
+                                  void describeAttachmentImage(file.target, targetNote, "ocr");
+                                }
+                              }}
+                              title="Extract text from image (OCR)"
+                            >
+                              ✦ OCR
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </li>
@@ -20060,6 +21207,7 @@ a{color:#1d4ed8}
               <button type="button" className={settingsTab === "appearance" ? "active" : ""} onClick={() => setSettingsTab("appearance")}>Appearance</button>
               <button type="button" className={settingsTab === "shortcuts" ? "active" : ""} onClick={() => setSettingsTab("shortcuts")}>Shortcuts</button>
               <button type="button" className={settingsTab === "ai" ? "active" : ""} onClick={() => setSettingsTab("ai")}>AI</button>
+              <button type="button" className={settingsTab === "integrations" ? "active" : ""} onClick={() => setSettingsTab("integrations")}>Integrations</button>
               <button type="button" className={settingsTab === "backup" ? "active" : ""} onClick={() => setSettingsTab("backup")}>Backup</button>
             </nav>
             <div className="settings-body">
@@ -20495,6 +21643,28 @@ a{color:#1d4ed8}
                     <h3>Context</h3>
                     <div className="settings-row settings-row-stack">
                       <div className="settings-copy">
+                        <label>Vault chat mode</label>
+                        <small>Choose whether AI uses the active note + related notes or the whole vault.</small>
+                      </div>
+                      <div className="settings-choice-group" role="group" aria-label="Vault chat mode">
+                        <button
+                          type="button"
+                          className={aiSettings.vaultMode === "related" ? "active" : ""}
+                          onClick={() => setAiSettings((previous) => ({ ...previous, vaultMode: "related" }))}
+                        >
+                          Note context
+                        </button>
+                        <button
+                          type="button"
+                          className={aiSettings.vaultMode === "full" ? "active" : ""}
+                          onClick={() => setAiSettings((previous) => ({ ...previous, vaultMode: "full" }))}
+                        >
+                          Full vault
+                        </button>
+                      </div>
+                    </div>
+                    <div className="settings-row settings-row-stack">
+                      <div className="settings-copy">
                         <label>Context sources</label>
                         <small>Choose what the AI can include when answering.</small>
                       </div>
@@ -20570,8 +21740,112 @@ a{color:#1d4ed8}
                         onChange={(event) => setAiSettings((previous) => ({ ...previous, systemPrompt: event.target.value }))}
                       />
                     </div>
+                    <div className="settings-row">
+                      <div className="settings-copy">
+                        <label>Semantic search index</label>
+                        <small>
+                          Indexes your notes for meaning-based search.
+                          {embeddingIndexStatus ? ` ${embeddingIndexStatus.count} notes indexed.` : ""}
+                          {" "}Requires OpenAI-compatible embeddings or Ollama.
+                        </small>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const status = await window.pkmShell?.buildEmbeddingIndex?.({
+                            notes: notes.map((note) => ({
+                              id: note.id,
+                              title: note.title,
+                              content: note.markdown || "",
+                              hash: `${note.title}:${note.updatedAt}:${note.markdown.slice(0, 120)}`
+                            })),
+                            provider: aiSettings.provider,
+                            baseUrl: aiSettings.baseUrl,
+                            apiKey: aiSettings.apiKey,
+                            model: aiSettings.model
+                          });
+                          if (status?.ok) {
+                            showToast(`Indexed ${status.total} notes`, "success");
+                            setEmbeddingIndexStatus({ count: status.total ?? 0 });
+                          } else {
+                            showToast(status?.error ?? "Semantic index failed", "error");
+                          }
+                        }}
+                      >
+                        Build index
+                      </button>
+                    </div>
                   </section>
                 </>
+              ) : null}
+
+              {settingsTab === "integrations" ? (
+                <section className="settings-section">
+                  <h3>Readwise</h3>
+                  <div className="settings-row">
+                    <div className="settings-copy">
+                      <label htmlFor="readwise-token">API Token</label>
+                      <small>
+                        Get your token at{" "}
+                        <button
+                          type="button"
+                          className="settings-inline-link"
+                          onClick={() => void window.pkmShell?.openUrl?.("https://readwise.io/access_token")}
+                        >
+                          readwise.io/access_token
+                        </button>
+                      </small>
+                    </div>
+                    <div style={{ display: "flex", gap: "6px", flex: 1 }}>
+                      <input
+                        id="readwise-token"
+                        type="password"
+                        value={readwiseToken}
+                        onChange={(event) => {
+                          setReadwiseToken(event.target.value);
+                          setReadwiseTestState("idle");
+                        }}
+                        placeholder="paste your Readwise token"
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const result = await window.pkmShell?.readwiseTest?.(readwiseToken);
+                          setReadwiseTestState(result?.ok ? "ok" : "error");
+                        }}
+                      >
+                        Test
+                      </button>
+                    </div>
+                  </div>
+                  {readwiseTestState !== "idle" ? (
+                    <p className={`readwise-status ${readwiseTestState}`}>
+                      {readwiseTestState === "ok" ? "✓ Connected" : "✗ Invalid token"}
+                    </p>
+                  ) : null}
+                  <div className="settings-row">
+                    <div className="settings-copy">
+                      <label>Sync highlights</label>
+                      <small>
+                        {readwiseStatus?.lastSyncAt
+                          ? `Last synced: ${new Date(readwiseStatus.lastSyncAt).toLocaleString()} · ${readwiseStatus.bookCount} sources`
+                          : "Never synced"}
+                      </small>
+                    </div>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button type="button" disabled={!readwiseToken || readwiseSyncing} onClick={() => void syncReadwise(false)}>
+                        {readwiseSyncing ? "Syncing…" : "Sync new"}
+                      </button>
+                      <button type="button" disabled={!readwiseToken || readwiseSyncing} onClick={() => void syncReadwise(true)}>
+                        Full sync
+                      </button>
+                    </div>
+                  </div>
+                  <p className="settings-hint">
+                    Highlights are imported into a "Readwise" notebook as one note per book or source. Sync new only fetches items updated since the last sync.
+                  </p>
+                </section>
               ) : null}
 
               {settingsTab === "backup" ? (

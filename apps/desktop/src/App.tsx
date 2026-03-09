@@ -6111,7 +6111,7 @@ export default function App() {
       return;
     }
     if (!toastToneLockRef.current) {
-      setToastTone("default");
+      setToastTone(inferToastTone(toastMessage));
       return;
     }
     toastToneLockRef.current = false;
@@ -6463,7 +6463,7 @@ export default function App() {
 
   async function runGitBackupNow(): Promise<void> {
     if (!window.pkmShell?.backupVaultToGit) {
-      setToastMessage("Git backup is only available in the desktop app");
+      showToast("Git backup is only available in the desktop app", "error");
       return;
     }
 
@@ -6473,19 +6473,19 @@ export default function App() {
       if (status) {
         applyGitBackupStatus(status);
         if (status.lastError) {
-          setToastMessage(`Git backup failed: ${status.lastError}`);
+          showToast(`Git backup failed: ${status.lastError}`, "error");
         } else if (!status.enabled) {
           setToastMessage("Git backups are disabled");
         } else if (status.lastCommitHash) {
-          setToastMessage(`Git backup saved (${status.lastCommitHash})`);
+          showToast(`Git backup saved (${status.lastCommitHash})`, "success");
         } else {
           setToastMessage("Git backup checked (no new changes)");
         }
       } else {
-        setToastMessage("Git backup request returned no status");
+        showToast("Git backup request returned no status", "error");
       }
     } catch (error) {
-      setToastMessage(error instanceof Error ? error.message : "Git backup failed");
+      showToast(error instanceof Error ? error.message : "Git backup failed", "error");
     } finally {
       setGitBackupBusy(false);
     }
@@ -6493,7 +6493,7 @@ export default function App() {
 
   async function toggleGitBackups(): Promise<void> {
     if (!window.pkmShell?.setGitBackupEnabled) {
-      setToastMessage("Git backup controls are only available in the desktop app");
+      showToast("Git backup controls are only available in the desktop app", "error");
       return;
     }
 
@@ -6502,9 +6502,9 @@ export default function App() {
       setGitBackupBusy(true);
       const status = (await window.pkmShell.setGitBackupEnabled(nextEnabled)) as GitBackupStatus | null;
       applyGitBackupStatus(status);
-      setToastMessage(nextEnabled ? "Git backups enabled" : "Git backups disabled");
+      showToast(nextEnabled ? "Git backups enabled" : "Git backups disabled", "success");
     } catch (error) {
-      setToastMessage(error instanceof Error ? error.message : "Failed to update Git backup setting");
+      showToast(error instanceof Error ? error.message : "Failed to update Git backup setting", "error");
     } finally {
       setGitBackupBusy(false);
     }
@@ -6512,13 +6512,13 @@ export default function App() {
 
   async function saveGitBackupSettings(): Promise<void> {
     if (!window.pkmShell?.setGitBackupSettings) {
-      setToastMessage("Git backup settings are only available in the desktop app");
+      showToast("Git backup settings are only available in the desktop app", "error");
       return;
     }
 
     const seconds = Number.parseInt(gitBackupDelaySeconds.trim(), 10);
     if (!Number.isFinite(seconds) || seconds < 1 || seconds > 120) {
-      setToastMessage("Autosave delay must be between 1 and 120 seconds");
+      showToast("Autosave delay must be between 1 and 120 seconds", "error");
       return;
     }
 
@@ -6532,9 +6532,9 @@ export default function App() {
         pushBranch: gitBackupPushBranch
       })) as GitBackupStatus | null;
       applyGitBackupStatus(status);
-      setToastMessage("Git backup settings saved");
+      showToast("Git backup settings saved", "success");
     } catch (error) {
-      setToastMessage(error instanceof Error ? error.message : "Failed to update Git backup settings");
+      showToast(error instanceof Error ? error.message : "Failed to update Git backup settings", "error");
     } finally {
       setGitBackupBusy(false);
     }
@@ -7335,7 +7335,7 @@ export default function App() {
 
   function exportVaultSnapshot(): void {
     if (typeof document === "undefined" || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
-      setToastMessage("Snapshot export is unavailable in this environment");
+      showToast("Snapshot export is unavailable in this environment", "error");
       return;
     }
 
@@ -7355,7 +7355,7 @@ export default function App() {
     link.download = `pkm-os-snapshot-${toDateInputValue(new Date())}.json`;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
-    setToastMessage(`Snapshot exported (${notes.length} notes)`);
+    showToast(`Snapshot exported (${notes.length} notes)`, "success");
   }
 
   function triggerVaultSnapshotImport(): void {
@@ -7380,7 +7380,7 @@ export default function App() {
 
   async function reloadVaultFromDisk(): Promise<void> {
     if (!window.pkmShell?.loadVaultState) {
-      setToastMessage("Vault reload is unavailable in this build");
+      showToast("Vault reload is unavailable in this build", "error");
       return;
     }
 
@@ -7391,15 +7391,15 @@ export default function App() {
     try {
       const payload = (await window.pkmShell.loadVaultState()) as ShellNotesPayload | null;
       if (!payload || !Array.isArray(payload)) {
-        setToastMessage("Vault reload returned no notes");
+        showToast("Vault reload returned no notes", "error");
         return;
       }
 
       const hydrated = payload.filter(isAppNote);
       setNotes(hydrated);
-      setToastMessage(`Reloaded ${hydrated.length} ${hydrated.length === 1 ? "note" : "notes"} from disk`);
+      showToast(`Reloaded ${hydrated.length} ${hydrated.length === 1 ? "note" : "notes"} from disk`, "success");
     } catch {
-      setToastMessage("Failed to reload vault from disk");
+      showToast("Failed to reload vault from disk", "error");
     }
   }
 
@@ -7412,24 +7412,24 @@ export default function App() {
     try {
       parsed = JSON.parse(await readFileAsText(file));
     } catch {
-      setToastMessage("Invalid snapshot file");
+      showToast("Invalid snapshot file", "error");
       return;
     }
 
     if (!parsed || typeof parsed !== "object") {
-      setToastMessage("Invalid snapshot format");
+      showToast("Invalid snapshot format", "error");
       return;
     }
 
     const candidate = parsed as Partial<VaultSnapshotV1>;
     if (candidate.version !== 1 || !Array.isArray(candidate.notes)) {
-      setToastMessage("Unsupported snapshot format");
+      showToast("Unsupported snapshot format", "error");
       return;
     }
 
     const importedNotes = candidate.notes.filter(isAppNote);
     if (!importedNotes.length) {
-      setToastMessage("Snapshot has no valid notes");
+      showToast("Snapshot has no valid notes", "error");
       return;
     }
 
@@ -7462,7 +7462,7 @@ export default function App() {
     setDraftNoteId(nextActive);
     setDraftMarkdown(importedNotes[0]?.markdown ?? "");
     setSearchOpen(false);
-    setToastMessage(`Imported snapshot (${importedNotes.length} notes)`);
+    showToast(`Imported snapshot (${importedNotes.length} notes)`, "success");
   }
 
   async function importEnexFromFile(file: File): Promise<void> {
@@ -7474,13 +7474,13 @@ export default function App() {
     try {
       rawEnex = await readFileAsText(file);
     } catch {
-      setToastMessage("Failed to read ENEX file");
+      showToast("Failed to read ENEX file", "error");
       return;
     }
 
     const parsedNotes = parseEnexNotes(rawEnex);
     if (!parsedNotes.length) {
-      setToastMessage("No valid notes found in ENEX file");
+      showToast("No valid notes found in ENEX file", "error");
       return;
     }
 
@@ -7517,7 +7517,7 @@ export default function App() {
     setDraftNoteId(nextActive);
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
-    setToastMessage(`Imported ENEX (${imported.length} notes) into ${targetNotebook}`);
+    showToast(`Imported ENEX (${imported.length} notes) into ${targetNotebook}`, "success");
   }
 
   async function importEnexFiles(files: FileList | File[]): Promise<void> {
@@ -7529,7 +7529,7 @@ export default function App() {
       return lowerName.endsWith(".enex") || lowerName.endsWith(".xml") || file.type.toLowerCase().includes("xml");
     });
     if (!source.length) {
-      setToastMessage("No ENEX files selected");
+      showToast("No ENEX files selected", "error");
       return;
     }
 
@@ -7578,7 +7578,7 @@ export default function App() {
     }
 
     if (!imported.length || !validFileCount) {
-      setToastMessage("No valid notes found in ENEX files");
+      showToast("No valid notes found in ENEX files", "error");
       return;
     }
 
@@ -7600,10 +7600,11 @@ export default function App() {
     setDraftNoteId(nextActive);
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
-    setToastMessage(
+    showToast(
       `Imported ENEX files (${imported.length} ${imported.length === 1 ? "note" : "notes"} from ${validFileCount} ${
         validFileCount === 1 ? "file" : "files"
-      })`
+      })`,
+      "success"
     );
   }
 
@@ -7616,7 +7617,7 @@ export default function App() {
       return lowerName.endsWith(".md") || lowerName.endsWith(".markdown") || file.type.toLowerCase().includes("markdown");
     });
     if (!source.length) {
-      setToastMessage("No Markdown files selected");
+      showToast("No Markdown files selected", "error");
       return;
     }
 
@@ -7655,7 +7656,7 @@ export default function App() {
     }
 
     if (!imported.length) {
-      setToastMessage("No readable Markdown files found");
+      showToast("No readable Markdown files found", "error");
       return;
     }
 
@@ -7670,7 +7671,7 @@ export default function App() {
     setDraftNoteId(nextActive);
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
-    setToastMessage(`Imported Markdown files (${imported.length}) into ${targetNotebook}`);
+    showToast(`Imported Markdown files (${imported.length}) into ${targetNotebook}`, "success");
   }
 
   async function importTextFiles(files: FileList | File[]): Promise<void> {
@@ -7682,7 +7683,7 @@ export default function App() {
       return lowerName.endsWith(".txt") || lowerName.endsWith(".text") || file.type.toLowerCase().includes("text/plain");
     });
     if (!source.length) {
-      setToastMessage("No text files selected");
+      showToast("No text files selected", "error");
       return;
     }
 
@@ -7719,7 +7720,7 @@ export default function App() {
     }
 
     if (!imported.length) {
-      setToastMessage("No readable text files found");
+      showToast("No readable text files found", "error");
       return;
     }
 
@@ -7734,7 +7735,7 @@ export default function App() {
     setDraftNoteId(nextActive);
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
-    setToastMessage(`Imported text files (${imported.length}) into ${targetNotebook}`);
+    showToast(`Imported text files (${imported.length}) into ${targetNotebook}`, "success");
   }
 
   async function importHtmlFiles(files: FileList | File[]): Promise<void> {
@@ -7751,7 +7752,7 @@ export default function App() {
       );
     });
     if (!source.length) {
-      setToastMessage("No HTML files selected");
+      showToast("No HTML files selected", "error");
       return;
     }
 
@@ -7810,7 +7811,7 @@ export default function App() {
     }
 
     if (!imported.length) {
-      setToastMessage("No readable HTML files found");
+      showToast("No readable HTML files found", "error");
       return;
     }
 
@@ -7824,7 +7825,7 @@ export default function App() {
     setLastSelectedId(nextActive || null);
     setDraftMarkdown(imported[0]?.markdown ?? "");
     setSearchOpen(false);
-    setToastMessage(`Imported HTML files (${imported.length}) into ${targetNotebook}`);
+    showToast(`Imported HTML files (${imported.length}) into ${targetNotebook}`, "success");
   }
 
   function saveCurrentSearch(): void {
@@ -11137,14 +11138,14 @@ export default function App() {
 
     const notebook = createNotebookDialog.name.trim();
     if (!notebook) {
-      setToastMessage("Enter a notebook name");
+      showToast("Enter a notebook name", "error");
       return;
     }
 
     if (notebookList.includes(notebook)) {
       setSelectedNotebook(notebook);
       setCreateNotebookDialog(null);
-      setToastMessage(`Notebook "${notebook}" already exists`);
+      showToast(`Notebook "${notebook}" already exists`, "error");
       return;
     }
 
@@ -11168,7 +11169,7 @@ export default function App() {
     setCreateNotebookDialog(null);
     setSelectedNotebook(notebook);
     focusNote(created.id);
-    setToastMessage(`Notebook "${notebook}" created`);
+    showToast(`Notebook "${notebook}" created`, "success");
   }
 
   function saveCreateStackDialog(): void {
@@ -11178,26 +11179,26 @@ export default function App() {
 
     const stack = createStackDialog.name.trim();
     if (!stack) {
-      setToastMessage("Enter a stack name");
+      showToast("Enter a stack name", "error");
       return;
     }
 
     const lower = stack.toLowerCase();
     if (stackNames.some((name) => name.toLowerCase() === lower)) {
       setCreateStackDialog(null);
-      setToastMessage(`Stack "${stack}" already exists`);
+      showToast(`Stack "${stack}" already exists`, "error");
       return;
     }
 
     setCustomStacks((previous) => [...previous, stack]);
     setCreateStackDialog(null);
-    setToastMessage(`Stack "${stack}" created`);
+    showToast(`Stack "${stack}" created`, "success");
   }
 
   function createNoteFromScratchPad(): void {
     const content = homeScratchPad.trim();
     if (!content) {
-      setToastMessage("Scratch pad is empty");
+      showToast("Scratch pad is empty", "error");
       return;
     }
 
@@ -11218,11 +11219,11 @@ export default function App() {
     const notebook = scratchNoteDialog.notebook.trim();
 
     if (!content) {
-      setToastMessage("Scratch pad is empty");
+      showToast("Scratch pad is empty", "error");
       return;
     }
     if (!title || !notebook) {
-      setToastMessage("Enter both note title and notebook");
+      showToast("Enter both note title and notebook", "error");
       return;
     }
 
@@ -11252,7 +11253,7 @@ export default function App() {
     setBrowseMode("all");
     setSelectedNotebook(notebook);
     focusNote(created.id);
-    setToastMessage(`Created note "${title}"`);
+    showToast(`Created note "${title}"`, "success");
   }
 
   function toggleShortcutNotes(noteIds: string[]): { added: number; removed: number } {
@@ -12474,13 +12475,13 @@ a{color:#1d4ed8}
 
     if (action === "restore-trash") {
       if (!allSelectedTrashed) {
-        setToastMessage("Notes are not in Trash");
+        showToast("Notes are not in Trash", "error");
         setContextMenu(null);
         return;
       }
       const restored = restoreNotesFromTrash(contextMenu.noteIds);
       if (restored > 0) {
-        setToastMessage(`${restored === 1 ? "1 note" : `${restored} notes`} restored from Trash`);
+        showToast(`${restored === 1 ? "1 note" : `${restored} notes`} restored from Trash`, "success");
       }
       setContextMenu(null);
       return;
@@ -12490,7 +12491,7 @@ a{color:#1d4ed8}
       if (allSelectedTrashed) {
         const removed = deleteNotesPermanently(contextMenu.noteIds);
         if (removed > 0) {
-          setToastMessage(`${removed === 1 ? "1 note" : `${removed} notes`} deleted permanently`);
+          showToast(`${removed === 1 ? "1 note" : `${removed} notes`} deleted permanently`, "success");
         }
         setContextMenu(null);
         return;
@@ -12498,7 +12499,7 @@ a{color:#1d4ed8}
 
       const moved = moveNotesToTrash(contextMenu.noteIds);
       if (moved > 0) {
-        setToastMessage(`${moved === 1 ? "1 note" : `${moved} notes`} moved to Trash`);
+        showToast(`${moved === 1 ? "1 note" : `${moved} notes`} moved to Trash`, "success");
       }
       setContextMenu(null);
       return;
@@ -14412,6 +14413,25 @@ a{color:#1d4ed8}
   const gitBackupDelayValue = Number.parseInt(gitBackupDelaySeconds, 10);
   const safePanelGap = typeof themeOverrides.panelGap === "number" ? themeOverrides.panelGap : 8;
   const safePanelRadius = typeof themeOverrides.panelRadius === "number" ? themeOverrides.panelRadius : 10;
+
+  function inferToastTone(message: string): "default" | "success" | "error" {
+    const normalized = message.trim().toLowerCase();
+    if (
+      /failed|error|invalid|unsupported|unavailable|must be|already exists|not ready|no valid|select one|open a note|returned no status|enter a |is required|no .*selected|no .*found/.test(
+        normalized
+      )
+    ) {
+      return "error";
+    }
+    if (
+      /^(exported|imported|created|saved\b|reloaded|renamed|restored|moved\b|task completed|inserted|theme switched|sort set|view set|density set|grouping set|editor font set|editor font size set|default editor set|opened today's note|note link copied|links copied|note path copied|paths copied|note markdown copied|markdown copied|note html copied|html copied|note text copied|text copied|attachment path copied|attachment markdown copied|task markdown copied|ai response copied|event reference copied|git backup saved|git backups enabled|git backups disabled|git backup settings saved|saved search|shortcuts updated|templates updated|home pins updated|notebook pins updated|\d+ duplicated|\d+ added to shortcuts|\d+ pinned to home|\d+ unpinned from home|\d+ pinned to notebook|\d+ unpinned from notebook)/.test(
+        normalized
+      )
+    ) {
+      return "success";
+    }
+    return "default";
+  }
 
   function showToast(message: string | null, tone: "default" | "success" | "error" = "default"): void {
     toastToneLockRef.current = true;
@@ -18355,7 +18375,7 @@ a{color:#1d4ed8}
                 }
               }}
             />
-            <div className="search-chips">
+            <div className="search-chips quick-search-chips">
               <button
                 type="button"
                 className={searchScope === "everywhere" ? "chip active" : "chip"}

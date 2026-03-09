@@ -224,6 +224,29 @@ describe("App", () => {
     expect(screen.getByRole("toolbar", { name: "Command palette actions" })).toBeInTheDocument();
   });
 
+  it("shows the reduced quick-search chip row", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    const chips = document.querySelector(".quick-search-chips") as HTMLElement | null;
+    expect(chips).toBeTruthy();
+
+    const labels = within(chips as HTMLElement)
+      .getAllByRole("button")
+      .map((button) => button.textContent?.trim());
+    expect(labels).toEqual([
+      "Everywhere",
+      "Daily Notes",
+      "Has attachments",
+      "Has open tasks",
+      "Due today",
+      "Has reminders",
+      "Has links",
+      "Has backlinks",
+      "Updated today"
+    ]);
+  });
+
   it("opens reminders browse mode from the sidebar", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Info" }));
@@ -1098,7 +1121,9 @@ describe("App", () => {
     expect(screen.getByText("Share link copied")).toBeInTheDocument();
 
     fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Duplicate" }));
-    expect(await screen.findByText("1 duplicated")).toBeInTheDocument();
+    const successToast = await screen.findByText("1 duplicated");
+    expect(successToast).toBeInTheDocument();
+    expect(successToast.closest(".toast")).toHaveClass("success");
     expect(screen.getByRole("heading", { name: "Agenda copy" })).toBeInTheDocument();
   });
 
@@ -1279,6 +1304,21 @@ describe("App", () => {
     expect(printSpy).toHaveBeenCalledTimes(1);
 
     printSpy.mockRestore();
+  });
+
+  it("shows an error toast when pdf export is unavailable", async () => {
+    const exportNotePdf = vi.fn().mockResolvedValue({ ok: false, error: "Failed to export PDF" });
+    (window as unknown as { pkmShell?: { exportNotePdf: typeof exportNotePdf } }).pkmShell = { exportNotePdf };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+    const metadataPanel = screen.getByRole("heading", { name: "Note metadata", level: 4 }).closest("aside");
+    expect(metadataPanel).toBeTruthy();
+
+    fireEvent.click(within(metadataPanel as HTMLElement).getByRole("button", { name: "Export as PDF" }));
+    const errorToast = await screen.findByText("Failed to export PDF");
+    expect(errorToast.closest(".toast")).toHaveClass("error");
   });
 
   it("opens lite and full editor modes from the metadata panel", () => {

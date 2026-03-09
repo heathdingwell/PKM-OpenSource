@@ -3813,6 +3813,17 @@ body.is-resizing .pane-resizer::after {
   padding: 10px 14px 4px;
 }
 
+.quick-search-chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.quick-search-chips::-webkit-scrollbar {
+  display: none;
+}
+
 .search-hint {
   margin: 2px 14px 0;
   color: var(--muted);

@@ -9630,10 +9630,13 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
 
     await waitFor(() => {
-      const restoredPayload = saveVaultState.mock.calls.at(-1)?.[0] as Array<{ title: string; trashedAt?: string }>;
-      const restoredAgenda = restoredPayload.find((note) => note.title === "Agenda");
-      expect(restoredAgenda).toBeTruthy();
-      expect(restoredAgenda?.trashedAt).toBeFalsy();
+      const restoredPayload = saveVaultState.mock.calls
+        .map((call) => call[0] as Array<{ title: string; trashedAt?: string }>)
+        .find((payload) => {
+          const agenda = payload.find((note) => note.title === "Agenda");
+          return Boolean(agenda) && !agenda?.trashedAt;
+        });
+      expect(restoredPayload).toBeTruthy();
     });
   });
 

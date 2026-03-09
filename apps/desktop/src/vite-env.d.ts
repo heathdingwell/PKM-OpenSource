@@ -32,6 +32,9 @@ declare global {
         error?: string;
       } | null>;
       getVaultPath?: () => Promise<string>;
+      revealVault?: () => Promise<{ ok: boolean } | null>;
+      pickVaultFolder?: () => Promise<{ cancelled: boolean; vaultPath?: string } | null>;
+      relaunchApp?: () => Promise<unknown>;
       getGitBackupStatus?: () => Promise<{
         enabled: boolean;
         commitPrefix: string;

@@ -318,6 +318,7 @@ type ReminderScopeMode = "all" | "current-note";
 type GraphScope = "workspace" | "local";
 type SidebarSectionId = "recent" | "shortcuts" | "saved-searches" | "home-pins" | "notebook-pins" | "notebooks";
 type SettingsTab = "general" | "editor" | "appearance" | "shortcuts" | "ai" | "backup";
+type SaveState = "saved" | "dirty" | "saving" | "failed";
 
 interface ParsedSearchQuery {
   text: string;
@@ -3326,7 +3327,7 @@ export default function App() {
   const [lastTrash, setLastTrash] = useState<LastTrashState | null>(null);
   const [draftMarkdown, setDraftMarkdown] = useState<string>("");
   const [draftNoteId, setDraftNoteId] = useState<string>("");
-  const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">("saved");
+  const [saveState, setSaveState] = useState<SaveState>("saved");
   const [sidebarView, setSidebarView] = useState<SidebarView>("notes");
   const [editorMode, setEditorMode] = useState<EditorMode>(initialPrefs.defaultEditorMode ?? "markdown");
   const [defaultEditorMode, setDefaultEditorMode] = useState<EditorMode>(initialPrefs.defaultEditorMode ?? "markdown");
@@ -4943,10 +4944,32 @@ export default function App() {
     window.localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
 
     if (!vaultReady || !window.pkmShell?.saveVaultState) {
+      if (saveState === "saving" || saveState === "failed") {
+        setSaveState("saved");
+      }
       return;
     }
 
-    void window.pkmShell.saveVaultState(notes);
+    let cancelled = false;
+    void window.pkmShell.saveVaultState(notes).then((ok) => {
+      if (cancelled) {
+        return;
+      }
+      if (ok === false) {
+        setSaveState("failed");
+        return;
+      }
+      if (saveState === "saving" || saveState === "failed") {
+        setSaveState("saved");
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setSaveState("failed");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [notes, vaultReady]);
 
   useEffect(() => {
@@ -5083,6 +5106,23 @@ export default function App() {
       cancelled = true;
     };
   }, [vaultMode]);
+
+  const handleChangeVault = async () => {
+    if (!window.pkmShell?.pickVaultFolder) {
+      return;
+    }
+    const result = await window.pkmShell.pickVaultFolder();
+    if (!result || result.cancelled || !result.vaultPath) {
+      return;
+    }
+    setVaultPath(result.vaultPath);
+    const shouldRestart = window.confirm(
+      `Vault location changed to:\n${result.vaultPath}\n\nThe app must restart to load notes from the new location. Restart now?`
+    );
+    if (shouldRestart) {
+      await window.pkmShell.relaunchApp?.();
+    }
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -5923,7 +5963,7 @@ export default function App() {
 
       if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key === "/") {
         event.preventDefault();
-        setShortcutsHelpOpen(true);
+        setShortcutsHelpOpen((value) => !value);
         return;
       }
 
@@ -6753,12 +6793,12 @@ export default function App() {
       autosaveTimerRef.current = null;
     }
 
+    setSaveState("saving");
     setNotes((previous) =>
       previous.map((note) =>
         note.id === activeNote.id ? applyNoteMarkdownWithUniquePath(note, activeDraftMarkdown, previous) : note
       )
     );
-    setSaveState("saved");
     touchRecent(activeNote.id);
   }
 
@@ -16586,9 +16626,21 @@ a{color:#1d4ed8}
               <span
                 className={`save-pill ${saveState}`}
                 aria-live="polite"
-                aria-label={saveState === "dirty" ? "Unsaved changes" : saveState === "saving" ? "Saving…" : "Saved"}
+                aria-label={
+                  saveState === "dirty"
+                    ? "Unsaved changes"
+                    : saveState === "saving"
+                      ? "Saving…"
+                      : saveState === "failed"
+                        ? "Last save failed"
+                        : "Saved"
+                }
               >
-                {saveState === "dirty" ? "Unsaved" : saveState === "saving" ? "Saving" : "Saved"}
+                {saveState === "dirty" ? "Unsaved" : saveState === "saving" ? "Saving" : saveState === "failed" ? (
+                  <span className="status-save-failed" title="Last save failed — check that the vault folder is accessible">
+                    ⚠ Save failed
+                  </span>
+                ) : "Saved"}
               </span>
             </div>
 
@@ -20020,12 +20072,40 @@ a{color:#1d4ed8}
                 <>
                   <section className="settings-section">
                     <h3>Workspace</h3>
-                    <div className="settings-row">
+                    <div className="settings-row settings-row-vault">
                       <div className="settings-copy">
-                        <label htmlFor="settings-vault-path">Vault path</label>
-                        <small>Current vault location used by the desktop app.</small>
+                        <label>Vault location</label>
+                        <small>Your notes are stored here as plain Markdown files — compatible with Obsidian, VS Code, and any app that reads Markdown.</small>
                       </div>
-                      <input id="settings-vault-path" value={vaultPath} readOnly />
+                      <div className="settings-vault-controls">
+                        <input
+                          value={vaultPath}
+                          readOnly
+                          title={vaultPath}
+                          className="settings-vault-path-input"
+                          aria-label="Current vault path"
+                        />
+                        <div className="settings-vault-buttons">
+                          <button
+                            type="button"
+                            className="settings-vault-btn"
+                            onClick={() => void window.pkmShell?.revealVault?.()}
+                            title="Open vault folder in Finder / Explorer"
+                            disabled={!window.pkmShell?.revealVault}
+                          >
+                            Open Vault Folder
+                          </button>
+                          <button
+                            type="button"
+                            className="settings-vault-btn settings-vault-btn-primary"
+                            onClick={() => void handleChangeVault()}
+                            title="Choose a different folder for your vault"
+                            disabled={!window.pkmShell?.pickVaultFolder}
+                          >
+                            Change…
+                          </button>
+                        </div>
+                      </div>
                     </div>
                     <div className="settings-row">
                       <div className="settings-copy">
@@ -20612,37 +20692,68 @@ a{color:#1d4ed8}
       ) : null}
 
       {shortcutsHelpOpen ? (
-        <div className="overlay" onClick={() => setShortcutsHelpOpen(false)}>
-          <section
-            className="rename-modal shortcuts-help-modal"
+        <div className="modal-backdrop" onClick={() => setShortcutsHelpOpen(false)}>
+          <div
+            className="shortcuts-overlay"
+            onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label="Keyboard shortcuts"
-            onClick={(event) => event.stopPropagation()}
           >
-            <h3>Keyboard shortcuts</h3>
-            <table className="shortcuts-table">
-              <thead>
-                <tr>
-                  <th>Shortcut</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shortcutReferenceRows.map((row) => (
-                  <tr key={`help-${row.shortcut}-${row.action}`}>
-                    <td><kbd>{row.shortcut}</kbd></td>
-                    <td>{row.action}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <footer>
-              <button type="button" onClick={() => setShortcutsHelpOpen(false)}>
-                Close
+            <div className="shortcuts-overlay-header">
+              <h2>Keyboard Shortcuts</h2>
+              <button
+                type="button"
+                className="settings-close modal-close"
+                onClick={() => setShortcutsHelpOpen(false)}
+                aria-label="Close"
+              >
+                ✕
               </button>
-            </footer>
-          </section>
+            </div>
+            <div className="shortcuts-overlay-body">
+              <div className="shortcuts-group">
+                <h3>Notes</h3>
+                <dl>
+                  <div><dt><kbd>⌘</kbd><kbd>N</kbd></dt><dd>New note</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>⌫</kbd></dt><dd>Move to trash</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>Shift</kbd><kbd>R</kbd></dt><dd>Rename note</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>D</kbd></dt><dd>Duplicate note</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>P</kbd></dt><dd>Pin / unpin note</dd></div>
+                </dl>
+              </div>
+              <div className="shortcuts-group">
+                <h3>Navigation</h3>
+                <dl>
+                  <div><dt><kbd>⌘</kbd><kbd>K</kbd></dt><dd>Quick open / search</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>[</kbd></dt><dd>Navigate back</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>]</kbd></dt><dd>Navigate forward</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>1</kbd></dt><dd>All Notes</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>2</kbd></dt><dd>Notebooks</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>3</kbd></dt><dd>Tags</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>4</kbd></dt><dd>Tasks</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>5</kbd></dt><dd>Reminders</dd></div>
+                </dl>
+              </div>
+              <div className="shortcuts-group">
+                <h3>Editor</h3>
+                <dl>
+                  <div><dt><kbd>⌘</kbd><kbd>B</kbd></dt><dd>Bold</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>I</kbd></dt><dd>Italic</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>F</kbd></dt><dd>Find in note</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>Shift</kbd><kbd>F</kbd></dt><dd>Focus mode</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>E</kbd></dt><dd>Toggle editor mode</dd></div>
+                </dl>
+              </div>
+              <div className="shortcuts-group">
+                <h3>App</h3>
+                <dl>
+                  <div><dt><kbd>⌘</kbd><kbd>,</kbd></dt><dd>Settings</dd></div>
+                  <div><dt><kbd>⌘</kbd><kbd>/</kbd></dt><dd>This shortcuts panel</dd></div>
+                </dl>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 

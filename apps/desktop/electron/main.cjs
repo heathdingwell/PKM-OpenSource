@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require("electron");
 const { randomUUID } = require("node:crypto");
 const { execFile } = require("node:child_process");
 const fsSync = require("node:fs");
@@ -20,6 +20,9 @@ const GIT_BACKUP_MAX_AUTOSAVE_DELAY_MS = 120000;
 const GIT_BACKUP_DEFAULT_PUSH_REMOTE = "origin";
 const GIT_BACKUP_DEFAULT_PUSH_BRANCH = "main";
 const STARTUP_LOG_NAME = "startup.log";
+const CONFIG_NAME = "config.json";
+
+let _resolvedVaultPath = null;
 
 function startupLogPath() {
   try {
@@ -58,8 +61,25 @@ function appIconPath() {
   return path.join(__dirname, "../assets/app-icon.png");
 }
 
-function vaultRootPath() {
+function configFilePath() {
+  return path.join(app.getPath("userData"), CONFIG_NAME);
+}
+
+async function resolveVaultPath() {
+  try {
+    const raw = await fs.readFile(configFilePath(), "utf8");
+    const cfg = JSON.parse(raw);
+    if (cfg.vaultPath && typeof cfg.vaultPath === "string") {
+      return cfg.vaultPath;
+    }
+  } catch {
+    // No config yet.
+  }
   return path.join(app.getPath("userData"), VAULT_DIR_NAME);
+}
+
+function vaultRootPath() {
+  return _resolvedVaultPath || path.join(app.getPath("userData"), VAULT_DIR_NAME);
 }
 
 function vaultIndexPath() {
@@ -1667,7 +1687,8 @@ function buildAppMenu() {
   return Menu.buildFromTemplate(template);
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  _resolvedVaultPath = await resolveVaultPath();
   logStartup("app ready");
   if (process.platform === "darwin" && app.dock?.setIcon && !app.isPackaged) {
     app.dock.setIcon(appIconPath());
@@ -1720,6 +1741,38 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("vault:path", async () => vaultRootPath());
+
+  ipcMain.handle("vault:reveal", async () => {
+    await shell.openPath(vaultRootPath());
+    return { ok: true };
+  });
+
+  ipcMain.handle("vault:pick", async () => {
+    const result = await dialog.showOpenDialog({
+      title: "Choose Vault Folder",
+      buttonLabel: "Use as Vault",
+      properties: ["openDirectory", "createDirectory"],
+      defaultPath: vaultRootPath()
+    });
+    if (result.canceled || !result.filePaths[0]) {
+      return { cancelled: true };
+    }
+    const newPath = result.filePaths[0];
+    let existing = {};
+    try {
+      existing = JSON.parse(await fs.readFile(configFilePath(), "utf8"));
+    } catch {
+      // No existing config.
+    }
+    await fs.writeFile(configFilePath(), JSON.stringify({ ...existing, vaultPath: newPath }, null, 2), "utf8");
+    _resolvedVaultPath = newPath;
+    return { cancelled: false, vaultPath: newPath };
+  });
+
+  ipcMain.handle("vault:relaunch", () => {
+    app.relaunch();
+    app.exit(0);
+  });
 
   ipcMain.handle("vault:git-status", async () => {
     try {

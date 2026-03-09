@@ -135,6 +135,85 @@ describe("App", () => {
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
   });
 
+  it("shows vault controls in settings and disables them in browser mode", () => {
+    render(<App />);
+
+    const sidebarFooter = document.querySelector(".sidebar-footer") as HTMLElement | null;
+    expect(sidebarFooter).toBeTruthy();
+    fireEvent.click(within(sidebarFooter as HTMLElement).getByRole("button", { name: "Settings" }));
+
+    expect(screen.getByLabelText("Current vault path")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open Vault Folder" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Change…" })).toBeDisabled();
+  });
+
+  it("changes vault location from settings in desktop mode", async () => {
+    const getVaultPath = vi.fn().mockResolvedValue("/tmp/original-vault");
+    const revealVault = vi.fn().mockResolvedValue({ ok: true });
+    const pickVaultFolder = vi.fn().mockResolvedValue({ cancelled: false, vaultPath: "/tmp/next-vault" });
+    const relaunchApp = vi.fn().mockResolvedValue(undefined);
+    window.pkmShell = {
+      ...window.pkmShell,
+      getPlatform: window.pkmShell?.getPlatform ?? (() => "mac"),
+      getVaultPath,
+      revealVault,
+      pickVaultFolder,
+      relaunchApp
+    };
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(<App />);
+    const sidebarFooter = document.querySelector(".sidebar-footer") as HTMLElement | null;
+    expect(sidebarFooter).toBeTruthy();
+    fireEvent.click(within(sidebarFooter as HTMLElement).getByRole("button", { name: "Settings" }));
+
+    expect(await screen.findByDisplayValue("/tmp/original-vault")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open Vault Folder" }));
+    await waitFor(() => expect(revealVault).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Change…" }));
+    await waitFor(() => expect(pickVaultFolder).toHaveBeenCalledTimes(1));
+    expect(confirmSpy).toHaveBeenCalledWith(
+      "Vault location changed to:\n/tmp/next-vault\n\nThe app must restart to load notes from the new location. Restart now?"
+    );
+    await waitFor(() => expect(relaunchApp).toHaveBeenCalledTimes(1));
+
+    confirmSpy.mockRestore();
+  });
+
+  it("toggles the keyboard shortcuts overlay with cmd+/", () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "/", metaKey: true });
+    const dialog = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Notes" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Navigation" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Editor" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "App" })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "/", metaKey: true });
+    expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).not.toBeInTheDocument();
+  });
+
+  it("shows failed save state when desktop persistence fails", async () => {
+    const saveVaultState = vi.fn().mockResolvedValue(false);
+    window.pkmShell = {
+      ...window.pkmShell,
+      getPlatform: window.pkmShell?.getPlatform ?? (() => "mac"),
+      saveVaultState,
+      getVaultPath: vi.fn().mockResolvedValue("/tmp/vault")
+    };
+
+    render(<App />);
+    const editor = document.querySelector(".markdown-editor") as HTMLTextAreaElement | null;
+    expect(editor).toBeTruthy();
+    fireEvent.change(editor as HTMLTextAreaElement, { target: { value: "# Agenda\n\nBroken save test" } });
+
+    expect(await screen.findByText("⚠ Save failed")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Last save failed")).toBeInTheDocument();
+  });
+
   it("navigates back and forward through note history from the topbar", () => {
     render(<App />);
 

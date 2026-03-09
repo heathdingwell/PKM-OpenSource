@@ -196,6 +196,19 @@ describe("App", () => {
     expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).not.toBeInTheDocument();
   });
 
+  it("opens the Daily Brief from keyboard shortcut without triggering today's note", async () => {
+    const chatWithLlm = vi.fn().mockResolvedValue({
+      message: "This week's focus\n\n- Keep refining the app"
+    });
+    (window as unknown as { pkmShell?: { chatWithLlm: typeof chatWithLlm } }).pkmShell = { chatWithLlm };
+
+    render(<App />);
+    fireEvent.keyDown(window, { key: "D", metaKey: true, shiftKey: true });
+
+    expect(await screen.findByRole("dialog", { name: "Daily Brief" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /^\d{4}-\d{2}-\d{2}$/u, level: 2 })).not.toBeInTheDocument();
+  });
+
   it("shows failed save state when desktop persistence fails", async () => {
     const saveVaultState = vi.fn().mockResolvedValue(false);
     window.pkmShell = {
@@ -5940,16 +5953,16 @@ describe("App", () => {
     const now = new Date();
     const todayTitle = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-    fireEvent.keyDown(window, { key: "D", metaKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: "Y", metaKey: true, shiftKey: true });
     expect(await screen.findByRole("heading", { name: todayTitle, level: 2 })).toBeInTheDocument();
   });
 
-  it("opens or creates today's note using KeyD keyboard code", async () => {
+  it("opens or creates today's note using KeyY keyboard code", async () => {
     render(<App />);
     const now = new Date();
     const todayTitle = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-    fireEvent.keyDown(window, { key: "Î", code: "KeyD", metaKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: "Ý", code: "KeyY", metaKey: true, shiftKey: true });
     expect(await screen.findByRole("heading", { name: todayTitle, level: 2 })).toBeInTheDocument();
   });
 
@@ -9772,6 +9785,71 @@ describe("App", () => {
 
     expect(screen.getByText("AI chat already empty")).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("Search or ask a question")).not.toBeInTheDocument();
+  });
+
+  it("sends the active note to Gemini CLI from the topbar", async () => {
+    const runGeminiCli = vi.fn().mockResolvedValue({ ok: true });
+    window.pkmShell = {
+      ...window.pkmShell,
+      getPlatform: () => "mac",
+      runGeminiCli
+    };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Gemini" }));
+
+    await waitFor(() =>
+      expect(runGeminiCli).toHaveBeenCalledWith({
+        noteTitle: "Agenda",
+        noteContent: expect.stringContaining("# Agenda"),
+        prompt: "Analyze this note."
+      })
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent("Sent to Terminal — Gemini is running");
+  });
+
+  it("opens the active note in Codex CLI from the topbar", async () => {
+    const runCodexCli = vi.fn().mockResolvedValue({ ok: true });
+    window.pkmShell = {
+      ...window.pkmShell,
+      getPlatform: () => "mac",
+      runCodexCli
+    };
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Codex" }));
+
+    await waitFor(() =>
+      expect(runCodexCli).toHaveBeenCalledWith({
+        noteTitle: "Agenda",
+        noteContent: expect.stringContaining("# Agenda"),
+        task: "Help me understand and work with this note."
+      })
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent("Opened in Codex CLI — Terminal is ready");
+  });
+
+  it("opens the active note in Obsidian using the note path", async () => {
+    const openUrl = vi.fn().mockResolvedValue({ ok: true });
+    const getVaultPath = vi.fn().mockResolvedValue("/Users/heath/Vault");
+    window.pkmShell = {
+      ...window.pkmShell,
+      getPlatform: () => "mac",
+      getVaultPath,
+      openUrl
+    };
+
+    render(<App />);
+    await waitFor(() => expect(getVaultPath).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole("button", { name: "Obsidian" }));
+
+    await waitFor(() =>
+      expect(openUrl).toHaveBeenCalledWith(
+        "obsidian://open?vault=Vault&file=Daily%20Notes%2FAgenda"
+      )
+    );
+    expect(screen.getByText('Opening "Agenda" in Obsidian')).toBeInTheDocument();
   });
 
   it("saves configurable git backup settings", async () => {

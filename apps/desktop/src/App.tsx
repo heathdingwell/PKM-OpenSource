@@ -5796,7 +5796,7 @@ export default function App() {
         (event.metaKey || event.ctrlKey) &&
         event.shiftKey &&
         !event.altKey &&
-        (event.key.toLowerCase() === "d" || event.code === "KeyD")
+        (event.key.toLowerCase() === "y" || event.code === "KeyY")
       ) {
         event.preventDefault();
         void openTodayNote();
@@ -6924,11 +6924,14 @@ I'd like your help with the above note/code.`;
     });
     if (result?.ok) {
       const platform = window.pkmShell?.getPlatform?.() ?? "unknown";
+      const isMac = platform === "darwin" || platform === "mac";
       showToast(
-        platform === "darwin" ? "Sent to Terminal — Gemini is running" : "Command copied — paste in your terminal to run Gemini",
+        isMac ? "Sent to Terminal — Gemini is running" : "Command copied — paste in your terminal to run Gemini",
         "success"
       );
+      return;
     }
+    showToast("Could not send this note to Gemini CLI", "error");
   }
 
   async function openInCodexCli(note: AppNote): Promise<void> {
@@ -6939,21 +6942,28 @@ I'd like your help with the above note/code.`;
     });
     if (result?.ok) {
       const platform = window.pkmShell?.getPlatform?.() ?? "unknown";
+      const isMac = platform === "darwin" || platform === "mac";
       showToast(
-        platform === "darwin" ? "Opened in Codex CLI — Terminal is ready" : "Command copied — paste in your terminal to open Codex",
+        isMac ? "Opened in Codex CLI — Terminal is ready" : "Command copied — paste in your terminal to open Codex",
         "success"
       );
+      return;
     }
+    showToast("Could not open this note in Codex CLI", "error");
   }
 
   async function openInObsidian(note: AppNote): Promise<void> {
-    const vaultName = vaultPath ? vaultPath.split(/[\\/]/).filter(Boolean).pop() ?? "" : "";
+    if (!window.pkmShell?.openUrl || !vaultPath || vaultPath === "App-managed vault") {
+      showToast("Vault location not set — configure it in Settings", "error");
+      return;
+    }
+    const vaultName = vaultPath.split(/[\\/]/).filter(Boolean).pop() ?? "";
     if (!vaultName) {
       showToast("Vault location not set — configure it in Settings", "error");
       return;
     }
-    const notebook = note.notebook ?? "";
-    const filePath = notebook ? `${notebook}/${note.title}` : note.title;
+    const fallbackPath = note.notebook ? `${note.notebook}/${note.title}` : note.title;
+    const filePath = (note.path.trim() || fallbackPath).replace(/\.md$/i, "");
     const obsidianUrl = `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(filePath)}`;
     const result = await window.pkmShell?.openUrl?.(obsidianUrl);
     if (result?.ok) {
@@ -15226,7 +15236,8 @@ a{color:#1d4ed8}
       { shortcut: "cmd+n", action: "New note" },
       { shortcut: "cmd+k / cmd+p", action: "Open search" },
       { shortcut: "cmd+shift+k", action: "Open command palette" },
-      { shortcut: "cmd+shift+d", action: "Open today note" },
+      { shortcut: "cmd+shift+y", action: "Open today note" },
+      { shortcut: "cmd+shift+d", action: "Open Daily Brief" },
       { shortcut: "cmd+,", action: "Open settings" },
       { shortcut: "cmd+/", action: "Show keyboard shortcuts" },
       { shortcut: "cmd+f", action: "Find in note" },
@@ -19672,10 +19683,16 @@ a{color:#1d4ed8}
 
       {dailyBriefOpen ? (
         <div className="modal-backdrop" onClick={() => setDailyBriefOpen(false)}>
-          <div className="daily-brief-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+          <div
+            className="daily-brief-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="daily-brief-title"
+          >
             <div className="daily-brief-header">
               <div>
-                <h2>Daily Brief</h2>
+                <h2 id="daily-brief-title">Daily Brief</h2>
                 <span className="daily-brief-date">
                   {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
                 </span>

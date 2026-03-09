@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type UIEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type UIEvent } from "react";
 import { SearchIndex } from "@pkm-os/indexer";
 import { type NoteRecord, VaultService } from "@pkm-os/vault-core";
 import MarkdownIt from "markdown-it";
@@ -3483,6 +3483,7 @@ export default function App() {
   const lastTagSuggestionKeyRef = useRef<string>("");
   const markdownEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const richEditorRef = useRef<RichMarkdownEditorHandle | null>(null);
+  const editorTitleRef = useRef<HTMLHeadingElement | null>(null);
   const editorMainRef = useRef<HTMLDivElement | null>(null);
   const noteColumnRef = useRef<HTMLElement | null>(null);
   const navSkipRef = useRef(false);
@@ -6242,6 +6243,14 @@ export default function App() {
     }
     setFindInNoteIndex(0);
   }, [findInNoteOpen, findInNoteQuery, editorMode, activeNote?.id]);
+
+  useLayoutEffect(() => {
+    const titleElement = editorTitleRef.current;
+    if (!titleElement || isTitleEditingRef.current) {
+      return;
+    }
+    titleElement.textContent = draftPreview.title;
+  }, [activeNote?.id, draftPreview.title]);
 
   useEffect(() => {
     if (!findInNoteOpen || !findInNoteMatches.length) {
@@ -17649,6 +17658,7 @@ a{color:#1d4ed8}
               >
                 <div className="editor-content-main">
                   <h2
+                    ref={editorTitleRef}
                     key={activeNote.id}
                     contentEditable
                     suppressContentEditableWarning
@@ -17678,9 +17688,7 @@ a{color:#1d4ed8}
                         }
                       }
                     }}
-                  >
-                    {draftPreview.title}
-                  </h2>
+                  />
                   <div className={liteEditMode ? "editor-workbench lite" : "editor-workbench"}>
                 {editorMode === "markdown" ? (
                   <section
